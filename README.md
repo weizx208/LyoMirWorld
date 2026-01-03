@@ -3,8 +3,8 @@
 <img src='https://github.com/AndrewChien/Blog/blob/master/source/mirworld01.png'/></br>
 <img src='https://github.com/AndrewChien/Blog/blob/master/source/mirworld02.png'/></br>
 <img src='https://github.com/AndrewChien/Blog/blob/master/source/mw_magic.jpg'/></br>
-<img src='https://github.com/AndrewChien/Blog/blob/master/source/mw_monster.jpg'/></br>
-<img src='https://github.com/AndrewChien/Blog/blob/master/source/mw_NPC.jpg'/></br>
+<img src='https://github.com/AndrewChien/Blog/blob/master/source/mw_monster.png'/></br>
+<img src='https://github.com/AndrewChien/Blog/blob/master/source/mw_NPC.png'/></br>
 
 ---
 
