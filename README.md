@@ -8,7 +8,7 @@ Windows用户推荐使用LyoConsole管理器进行一键启停：https://github.
 登录器及登录器配置器项目地址：https://github.com/AndrewChien/LyoMirWorldLauncher/releases/tag/v1.0.0
 </br>
 </br>
-配套其他资源文件在QQ群共享文件中，群号：1063081017
+因法律及其他问题，配套资源文件放在QQ群，群号：1063081017
 </br>
 </br>
 
