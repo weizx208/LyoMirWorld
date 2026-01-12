@@ -13,9 +13,6 @@ using System.Threading.Tasks;
 
 namespace DBServer
 {
-    /// <summary>
-    /// 数据库服务器主程序
-    /// </summary>
     class Program
     {
         private static DBServer? _server;
@@ -31,10 +28,6 @@ namespace DBServer
 
             try
             {
-                // 从配置文件或参数读取配置
-                //var config = LoadConfiguration(args);
-
-                // 使用INI配置文件
                 var iniReader = new IniFileReader("config.ini");
                 if (!iniReader.Open())
                 {
@@ -48,16 +41,14 @@ namespace DBServer
                 {
                     Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] 数据库服务器初始化成功");
                     Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] 监听端口: {iniReader.GetInteger("数据库服务器", "port", 8000)}");
-                    //Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] 数据库: {iniReader.GetString("数据库服务器", "database", "MirWorldDB")}");
+                    
                     Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] 最大连接数: {iniReader.GetInteger("数据库服务器", "maxconnection", 4000)}");
                     Console.WriteLine();
                     
                     await _server.Start();
                     
-                    // 控制台命令循环
                     _ = Task.Run(() => CommandLoop());
                     
-                    // 保持运行
                     while (_isRunning)
                     {
                         await Task.Delay(1000);
@@ -80,19 +71,6 @@ namespace DBServer
             }
         }
 
-        //private static ServerConfig LoadConfiguration(string[] args)
-        //{
-        //    return new ServerConfig
-        //    {
-        //        ServerName = "DBServer",
-        //        Port = 8000,
-        //        DatabaseServer = "(local)",
-        //        DatabaseName = "MirWorldDB",
-        //        DatabaseUser = "sa",
-        //        DatabasePassword = "123456",
-        //        MaxConnections = 1024
-        //    };
-        //}
 
         private static void CommandLoop()
         {
@@ -197,9 +175,6 @@ namespace DBServer
         }
     }
 
-    /// <summary>
-    /// 服务器配置
-    /// </summary>
     public class ServerConfig
     {
         public string ServerName { get; set; } = "DBServer";
@@ -211,13 +186,10 @@ namespace DBServer
         public int MaxConnections { get; set; } = 100;
     }
 
-    /// <summary>
-    /// 数据库服务器类
-    /// </summary>
     public class DBServer
     {
         private readonly IniFileReader _config;
-        //private readonly ServerConfig _config;
+        
         private TcpListener? _listener;
         private readonly List<ClientConnection> _connections = new();
         private readonly object _connectionLock = new();
@@ -246,14 +218,12 @@ namespace DBServer
         {
             try
             {
-                // 从INI文件的[数据库服务器]节读取配置
                 string sectionName = "数据库服务器";
                 _addr = _config.GetString(sectionName, "addr", "127.0.0.1");
                 _port = _config.GetInteger(sectionName, "port", 8000);
                 _name = _config.GetString(sectionName, "name", "db01");
                 _maxconnection = _config.GetInteger(sectionName, "maxconnection", 1024);
                 
-                // 读取数据库类型配置
                 string dbType = _config.GetString(sectionName, "dbtype", "sqlite");
                 string sqlitePath = _config.GetString(sectionName, "sqlitepath", "MirWorldDB.sqlite");
                 _server = _config.GetString(sectionName, "server", "(local)");
@@ -261,12 +231,10 @@ namespace DBServer
                 _account = _config.GetString(sectionName, "account", "sa");
                 _password = _config.GetString(sectionName, "password", "123456");
                 
-                // 从INI文件的[服务器中心]节读取ServerCenter配置
                 string scSectionName = "服务器中心";
                 _serverCenterAddress = _config.GetString(scSectionName, "addr", "127.0.0.1");
                 _serverCenterPort = _config.GetInteger(scSectionName, "port", 6000);
 
-                // 创建AppDB_New实例（支持多种数据库）
                 LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] 正在连接到数据库...");
                 LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] 数据库类型: {dbType}");
                 
@@ -286,12 +254,10 @@ namespace DBServer
                     return false;
                 }
 
-                // 启动健康检查
                 _appDB.StartHealthCheck();
                 LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] 数据库连接成功");
                 LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] 健康检查已启动，检查间隔: 1分钟");
                 
-                // 向ServerCenter注册
                 LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] 正在向ServerCenter注册...");
                 using var scClient = new MirCommon.Network.ServerCenterClient(_serverCenterAddress, _serverCenterPort);
                 if (await scClient.ConnectAsync())
@@ -366,7 +332,6 @@ namespace DBServer
 
             _appDB?.Close();
             
-            // 从ServerCenter注销
             try
             {
                 using var scClient = new MirCommon.Network.ServerCenterClient(_serverCenterAddress, _serverCenterPort);
@@ -428,9 +393,6 @@ namespace DBServer
         }
         public long GetProcessedMessageCount() => Interlocked.Read(ref _processedMessages);
         
-        /// <summary>
-        /// 获取性能统计信息
-        /// </summary>
         public string GetPerformanceStats()
         {
             var stats = new StringBuilder();
@@ -442,9 +404,6 @@ namespace DBServer
             return stats.ToString();
         }
 
-        /// <summary>
-        /// 获取错误统计信息
-        /// </summary>
         public string GetErrorStats()
         {
             var stats = new StringBuilder();
@@ -478,9 +437,6 @@ namespace DBServer
         }
     }
 
-    /// <summary>
-    /// 客户端连接类
-    /// </summary>
     public class ClientConnection
     {
         private readonly TcpClient _client;
@@ -488,9 +444,10 @@ namespace DBServer
         private readonly NetworkStream _stream;
         private readonly AppDB_New _appDB;
         
-        // 存储从请求中提取的clientKey和charId，用于响应时传回
         private uint _clientKey = 0;
         private uint _charId = 0;
+
+        private readonly List<byte> _recvBuffer = new List<byte>(8192);
 
         public ClientConnection(TcpClient client, DBServer server, AppDB_New appDB)
         {
@@ -512,9 +469,9 @@ namespace DBServer
                     if (bytesRead == 0)
                         break;
 
-                    // 处理接收到的数据
-                    await ProcessMessage(buffer, bytesRead);
-                    _server.IncrementMessageCount();
+                    int msgCount = await ProcessReceivedData(buffer, bytesRead);
+                    for (int i = 0; i < msgCount; i++)
+                        _server.IncrementMessageCount();
                 }
                 catch (Exception ex)
                 {
@@ -524,133 +481,113 @@ namespace DBServer
             }
         }
 
-        private async Task ProcessMessage(byte[] data, int length)
+        private async Task<int> ProcessReceivedData(byte[] data, int length)
         {
             try
             {
-                // 查找消息边界 '#' 和 '!'
-                int startIndex = -1;
-                int endIndex = -1;
-                
+                if (data == null || length <= 0)
+                    return 0;
+
                 for (int i = 0; i < length; i++)
                 {
-                    if (data[i] == '#')
+                    _recvBuffer.Add(data[i]);
+                }
+
+                const int maxBufferedBytes = 1024 * 1024; 
+                if (_recvBuffer.Count > maxBufferedBytes)
+                {
+                    LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] DBServer接收缓存过大({_recvBuffer.Count}字节)，已清空以防止内存膨胀");
+                    _recvBuffer.Clear();
+                    return 0;
+                }
+
+                int processedCount = 0;
+
+                while (true)
+                {
+                    int start = _recvBuffer.IndexOf((byte)'#');
+                    if (start < 0)
                     {
-                        startIndex = i + 1; // '#'后面的位置
-                    }
-                    else if (data[i] == '!')
-                    {
-                        endIndex = i; // '!'的位置
+                        _recvBuffer.Clear();
                         break;
                     }
-                }
-                
-                if (startIndex == -1 || endIndex == -1 || startIndex >= endIndex)
-                {
-                    LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] 无效的消息格式，未找到'#'和'!'边界");
-                    return;
-                }
-                
-                // 提取'#'和'!'之间的编码数据
-                int encodedLength = endIndex - startIndex;
-                byte[] encodedData = new byte[encodedLength];
-                Array.Copy(data, startIndex, encodedData, 0, encodedLength);
-                
-                // 检查第一个字符是否是数字（'0'-'9'），如果是则跳过
-                int decodeStart = 0;
-                if (encodedLength > 0 && encodedData[0] >= '0' && encodedData[0] <= '9')
-                {
-                    decodeStart = 1;
-                }
-                
-                // 解码游戏消息
-                byte[] decoded = new byte[(encodedLength - decodeStart) * 3 / 4 + 4]; // 解码后最大可能的大小
-                byte[] dataToDecode = new byte[encodedLength - decodeStart];
-                Array.Copy(encodedData, decodeStart, dataToDecode, 0, dataToDecode.Length);
-                int decodedSize = GameCodec.UnGameCode(dataToDecode, decoded);
-                
-                if (decodedSize < 12) // 消息头至少12字节
-                {
-                    LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] 解码后数据太小: {decodedSize}字节");
-                    return;
+
+                    if (start > 0)
+                    {
+                        _recvBuffer.RemoveRange(0, start);
+                    }
+
+                    int end = _recvBuffer.IndexOf((byte)'!', 1);
+                    if (end < 0)
+                    {
+                        break;
+                    }
+
+                    int encodedLength = end - 1; 
+                    if (encodedLength <= 0)
+                    {
+                        _recvBuffer.RemoveRange(0, end + 1);
+                        continue;
+                    }
+
+                    int frameLength = encodedLength + 2; 
+                    byte[] encodedData = _recvBuffer.GetRange(1, encodedLength).ToArray();
+                    _recvBuffer.RemoveRange(0, end + 1);
+
+                    int decodeStart = 0;
+                    while (decodeStart < encodedData.Length && encodedData[decodeStart] >= '0' && encodedData[decodeStart] <= '9')
+                    {
+                        decodeStart++;
+                    }
+
+                    if (decodeStart >= encodedData.Length)
+                    {
+                        LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] 无效的编码帧：仅包含数字前缀，长度={encodedData.Length}字节");
+                        continue;
+                    }
+
+                    int toDecodeLength = encodedData.Length - decodeStart;
+                    byte[] decoded = new byte[toDecodeLength * 3 / 4 + 4]; 
+                    byte[] dataToDecode = new byte[toDecodeLength];
+                    Array.Copy(encodedData, decodeStart, dataToDecode, 0, toDecodeLength);
+                    int decodedSize = GameCodec.UnGameCode(dataToDecode, decoded);
+
+                    if (decodedSize < 12) 
+                    {
+                        LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] 解码后数据太小: {decodedSize}字节");
+                        continue;
+                    }
+
+                    var reader = new PacketReader(decoded);
+                    uint dwFlag = reader.ReadUInt32();
+                    ushort wCmd = reader.ReadUInt16();
+                    ushort w1 = reader.ReadUInt16();
+                    ushort w2 = reader.ReadUInt16();
+                    ushort w3 = reader.ReadUInt16();
+                    byte[] payload = reader.ReadBytes(decodedSize - 12);
+
+                    _clientKey = (uint)((w2 << 16) | w1);
+                    _charId = (uint)w3;
+
+                    LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] 消息头: dwFlag={dwFlag}, wCmd={wCmd}({(DbMsg)wCmd}), w1={w1}, w2={w2}, w3={w3}");
+                    LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] 解析消息头中的 clientKey={_clientKey}, charId={_charId}");
+                    LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] 原始数据长度: {frameLength}字节, 解码后长度: {decodedSize}字节, 负载长度: {payload.Length}字节");
+
+                    DbMsg msgType = (DbMsg)wCmd;
+                    await HandleDbMessage(msgType, dwFlag, payload, w1, w2, w3);
+                    processedCount++;
                 }
 
-                var reader = new PacketReader(decoded);
-                uint dwFlag = reader.ReadUInt32();
-                ushort wCmd = reader.ReadUInt16();
-                ushort w1 = reader.ReadUInt16();
-                ushort w2 = reader.ReadUInt16();
-                ushort w3 = reader.ReadUInt16();
-                byte[] payload = reader.ReadBytes(decodedSize - 12);
-
-                // 保存clientKey和charId
-                // 根据DBServerClient.cs中的编码方式：
-                // wParam1 = clientKey的低16位
-                // wParam2 = clientKey的高16位
-                // wParam3 = charId的低16位
-                _clientKey = (uint)((w2 << 16) | w1);
-                _charId = (uint)w3;
-
-                // 添加详细日志：接收到的数据包信息
-                LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] 消息头: dwFlag={dwFlag}, wCmd={wCmd}({(DbMsg)wCmd}), w1={w1}, w2={w2}, w3={w3}");
-                LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] 解析消息头中的 clientKey={_clientKey}, charId={_charId}");
-                LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] 原始数据长度: {length}字节, 解码后长度: {decodedSize}字节, 负载长度: {payload.Length}字节");
-                
-                // 根据DbMsg枚举处理消息
-                DbMsg msgType = (DbMsg)wCmd;
-                await HandleDbMessage(msgType, payload, w1, w2, w3);
+                return processedCount;
             }
             catch (Exception ex)
             {
                 LogManager.Default.Error($"[{DateTime.Now:HH:mm:ss}] 处理数据库消息错误: {ex.Message}");
+                return 0;
             }
         }
 
-
-        /*
-        - DM_CHECKACCOUNT - 检查账号密码
-        - DM_CHECKACCOUNTEXIST - 检查账号是否存在
-        - DM_CREATEACCOUNT - 创建账号
-        - DM_CHANGEPASSWORD - 修改密码
-        - DM_QUERYCHARLIST - 查询角色列表
-        - DM_CREATECHARACTER - 创建角色
-        - DM_DELETECHARACTER - 删除角色
-        - DM_RESTORECHARACTER - 恢复角色
-        - DM_GETCHARPOSITIONFORSELCHAR - 获取角色位置
-        - DM_GETCHARDBINFO - 获取角色数据库信息
-        - DM_PUTCHARDBINFO - 更新角色数据库信息
-        - DM_QUERYITEMS - 查询物品
-        - DM_UPDATEITEMS - 更新物品
-        - DM_QUERYMAGIC - 查询魔法
-        - DM_UPDATEMAGIC - 更新魔法
-        - DM_EXECSQL - 执行SQL
-        - DM_QUERYUPGRADEITEM - 查询升级物品
-        - DM_QUERYTASKINFO - 查询任务信息
-        - DM_DELETEDCHARLIST - 查询已删除角色列表
-        - DM_CREATEITEM - 创建物品
-        - DM_DELETEITEM - 删除物品
-        - DM_UPDATEITEM - 更新物品
-        - DM_UPDATEITEMPOS - 更新物品位置
-        - DM_UPDATEITEMOWNER - 更新物品所有者
-        - DM_UPDATEITEMPOSEX - 批量更新物品位置
-        - DM_UPDATEITEMOWNEREX - 批量更新物品所有者
-        - DM_UPDATEITEMEX - 批量更新物品
-        - DM_UPDATECOMMUNITY - 更新社区信息
-        - DM_QUERYCOMMUNITY - 查询社区信息
-        - DM_BREAKFRIEND - 解除好友关系
-        - DM_BREAKMARRIAGE - 解除婚姻关系
-        - DM_BREAKMASTER - 解除师徒关系
-        - DM_CACHECHARDATA - 缓存角色数据
-        - DM_UPGRADEITEM - 升级物品
-        - DM_RESTOREGUILDNAME - 恢复行会名称
-        - DM_ADDCREDIT - 添加信用
-        - DM_CHECKFREE - 检查空闲状态
-        - DM_DELETEMAGIC - 删除魔法
-        - DM_UPDATETASKINFO - 更新任务信息
-        - DM_UPDATEACCOUNTSTATE - 更新账号状态
-        - DM_UPDATEITEMPOSEX2 - 扩展的批量更新物品位置（新增）
-        */
-        private async Task HandleDbMessage(DbMsg msgType, byte[] payload, ushort w1, ushort w2, ushort w3)
+        private async Task HandleDbMessage(DbMsg msgType, uint dwFlag, byte[] payload, ushort w1, ushort w2, ushort w3)
         {
             try
             {
@@ -687,10 +624,10 @@ namespace DBServer
                         await HandlePutCharDBInfo(payload);
                         break;
                     case DbMsg.DM_UPDATEITEMS:
-                        await HandleUpdateItems(payload);
+                        await HandleUpdateItems(dwFlag, payload, w1, w2, w3);
                         break;
                     case DbMsg.DM_UPDATEMAGIC:
-                        await HandleUpdateMagic(payload);
+                        await HandleUpdateMagic(dwFlag, payload, w1, w2, w3);
                         break;
                     case DbMsg.DM_EXECSQL:
                         await HandleExecSql(payload);
@@ -764,19 +701,19 @@ namespace DBServer
                     case DbMsg.DM_UPDATEITEMPOSEX2:
                         await HandleUpdateItemPosEx2(payload);
                         break;
-                    case DbMsg.DM_GETCHARDBINFO:    //GameServer使用
+                    case DbMsg.DM_GETCHARDBINFO:   
                         await HandleGetCharDBInfo(payload, w1, w2, w3);
                         break;
-                    case DbMsg.DM_QUERYITEMS:    //GameServer使用
+                    case DbMsg.DM_QUERYITEMS:   
                         await HandleQueryItems(payload, w1, w2, w3);
                         break;
-                    case DbMsg.DM_QUERYMAGIC:    //GameServer使用
+                    case DbMsg.DM_QUERYMAGIC:   
                         await HandleQueryMagic(payload, w1, w2, w3);
                         break;
-                    case DbMsg.DM_QUERYUPGRADEITEM:    //GameServer使用
+                    case DbMsg.DM_QUERYUPGRADEITEM:   
                         await HandleQueryUpgradeItem(payload, w1, w2, w3);
                         break;
-                    case DbMsg.DM_QUERYTASKINFO:    //GameServer使用
+                    case DbMsg.DM_QUERYTASKINFO:   
                         await HandleQueryTaskInfo(payload, w1, w2, w3);
                         break;
                     default:
@@ -792,7 +729,6 @@ namespace DBServer
 
         private async Task HandleCheckAccount(byte[] payload)
         {
-            // 解析账号密码
             string data = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
             string[] parts = data.Split('/');//lyo：注意，此处使用字符串传data值
             if (parts.Length < 2) return;
@@ -815,8 +751,6 @@ namespace DBServer
         {
             try
             {
-                // 解析完整的RegisterAccount结构
-                // 格式：account/password/name/birthday/q1/a1/q2/a2/email/phoneNumber/mobilePhoneNumber/idCard
                 string data = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
                 string[] parts = data.Split('/');//lyo：注意，此处使用字符串传data值
 
@@ -839,7 +773,6 @@ namespace DBServer
                 string mobilePhoneNumber = parts[10];
                 string idCard = parts[11];
                 
-                // 调用AppDB_New的CreateAccount方法
                 var result = _appDB.CreateAccount(account, password, name, birthday, 
                     q1, a1, q2, a2, email, phoneNumber, mobilePhoneNumber, idCard);
                 SendDbResponse(DbMsg.DM_CREATEACCOUNT, result == SERVER_ERROR.SE_OK ? (uint)SERVER_ERROR.SE_OK : (uint)SERVER_ERROR.SE_FAIL);
@@ -887,7 +820,6 @@ namespace DBServer
         
         private async Task HandleCreateCharacter(byte[] payload)
         {
-            // 解析创建角色数据
             string data = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
             string[] parts = data.Split('/');//lyo：注意，此处使用字符串传data值
             if (parts.Length < 6) return;
@@ -900,7 +832,6 @@ namespace DBServer
             byte sex = byte.Parse(parts[5]);
 
             var result = _appDB.CreateCharacter(account, serverName, name, job, hair, sex);
-            // SE_OK = 0, SE_SELCHAR_CHAREXIST = 200, SE_FAIL = 1
             SendDbResponse(DbMsg.DM_CREATECHARACTER, (uint)result);
         }
         
@@ -936,7 +867,6 @@ namespace DBServer
         {
             try
             {
-                // 解析账号、服务器名、角色名
                 string data = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
                 string[] parts = data.Split('/');//lyo：注意，此处使用字符串传data值
                 if (parts.Length < 3)
@@ -949,11 +879,9 @@ namespace DBServer
                 string serverName = parts[1];
                 string charName = parts[2];
 
-                // 查询角色位置
                 var result = _appDB.GetMapPosition(account, serverName, charName, out string mapName, out short x, out short y);
                 if (result == SERVER_ERROR.SE_OK)
                 {
-                    // 格式：mapName/x/y
                     string positionData = $"{mapName}/{x}/{y}";
                     SendDbResponse(DbMsg.DM_GETCHARPOSITIONFORSELCHAR, (uint)SERVER_ERROR.SE_OK, Encoding.GetEncoding("GBK").GetBytes(positionData));
                 }
@@ -973,77 +901,64 @@ namespace DBServer
         {
             try
             {
-                // 解析CHARDBINFO数据结构
-                if (payload.Length < 4) return;
-                
-                // 解析账号、服务器名、角色名
-                string data = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
-                string[] parts = data.Split('/');
-                if (parts.Length < 3) return;
-                
-                string account = parts[0];
-                string serverName = parts[1];
-                string name = parts[2];
-                
-                // 提取角色数据（剩余部分）
-                byte[] charData = new byte[0]; // 这里需要根据实际数据结构解析
-                
-                var result = _appDB.PutCharDBInfo(account, serverName, name, charData);
-                SendDbResponse(DbMsg.DM_PUTCHARDBINFO, result == SERVER_ERROR.SE_OK ? (uint)SERVER_ERROR.SE_OK : (uint)SERVER_ERROR.SE_FAIL);
+                if (payload == null || payload.Length < MirCommon.Database.CHARDBINFO.Size)
+                    return;
+
+                var result = _appDB.PutCharDBInfo(string.Empty, string.Empty, string.Empty, payload);
+
+                if (result != SERVER_ERROR.SE_OK)
+                {
+                    LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] PutCharDBInfo失败: {result}");
+                }
+
             }
             catch (Exception ex)
             {
                 LogManager.Default.Error($"[{DateTime.Now:HH:mm:ss}] 更新角色数据错误: {ex.Message}");
-                SendDbResponse(DbMsg.DM_PUTCHARDBINFO, (uint)SERVER_ERROR.SE_FAIL);
             }
         }
         
-        private async Task HandleUpdateItems(byte[] payload)
+        private async Task HandleUpdateItems(uint dwFlag, byte[] payload, ushort w1, ushort w2, ushort w3)
         {
             try
             {
-                // 解析UpdateItems数据结构
-                // 格式：ownerId/flag/itemsData
-                if (payload.Length < 5) return;
-                
-                uint ownerId = BitConverter.ToUInt32(payload, 0);
-                byte flag = payload[4];
-                
-                // itemsData是剩余部分
-                byte[] itemsData = new byte[payload.Length - 5];
-                Array.Copy(payload, 5, itemsData, 0, itemsData.Length);
-                
-                var result = _appDB.UpdateItems(ownerId, flag, itemsData);
-                SendDbResponse(DbMsg.DM_UPDATEITEMS, result == SERVER_ERROR.SE_OK ? (uint)SERVER_ERROR.SE_OK : (uint)SERVER_ERROR.SE_FAIL);
+                uint ownerId = dwFlag;
+                byte flag = (byte)(w2 & 0xFF);
+
+                if (ownerId == 0)
+                    return;
+
+                var result = _appDB.UpdateItems(ownerId, flag, payload ?? Array.Empty<byte>());
+                if (result != SERVER_ERROR.SE_OK)
+                {
+                    LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] UpdateItems失败: ownerId={ownerId}, flag={flag}, result={result}");
+                }
+
             }
             catch (Exception ex)
             {
                 LogManager.Default.Error($"[{DateTime.Now:HH:mm:ss}] 更新物品数据错误: {ex.Message}");
-                SendDbResponse(DbMsg.DM_UPDATEITEMS, (uint)SERVER_ERROR.SE_FAIL);
             }
         }
         
-        private async Task HandleUpdateMagic(byte[] payload)
+        private async Task HandleUpdateMagic(uint dwFlag, byte[] payload, ushort w1, ushort w2, ushort w3)
         {
             try
             {
-                // 解析UpdateMagic数据结构
-                // 格式：ownerId/magicData
-                if (payload.Length < 4) return;
-                
-                uint ownerId = BitConverter.ToUInt32(payload, 0);
-                
-                // magicData是剩余部分
-                byte[] magicData = new byte[payload.Length - 4];
-                Array.Copy(payload, 4, magicData, 0, magicData.Length);
-                
-                var result = _appDB.UpdateMagic(ownerId, magicData);
-                SendDbResponse(DbMsg.DM_UPDATEMAGIC, result == SERVER_ERROR.SE_OK ? (uint)SERVER_ERROR.SE_OK : (uint)SERVER_ERROR.SE_FAIL);
+                uint ownerId = dwFlag;
+                if (ownerId == 0)
+                    return;
+
+                var result = _appDB.UpdateMagic(ownerId, payload ?? Array.Empty<byte>());
+                if (result != SERVER_ERROR.SE_OK)
+                {
+                    LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] UpdateMagic失败: ownerId={ownerId}, result={result}");
+                }
+
             }
             catch (Exception ex)
             {
                 LogManager.Default.Error($"[{DateTime.Now:HH:mm:ss}] 更新魔法数据错误: {ex.Message}");
-                SendDbResponse(DbMsg.DM_UPDATEMAGIC, (uint)SERVER_ERROR.SE_FAIL);
             }
         }
         
@@ -1058,7 +973,6 @@ namespace DBServer
         {
             try
             {
-                // 解析账号和服务器名
                 string data = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
                 string[] parts = data.Split('/');//lyo：注意，此处使用字符串传data值
                 if (parts.Length < 2) return;
@@ -1093,7 +1007,6 @@ namespace DBServer
                 byte flag = payload[4];
                 ushort pos = BitConverter.ToUInt16(payload, 5);
                 
-                // itemData是剩余部分
                 byte[] itemData = new byte[payload.Length - 7];
                 Array.Copy(payload, 7, itemData, 0, itemData.Length);
                 
@@ -1135,7 +1048,6 @@ namespace DBServer
                 byte flag = payload[4];
                 ushort pos = BitConverter.ToUInt16(payload, 5);
                 
-                // itemData是剩余部分
                 byte[] itemData = new byte[payload.Length - 7];
                 Array.Copy(payload, 7, itemData, 0, itemData.Length);
                 
@@ -1305,13 +1217,12 @@ namespace DBServer
             try
             {
                 string data = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
-                string[] parts = data.Split('/');
+                string[] parts = data.Split('/');//lyo：注意，此处使用字符串传data值
                 if (parts.Length < 2) return;
 
                 string friend1 = parts[0];
                 string friend2 = parts[1];
 
-                // 需要双向解除好友关系
                 var result1 = _appDB.BreakFriend(friend1, friend2);
                 var result2 = _appDB.BreakFriend(friend2, friend1);
                 
@@ -1329,13 +1240,12 @@ namespace DBServer
             try
             {
                 string data = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
-                string[] parts = data.Split('/');
+                string[] parts = data.Split('/');//lyo：注意，此处使用字符串传data值
                 if (parts.Length < 2) return;
 
                 string c1 = parts[0];
                 string c2 = parts[1];
 
-                // 需要双向解除婚姻关系
                 var result1 = _appDB.DeleteMarriage(c1, c2);
                 var result2 = _appDB.DeleteMarriage(c2, c1);
                 
@@ -1353,13 +1263,12 @@ namespace DBServer
             try
             {
                 string data = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
-                string[] parts = data.Split('/');
+                string[] parts = data.Split('/');//lyo：注意，此处使用字符串传data值
                 if (parts.Length < 2) return;
 
                 string teacher = parts[0];
                 string student = parts[1];
 
-                // 需要双向解除师徒关系
                 var result1 = _appDB.DeleteStudent(teacher, student);
                 var result2 = _appDB.DeleteTeacher(student, teacher);
                 
@@ -1409,7 +1318,7 @@ namespace DBServer
             try
             {
                 string data = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
-                string[] parts = data.Split('/');
+                string[] parts = data.Split('/');//lyo：注意，此处使用字符串传data值
                 if (parts.Length < 2) return;
 
                 string name = parts[0];
@@ -1524,14 +1433,6 @@ namespace DBServer
             }
         }
 
-        /// <summary>
-        /// GameServer使用
-        /// </summary>
-        /// <param name="payload"></param>
-        /// <param name="w1"></param>
-        /// <param name="w2"></param>
-        /// <param name="w3"></param>
-        /// <returns></returns>
         private async Task HandleGetCharDBInfo(byte[] payload, ushort w1, ushort w2, ushort w3)
         {
             string data = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
@@ -1545,12 +1446,10 @@ namespace DBServer
             var result = _appDB.GetCharDBInfo(account, serverName, name, out byte[] charData);
             if (result == SERVER_ERROR.SE_OK)
             {
-                // 使用CHARDBINFO结构序列化数据
                 try
                 {
-                    if (charData.Length >= 4) // 至少包含dwClientKey字段
+                    if (charData.Length >= 4) 
                     {
-                        // 将_clientKey写入charData的前4个字节（dwClientKey字段）
                         byte[] clientKeyBytes = BitConverter.GetBytes(_clientKey);
                         Array.Copy(clientKeyBytes, 0, charData, 0, 4);
 
@@ -1562,210 +1461,260 @@ namespace DBServer
                 catch (Exception ex)
                 {
                     LogManager.Default.Error($"[{DateTime.Now:HH:mm:ss}] 序列化CHARDBINFO错误: {ex.Message}");
-                    // 发送一个空的CHARDBINFO结构（136字节）
-                    byte[] emptyCharData = new byte[136]; // CHARDBINFO结构大小
+                    byte[] emptyCharData = new byte[136]; 
                     SendDbResponse(DbMsg.DM_GETCHARDBINFO, (uint)SERVER_ERROR.SE_FAIL, emptyCharData, w1, w2, w3);
                 }
             }
             else
             {
-                // 发送一个空的CHARDBINFO结构（136字节），而不是0字节数据
-                // 这样GameServer就不会出现"字节数组长度不足"错误
-                byte[] emptyCharData = new byte[136]; // CHARDBINFO结构大小
+                byte[] emptyCharData = new byte[136]; 
                 SendDbResponse(DbMsg.DM_GETCHARDBINFO, (uint)SERVER_ERROR.SE_FAIL, emptyCharData, w1, w2, w3);
                 LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] DM_GETCHARDBINFO查询失败: 账号={account}, 服务器={serverName}, 角色名={name}, 结果={result}");
             }
         }
 
-        /// <summary>
-        /// GameServer使用
-        /// </summary>
-        /// <param name="payload"></param>
-        /// <param name="w1"></param>
-        /// <param name="w2"></param>
-        /// <param name="w3"></param>
-        /// <returns></returns>
         private async Task HandleQueryItems(byte[] payload, ushort w1, ushort w2, ushort w3)
         {
-            // 解析payload：serverId(4) + clientKey(4) + charId(4) + flag(1)
-            if (payload.Length < 13)
+            uint clientKey = 0;
+            uint ownerId = 0;
+            byte flag = 0;
+            int maxCount = 0;
+
+            if (payload.Length >= 13)
+            {
+                try
+                {
+                    uint serverId = BitConverter.ToUInt32(payload, 0);
+                    clientKey = BitConverter.ToUInt32(payload, 4);
+                    ownerId = BitConverter.ToUInt32(payload, 8);
+                    flag = payload[12];
+                    LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYITEMS(旧) payload解析: serverId={serverId}, clientKey={clientKey}, ownerId={ownerId}, flag={flag}");
+                }
+                catch (Exception ex)
+                {
+                    LogManager.Default.Error($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYITEMS(旧) 解析payload失败: {ex.Message}");
+                    SendDbResponse(DbMsg.DM_QUERYITEMS, (uint)SERVER_ERROR.SE_FAIL, BitConverter.GetBytes(0u), (ushort)SERVER_ERROR.SE_FAIL, 0, 0);
+                    return;
+                }
+            }
+            else if (payload.Length >= 8)
+            {
+                try
+                {
+                    clientKey = BitConverter.ToUInt32(payload, 0);
+                    ownerId = BitConverter.ToUInt32(payload, 4);
+                    flag = (byte)(w2 & 0xFF);
+                    maxCount = w3;
+                    LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYITEMS(C++) payload解析: clientKey={clientKey}, ownerId={ownerId}, flag={flag}, maxCount={maxCount}");
+                }
+                catch (Exception ex)
+                {
+                    LogManager.Default.Error($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYITEMS(C++) 解析payload失败: {ex.Message}");
+                    SendDbResponse(DbMsg.DM_QUERYITEMS, (uint)SERVER_ERROR.SE_FAIL, BitConverter.GetBytes(0u), (ushort)SERVER_ERROR.SE_FAIL, 0, 0);
+                    return;
+                }
+            }
+            else
             {
                 LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYITEMS payload长度不足: {payload.Length}字节");
-                SendDbResponse(DbMsg.DM_QUERYITEMS, (uint)SERVER_ERROR.SE_FAIL, null, w1, w2, w3);
+                SendDbResponse(DbMsg.DM_QUERYITEMS, (uint)SERVER_ERROR.SE_FAIL, BitConverter.GetBytes(0u), (ushort)SERVER_ERROR.SE_FAIL, 0, 0);
                 return;
-            }
-
-            // 解析flag（payload[12]）
-            byte flag = payload[12];
-
-            // 使用_charId作为ownerId（从wParam解析的charId）
-            uint ownerId = _charId;
-
-            LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYITEMS: ownerId={ownerId}, flag={flag}, clientKey={_clientKey}, charId={_charId}, payload长度={payload.Length}字节");
-
-            // 添加详细日志：解析payload内容
-            try
-            {
-                uint serverId = BitConverter.ToUInt32(payload, 0);
-                uint clientKeyFromPayload = BitConverter.ToUInt32(payload, 4);
-                uint charIdFromPayload = BitConverter.ToUInt32(payload, 8);
-                LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYITEMS payload解析: serverId={serverId}, clientKeyFromPayload={clientKeyFromPayload}, charIdFromPayload={charIdFromPayload}, flag={flag}");
-
-                // 验证clientKey是否匹配
-                if (clientKeyFromPayload != _clientKey)
-                {
-                    LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYITEMS clientKey不匹配: payload中的clientKey={clientKeyFromPayload}, 消息头中的clientKey={_clientKey}");
-                }
-
-                // 使用payload中的charId作为ownerId，而不是消息头中的_charId
-                // 因为消息头中的_charId可能不是完整的charId（只有低16位）
-                ownerId = charIdFromPayload;
-                LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYITEMS 使用payload中的charId作为ownerId: {ownerId}");
-            }
-            catch (Exception ex)
-            {
-                LogManager.Default.Error($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYITEMS 解析payload失败: {ex.Message}");
             }
 
             var result = _appDB.QueryItems(ownerId, flag, out byte[] itemsData);
-            Console.WriteLine($"DM_QUERYITEMS:{result}");
-
-            // 添加详细日志：查询结果
             LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYITEMS 查询结果: result={result}, itemsData长度={(itemsData?.Length ?? 0)}字节");
 
-            if (result == SERVER_ERROR.SE_OK)
+            int dbitemSize = System.Runtime.InteropServices.Marshal.SizeOf<MirCommon.Database.DBITEM>();
+            int totalCount = (itemsData?.Length ?? 0) / dbitemSize;
+            int sendCount = totalCount;
+
+            if (maxCount > 0 && sendCount > maxCount)
             {
-                int dbitemSize = System.Runtime.InteropServices.Marshal.SizeOf<MirCommon.Database.DBITEM>();
-                int itemCount = (itemsData?.Length ?? 0) / dbitemSize;
+                sendCount = maxCount;
+            }
 
-                LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYITEMS 发送响应: itemCount={itemCount}, itemsData长度={(itemsData?.Length ?? 0)}字节");
-
-                SendDbResponse(DbMsg.DM_QUERYITEMS, (uint)SERVER_ERROR.SE_OK, itemsData, w1, w2, w3);
+            byte[] responseData;
+            if (result == SERVER_ERROR.SE_OK && sendCount > 0)
+            {
+                int bytesToSend = sendCount * dbitemSize;
+                responseData = new byte[4 + bytesToSend];
+                BitConverter.GetBytes(clientKey).CopyTo(responseData, 0);
+                Array.Copy(itemsData, 0, responseData, 4, bytesToSend);
             }
             else
             {
-                LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYITEMS 查询失败: result={result}");
-                SendDbResponse(DbMsg.DM_QUERYITEMS, (uint)SERVER_ERROR.SE_FAIL, null, w1, w2, w3);
+                responseData = BitConverter.GetBytes(clientKey);
+                sendCount = 0;
             }
+
+            SendDbResponse(
+                DbMsg.DM_QUERYITEMS,
+                (uint)(result == SERVER_ERROR.SE_OK ? SERVER_ERROR.SE_OK : SERVER_ERROR.SE_FAIL),
+                responseData,
+                (ushort)(result == SERVER_ERROR.SE_OK ? SERVER_ERROR.SE_OK : SERVER_ERROR.SE_FAIL),
+                flag,
+                (ushort)sendCount);
+
+            await Task.CompletedTask;
         }
 
-        /// <summary>
-        /// GameServer使用
-        /// </summary>
-        /// <param name="payload"></param>
-        /// <param name="w1"></param>
-        /// <param name="w2"></param>
-        /// <param name="w3"></param>
-        /// <returns></returns>
         private async Task HandleQueryMagic(byte[] payload, ushort w1, ushort w2, ushort w3)
         {
-            // 解析payload：serverId(4) + clientKey(4) + charId(4)
-            if (payload.Length < 12)
+            uint clientKey = (uint)((w2 << 16) | w1);
+            uint ownerId = 0;
+
+            if (payload.Length >= 12)
+            {
+                try
+                {
+                    uint serverId = BitConverter.ToUInt32(payload, 0);
+                    clientKey = BitConverter.ToUInt32(payload, 4);
+                    ownerId = BitConverter.ToUInt32(payload, 8);
+                    LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYMAGIC(旧) payload解析: serverId={serverId}, clientKey={clientKey}, ownerId={ownerId}");
+                }
+                catch (Exception ex)
+                {
+                    LogManager.Default.Error($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYMAGIC(旧) 解析payload失败: {ex.Message}");
+                    SendDbResponse(DbMsg.DM_QUERYMAGIC, (uint)SERVER_ERROR.SE_FAIL, null, (ushort)(clientKey & 0xFFFF), (ushort)((clientKey >> 16) & 0xFFFF), (ushort)(0x8000 | ((ushort)SERVER_ERROR.SE_FAIL)));
+                    return;
+                }
+            }
+            else if (payload.Length >= 4)
+            {
+                try
+                {
+                    ownerId = BitConverter.ToUInt32(payload, 0);
+                    LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYMAGIC(C++) payload解析: clientKey={clientKey}, ownerId={ownerId}");
+                }
+                catch (Exception ex)
+                {
+                    LogManager.Default.Error($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYMAGIC(C++) 解析payload失败: {ex.Message}");
+                    SendDbResponse(DbMsg.DM_QUERYMAGIC, (uint)SERVER_ERROR.SE_FAIL, null, (ushort)(clientKey & 0xFFFF), (ushort)((clientKey >> 16) & 0xFFFF), (ushort)(0x8000 | ((ushort)SERVER_ERROR.SE_FAIL)));
+                    return;
+                }
+            }
+            else
             {
                 LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYMAGIC payload长度不足: {payload.Length}字节");
-                SendDbResponse(DbMsg.DM_QUERYMAGIC, (uint)SERVER_ERROR.SE_FAIL, null, w1, w2, w3);
+                SendDbResponse(DbMsg.DM_QUERYMAGIC, (uint)SERVER_ERROR.SE_FAIL, null, (ushort)(clientKey & 0xFFFF), (ushort)((clientKey >> 16) & 0xFFFF), (ushort)(0x8000 | ((ushort)SERVER_ERROR.SE_FAIL)));
                 return;
             }
 
-            // 使用_charId作为ownerId（从wParam解析的charId）
-            uint ownerId = _charId;
-
-            LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYMAGIC: ownerId={ownerId}, clientKey={_clientKey}, charId={_charId}");
-
             var result = _appDB.QueryMagic(ownerId, out byte[] magicData);
+
+            int magicSize = System.Runtime.InteropServices.Marshal.SizeOf<MirCommon.Database.MAGICDB>();
+            int count = (magicData?.Length ?? 0) / magicSize;
+            if (count < 0) count = 0;
+
             if (result == SERVER_ERROR.SE_OK)
             {
-                SendDbResponse(DbMsg.DM_QUERYMAGIC, (uint)SERVER_ERROR.SE_OK, magicData, w1, w2, w3);
+                ushort countOrErr = (ushort)count;
+                SendDbResponse(DbMsg.DM_QUERYMAGIC, (uint)SERVER_ERROR.SE_OK, magicData, (ushort)(clientKey & 0xFFFF), (ushort)((clientKey >> 16) & 0xFFFF), countOrErr);
             }
             else
             {
-                SendDbResponse(DbMsg.DM_QUERYMAGIC, (uint)SERVER_ERROR.SE_FAIL, null, w1, w2, w3);
+                ushort countOrErr = (ushort)(0x8000 | ((ushort)SERVER_ERROR.SE_FAIL));
+                SendDbResponse(DbMsg.DM_QUERYMAGIC, (uint)SERVER_ERROR.SE_FAIL, null, (ushort)(clientKey & 0xFFFF), (ushort)((clientKey >> 16) & 0xFFFF), countOrErr);
             }
+
+            await Task.CompletedTask;
         }
 
-        /// <summary>
-        /// GameServer使用
-        /// </summary>
-        /// <param name="payload"></param>
-        /// <param name="w1"></param>
-        /// <param name="w2"></param>
-        /// <param name="w3"></param>
-        /// <returns></returns>
         private async Task HandleQueryUpgradeItem(byte[] payload, ushort w1, ushort w2, ushort w3)
         {
             try
             {
-                // 解析payload：serverId(4) + clientKey(4) + charId(4)
-                if (payload.Length < 12)
+                uint clientKey = (uint)((w2 << 16) | w1);
+                uint ownerId = 0;
+
+                if (payload.Length >= 12)
                 {
-                    LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYUPGRADEITEM payload长度不足: {payload.Length}字节");
-                    SendDbResponse(DbMsg.DM_QUERYUPGRADEITEM, (uint)SERVER_ERROR.SE_FAIL, null, w1, w2, w3);
-                    return;
+                    uint serverId = BitConverter.ToUInt32(payload, 0);
+                    clientKey = BitConverter.ToUInt32(payload, 4);
+                    ownerId = BitConverter.ToUInt32(payload, 8);
+                    LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYUPGRADEITEM(旧) payload解析: serverId={serverId}, clientKey={clientKey}, ownerId={ownerId}");
                 }
-
-                // 使用_charId作为ownerId（从wParam解析的charId）
-                uint ownerId = _charId;
-
-                LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYUPGRADEITEM: ownerId={ownerId}, clientKey={_clientKey}, charId={_charId}");
-
-                // 调用QueryUpgradeItem方法查询升级物品
-                var result = _appDB.QueryUpgradeItem(ownerId, out byte[] upgradeItemData);
-                if (result == SERVER_ERROR.SE_OK)
+                else if (payload.Length >= 4)
                 {
-                    SendDbResponse(DbMsg.DM_QUERYUPGRADEITEM, (uint)SERVER_ERROR.SE_OK, upgradeItemData, w1, w2, w3);
+                    ownerId = BitConverter.ToUInt32(payload, 0);
+                    LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYUPGRADEITEM(C++) payload解析: clientKey={clientKey}, ownerId={ownerId}");
                 }
                 else
                 {
-                    SendDbResponse(DbMsg.DM_QUERYUPGRADEITEM, (uint)SERVER_ERROR.SE_FAIL, null, w1, w2, w3);
+                    LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYUPGRADEITEM payload长度不足: {payload.Length}字节");
+                    SendDbResponse(DbMsg.DM_QUERYUPGRADEITEM, (uint)SERVER_ERROR.SE_FAIL, null, (ushort)(clientKey & 0xFFFF), (ushort)((clientKey >> 16) & 0xFFFF), 0);
+                    return;
                 }
+
+                var result = _appDB.QueryUpgradeItem(ownerId, out byte[] upgradeItemData);
+
+                ushort count = 0;
+                byte[]? sendData = null;
+                if (result == SERVER_ERROR.SE_OK && upgradeItemData != null && upgradeItemData.Length > 0)
+                {
+                    count = 1;
+                    sendData = upgradeItemData;
+                }
+
+                SendDbResponse(
+                    DbMsg.DM_QUERYUPGRADEITEM,
+                    (uint)(result == SERVER_ERROR.SE_OK ? SERVER_ERROR.SE_OK : SERVER_ERROR.SE_FAIL),
+                    sendData,
+                    (ushort)(clientKey & 0xFFFF),
+                    (ushort)((clientKey >> 16) & 0xFFFF),
+                    count);
+
+                await Task.CompletedTask;
             }
             catch (Exception ex)
             {
                 LogManager.Default.Error($"[{DateTime.Now:HH:mm:ss}] 查询升级物品错误: {ex.Message}");
-                SendDbResponse(DbMsg.DM_QUERYUPGRADEITEM, (uint)SERVER_ERROR.SE_FAIL, null, w1, w2, w3);
+                SendDbResponse(DbMsg.DM_QUERYUPGRADEITEM, (uint)SERVER_ERROR.SE_FAIL, null, w1, w2, 0);
             }
         }
 
-        /// <summary>
-        /// GameServer使用
-        /// </summary>
-        /// <param name="payload"></param>
-        /// <param name="w1"></param>
-        /// <param name="w2"></param>
-        /// <param name="w3"></param>
-        /// <returns></returns>
         private async Task HandleQueryTaskInfo(byte[] payload, ushort w1, ushort w2, ushort w3)
         {
             try
             {
-                // 解析payload：serverId(4) + clientKey(4) + charId(4)
-                if (payload.Length < 12)
+                uint clientKey = (uint)((w2 << 16) | w1);
+                uint ownerId = 0;
+
+                if (payload.Length >= 12)
                 {
-                    LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYTASKINFO payload长度不足: {payload.Length}字节");
-                    SendDbResponse(DbMsg.DM_QUERYTASKINFO, (uint)SERVER_ERROR.SE_FAIL, null, w1, w2, w3);
-                    return;
+                    uint serverId = BitConverter.ToUInt32(payload, 0);
+                    clientKey = BitConverter.ToUInt32(payload, 4);
+                    ownerId = BitConverter.ToUInt32(payload, 8);
+                    LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYTASKINFO(旧) payload解析: serverId={serverId}, clientKey={clientKey}, ownerId={ownerId}");
                 }
-
-                // 使用_charId作为ownerId（从wParam解析的charId）
-                uint ownerId = _charId;
-
-                LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYTASKINFO: ownerId={ownerId}, clientKey={_clientKey}, charId={_charId}");
-
-                // 调用QueryTaskInfo方法查询任务信息
-                var result = _appDB.QueryTaskInfo(ownerId, out byte[] taskInfoData);
-                if (result == SERVER_ERROR.SE_OK)
+                else if (payload.Length >= 4)
                 {
-                    SendDbResponse(DbMsg.DM_QUERYTASKINFO, (uint)SERVER_ERROR.SE_OK, taskInfoData, w1, w2, w3);
+                    ownerId = BitConverter.ToUInt32(payload, 0);
+                    LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYTASKINFO(C++) payload解析: clientKey={clientKey}, ownerId={ownerId}");
                 }
                 else
                 {
-                    SendDbResponse(DbMsg.DM_QUERYTASKINFO, (uint)SERVER_ERROR.SE_FAIL, null, w1, w2, w3);
+                    LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] [DBServer接收] DM_QUERYTASKINFO payload长度不足: {payload.Length}字节");
+                    SendDbResponse(DbMsg.DM_QUERYTASKINFO, (uint)SERVER_ERROR.SE_FAIL, null, (ushort)(clientKey & 0xFFFF), (ushort)((clientKey >> 16) & 0xFFFF), (ushort)SERVER_ERROR.SE_FAIL);
+                    return;
                 }
+
+                var result = _appDB.QueryTaskInfo(ownerId, out byte[] taskInfoData);
+
+                SendDbResponse(
+                    DbMsg.DM_QUERYTASKINFO,
+                    (uint)(result == SERVER_ERROR.SE_OK ? SERVER_ERROR.SE_OK : SERVER_ERROR.SE_FAIL),
+                    taskInfoData,
+                    (ushort)(clientKey & 0xFFFF),
+                    (ushort)((clientKey >> 16) & 0xFFFF),
+                    (ushort)result);
+
+                await Task.CompletedTask;
             }
             catch (Exception ex)
             {
                 LogManager.Default.Error($"[{DateTime.Now:HH:mm:ss}] 查询任务信息错误: {ex.Message}");
-                SendDbResponse(DbMsg.DM_QUERYTASKINFO, (uint)SERVER_ERROR.SE_FAIL, null, w1, w2, w3);
+                SendDbResponse(DbMsg.DM_QUERYTASKINFO, (uint)SERVER_ERROR.SE_FAIL, null, w1, w2, (ushort)SERVER_ERROR.SE_FAIL);
             }
         }
 
@@ -1774,35 +1723,21 @@ namespace DBServer
             SendDbResponse(msgType, result, data, 0, 0, 0);
         }
 
-        /// <summary>
-        /// 带wparam的发送（适用于带wparam的请求）
-        /// </summary>
-        /// <param name="msgType"></param>
-        /// <param name="result"></param>
-        /// <param name="data"></param>
-        /// <param name="wParam1"></param>
-        /// <param name="wParam2"></param>
-        /// <param name="wParam3"></param>
         private void SendDbResponse(DbMsg msgType, uint result, byte[]? data, ushort wParam1, ushort wParam2, ushort wParam3)
         {
             try
             {
-                // 添加详细日志：发送前的数据包信息
                 LogManager.Default.Debug($"[{DateTime.Now:HH:mm:ss}] [DBServer发送] 消息类型: {msgType}, 结果: {result}, 数据长度: {data?.Length ?? 0}字节");
                 LogManager.Default.Debug($"[{DateTime.Now:HH:mm:ss}] [DBServer发送] 使用clientKey={_clientKey}, charId={_charId}");
                 LogManager.Default.Debug($"[{DateTime.Now:HH:mm:ss}] [DBServer发送] 自定义wParam: w1={wParam1}, w2={wParam2}, w3={wParam3}");
                 
-                // 使用GameCodec.EncodeMsg编码消息（包含'#'和'!'）
-                // 将clientKey和charId设置到wParam中，与DBServerClient.cs中的编码方式一致：
-                // wParam1 = clientKey的低16位
-                // wParam2 = clientKey的高16位
-                // wParam3 = charId的低16位
                 ushort w1 = (ushort)(_clientKey & 0xFFFF);
                 ushort w2 = (ushort)((_clientKey >> 16) & 0xFFFF);
                 ushort w3 = (ushort)(_charId & 0xFFFF);
                 
-                // 如果提供了自定义的wParam参数，则使用它们
-                if (wParam1 != 0 || wParam2 != 0 || wParam3 != 0)
+                bool forceUseProvidedWParam = msgType == DbMsg.DM_QUERYITEMS || msgType == DbMsg.DM_QUERYMAGIC || msgType == DbMsg.DM_QUERYTASKINFO || msgType == DbMsg.DM_QUERYUPGRADEITEM;
+
+                if (forceUseProvidedWParam || wParam1 != 0 || wParam2 != 0 || wParam3 != 0)
                 {
                     w1 = wParam1;
                     w2 = wParam2;
@@ -1811,13 +1746,11 @@ namespace DBServer
                 }
                 else
                 {
-                    // 对于DM_GETCHARDBINFO消息，需要设置正确的wParam参数
-                    // 因为GameClient期望在wParam中收到clientKey
                     if (msgType == DbMsg.DM_GETCHARDBINFO)
                     {
                         w1 = (ushort)(_clientKey & 0xFFFF);
                         w2 = (ushort)((_clientKey >> 16) & 0xFFFF);
-                        w3 = 0; // charId在数据中，这里设为0
+                        w3 = 0; 
                         LogManager.Default.Debug($"[{DateTime.Now:HH:mm:ss}] [DBServer发送] DM_GETCHARDBINFO使用clientKey设置wParam: w1={w1}, w2={w2}, w3={w3}");
                     }
                 }
@@ -1825,13 +1758,11 @@ namespace DBServer
                 byte[] encoded = new byte[8192];
                 int encodedSize = GameCodec.EncodeMsg(encoded, result, (ushort)msgType, w1, w2, w3, data, data?.Length ?? 0);
                 
-                // 添加详细日志：编码后的数据包信息
                 LogManager.Default.Debug($"[{DateTime.Now:HH:mm:ss}] [DBServer发送] 编码后长度: {encodedSize}字节, w1={w1}, w2={w2}, w3={w3}");
                 
                 _stream.Write(encoded, 0, encodedSize);
                 _stream.Flush();
                 
-                // 添加详细日志：发送成功
                 LogManager.Default.Debug($"[{DateTime.Now:HH:mm:ss}] [DBServer发送] 发送成功: {msgType}");
             }
             catch (Exception ex)

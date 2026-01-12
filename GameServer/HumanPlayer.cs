@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Net.Sockets;
 using System.Linq;
 using MirCommon;
@@ -8,227 +9,267 @@ using MirCommon.Utils;
 
 namespace GameServer
 {
-    // 简单的MineSpot类占位符
+    
     public class MineSpot : MapObject
     {
         public ItemInstance? Mine()
         {
-            // 简单的挖矿逻辑
+            
             return null;
         }
 
         public override ObjectType GetObjectType()
         {
-            return ObjectType.Event; // 矿点作为事件对象
+            return ObjectType.Event; 
         }
 
         public override bool GetViewMsg(out byte[] msg, MapObject? viewer = null)
         {
-            // 矿点不需要发送可视消息
+            
             msg = Array.Empty<byte>();
             return false;
         }
     }
 
-    // 简单的MonsterCorpse类占位符
+    
     public class MonsterCorpse : MapObject
     {
         public ItemInstance? GetMeat()
         {
-            // 简单的挖肉逻辑
+            
             return null;
         }
 
         public override ObjectType GetObjectType()
         {
-            return ObjectType.Event; // 怪物尸体作为事件对象
+            return ObjectType.Event; 
         }
 
         public override bool GetViewMsg(out byte[] msg, MapObject? viewer = null)
         {
-            // 怪物尸体不需要发送可视消息
+            
             msg = Array.Empty<byte>();
             return false;
         }
     }
 
-    /// <summary>
-    /// 挖矿奖励类型
-    /// </summary>
+    
+    
+    
     public enum MineRewardType
     {
-        Low = 0,      // 低级矿石
-        Medium = 1,   // 中级矿石
-        High = 2      // 高级矿石
+        Low = 0,      
+        Medium = 1,   
+        High = 2      
     }
 
-    /// <summary>
-    /// 攻击模式枚举
-    /// </summary>
+    
+    
+    
     public enum e_humanattackmode
     {
-        HAM_PEACE = 0,      // 和平模式
-        HAM_GROUP = 1,      // 组队模式
-        HAM_GUILD = 2,      // 行会模式
-        HAM_COUPLE = 3,     // 夫妻模式
-        HAM_MASTER = 4,     // 师徒模式
-        HAM_CRIME = 5,      // 犯罪模式
-        HAM_ALL = 6,        // 全体模式
-        HAM_SUPERMAN = 7,   // 超人模式（GM）
+        HAM_PEACE = 0,      
+        HAM_GROUP = 1,      
+        HAM_GUILD = 2,      
+        HAM_COUPLE = 3,     
+        HAM_MASTER = 4,     
+        HAM_CRIME = 5,      
+        HAM_ALL = 6,        
+        HAM_SUPERMAN = 7,   
         HAM_MAX = 8
     }
 
-    /// <summary>
-    /// 聊天频道枚举
-    /// </summary>
+    
+    
+    
     public enum e_chatchannel
     {
-        CCH_NORMAL = 0,     // 普通频道
-        CCH_WISPER = 1,     // 密谈频道
-        CCH_CRY = 2,        // 喊话频道
-        CCH_GM = 3,         // GM频道
-        CCH_GROUP = 4,      // 组队频道
-        CCH_GUILD = 5,      // 行会频道
+        CCH_NORMAL = 0,     
+        CCH_WISPER = 1,     
+        CCH_CRY = 2,        
+        CCH_GM = 3,         
+        CCH_GROUP = 4,      
+        CCH_GUILD = 5,      
         CCH_MAX = 6
     }
 
-    /// <summary>
-    /// 金钱类型枚举
-    /// </summary>
+    
+    
+    
     public enum MoneyType
     {
-        Gold = 0,    // 金币
-        Yuanbao = 1  // 元宝
+        Gold = 0,    
+        Yuanbao = 1  
     }
 
-    /// <summary>
-    /// 颜色常量类
-    /// </summary>
+    
+    
+    
     public static class CC
     {
-        public const uint GREEN = 0x00FF00;      // 绿色
-        public const uint RED = 0xFF0000;        // 红色
-        public const uint BLUE = 0x0000FF;       // 蓝色
-        public const uint YELLOW = 0xFFFF00;     // 黄色
-        public const uint WHITE = 0xFFFFFF;      // 白色
-        public const uint BLACK = 0x000000;      // 黑色
-        public const uint CYAN = 0x00FFFF;       // 青色
-        public const uint MAGENTA = 0xFF00FF;    // 洋红色
-        public const uint GRAY = 0x808080;       // 灰色
-        public const uint ORANGE = 0xFFA500;     // 橙色
-        public const uint PURPLE = 0x800080;     // 紫色
-        public const uint BROWN = 0xA52A2A;      // 棕色
-        public const uint PINK = 0xFFC0CB;       // 粉色
-        public const uint GOLD = 0xFFD700;       // 金色
-        public const uint SILVER = 0xC0C0C0;     // 银色
-        public const uint BRONZE = 0xCD7F32;     // 青铜色
+        public const uint GREEN = 0x00FF00;      
+        public const uint RED = 0xFF0000;        
+        public const uint BLUE = 0x0000FF;       
+        public const uint YELLOW = 0xFFFF00;     
+        public const uint WHITE = 0xFFFFFF;      
+        public const uint BLACK = 0x000000;      
+        public const uint CYAN = 0x00FFFF;       
+        public const uint MAGENTA = 0xFF00FF;    
+        public const uint GRAY = 0x808080;       
+        public const uint ORANGE = 0xFFA500;     
+        public const uint PURPLE = 0x800080;     
+        public const uint BROWN = 0xA52A2A;      
+        public const uint PINK = 0xFFC0CB;       
+        public const uint GOLD = 0xFFD700;       
+        public const uint SILVER = 0xC0C0C0;     
+        public const uint BRONZE = 0xCD7F32;     
     }
 
-    /// <summary>
-    /// 玩家对象 - 完整的玩家系统
-    /// </summary>
-    public partial class HumanPlayer : AliveObject
+    
+    
+    
+    
+    public partial class HumanPlayer : AliveObject, ScriptTarget
     {
-        // 账号信息
+        
         public string Account { get; set; } = string.Empty;
         public uint CharDBId { get; set; }
+        public int GmLevel { get; set; } = 0;
 
-        // 角色基础属性
-        public byte Job { get; set; }       // 职业: 0=战士 1=法师 2=道士
-        public byte Sex { get; set; }       // 性别: 0=男 1=女
-        public byte Hair { get; set; }      // 发型
-        public byte Direction { get; set; } // 方向: 0-7
+        
+        public byte Job { get; set; }       
+        public byte Sex { get; set; }       
+        public byte Hair { get; set; }      
+        public byte Direction { get; set; } 
 
-        // 经验和金钱
+        
         public uint Exp { get; set; }
         public uint Gold { get; set; }
-        public uint Yuanbao { get; set; } // 元宝
+        public uint Yuanbao { get; set; } 
 
-        // 基础属性
-        public int BaseDC { get; set; }    // 基础攻击力
-        public int BaseMC { get; set; }    // 基础魔法力
-        public int BaseSC { get; set; }    // 基础道术力
-        public int BaseAC { get; set; }    // 基础防御力
-        public int BaseMAC { get; set; }   // 基础魔防力
-        public int Accuracy { get; set; }  // 准确
-        public int Agility { get; set; }   // 敏捷
-        public int Lucky { get; set; }     // 幸运
+        
+        public int BaseDC { get; set; }    
+        public int BaseMC { get; set; }    
+        public int BaseSC { get; set; }    
+        public int BaseAC { get; set; }    
+        public int BaseMAC { get; set; }   
+        public int Accuracy { get; set; }  
+        public int Agility { get; set; }   
+        public int Lucky { get; set; }     
 
-        // 背包和装备
+        
         public Inventory Inventory { get; private set; }
         public Equipment Equipment { get; private set; }
 
-        // 技能和任务
+        
         public SkillBook SkillBook { get; private set; }
         public PlayerQuestManager QuestManager { get; private set; }
 
-        // 网络连接
+        
+        private bool _magicLoadedForSave = false;
+
+        public void MarkMagicLoadedForSave(bool loaded) => _magicLoadedForSave = loaded;
+        public bool IsMagicLoadedForSave() => _magicLoadedForSave;
+
+        
         private TcpClient? _tcpClient;
         private NetworkStream? _stream;
 
-        // 登录信息
+        
         public DateTime LoginTime { get; private set; }
         public DateTime LastActivity { get; set; }
         public bool IsFirstLogin { get; set; }
 
-        // 发送消息委托（用于通过GameClient发送编码消息）
+        
+        private string _startPointName = "0";
+
+        
+        private uint _dbFlag0 = 0;
+        private uint _forgePoint = 0;
+        private ushort _curBagWeight = 0;
+        private byte _curBodyWeight = 0;
+        private byte _curHandWeight = 0;
+
+        
+        
+        
+        
+        private readonly CombatStats _dbBaseStats = new();
+        private int _dbBaseMaxHP = 0;
+        private int _dbBaseMaxMP = 0;
+        private bool _dbBaseStatsLoaded = false;
+
+        
+        private readonly CombatStats _equipStatsCache = new();
+
+        
+        private const ushort HUOLI_MAX = 1000;
+        private ushort _huoli = HUOLI_MAX;
+
+        
+        private int _hitPointBonus = 0;
+
+        
         public delegate void SendEncodedMessageDelegate(uint dwFlag, ushort wCmd, ushort w1, ushort w2, ushort w3, byte[]? payload = null);
         private SendEncodedMessageDelegate? _sendEncodedMessage;
 
-        // PK值
+        
         public uint PkValue { get; set; }
 
-        // 组队
+        
         public uint GroupId { get; set; }
 
-        // 行会
+        
         public Guild? Guild { get; set; }
         public string GuildGroupName { get; set; } = string.Empty;
         public uint GuildLevel { get; set; }
 
-        // 交易
+        
         public TradeObject? CurrentTrade { get; set; }
 
-        // 其他玩家交互
+        
         private uint _tradingWithPlayerId = 0;
 
-        // 状态标记
+        
         private readonly HashSet<string> _flags = new();
         private readonly object _flagLock = new();
 
-        // 变量存储（用于脚本系统）
+        
         private readonly Dictionary<string, string> _variables = new();
         private readonly object _varLock = new();
 
-        // 高级系统
+        
         public PetSystem PetSystem { get; private set; }
         public MountSystem MountSystem { get; private set; }
         public PKSystem PKSystem { get; private set; }
         public AchievementSystem AchievementSystem { get; private set; }
         public MailSystem MailSystem { get; private set; }
 
-        // 经验加成技能
+        
         private PlayerSkill? _expMagic;
 
-        // 称号系统
+        
         private string _currentTitle = string.Empty;
         private int _currentTitleIndex = 0;
 
-        // 攻击模式和聊天频道
+        
         private e_humanattackmode _attackMode = e_humanattackmode.HAM_PEACE;
         private e_chatchannel _chatChannel = e_chatchannel.CCH_NORMAL;
 
-        // 聊天频道禁用状态
+        
         private bool[] _chatChannelDisabled = new bool[(int)e_chatchannel.CCH_MAX];
 
-        // 当前密谈对象
+        
         private string _currentWisperTarget = string.Empty;
 
-        // 聊天颜色
+        
         private byte _chatColor = 1;
 
-        // 聊天频道计时器
+        
         private readonly Dictionary<e_chatchannel, DateTime> _chatChannelTimers = new();
+
+        
+        private byte[]? _communityInfoRaw;
 
         public HumanPlayer(string account, string name, uint charDbId, TcpClient? client = null)
         {
@@ -241,20 +282,20 @@ namespace GameServer
             LoginTime = DateTime.Now;
             LastActivity = DateTime.Now;
 
-            // 初始化系统
+            
             Inventory = new Inventory { MaxSlots = 40 };
             Equipment = new Equipment(this);
             SkillBook = new SkillBook();
             QuestManager = new PlayerQuestManager(this);
 
-            // 初始化高级系统
+            
             PetSystem = new PetSystem(this);
             MountSystem = new MountSystem(this);
             PKSystem = new PKSystem(this);
             AchievementSystem = new AchievementSystem(this);
             MailSystem = new MailSystem(this);
 
-            // 初始属性
+            
             Level = 1;
             Job = 0;
             Sex = 0;
@@ -263,13 +304,13 @@ namespace GameServer
             MaxMP = 100;
             CurrentMP = 100;
 
-            // 初始战斗属性
+            
             Stats.MinDC = 1;
             Stats.MaxDC = 3;
             Stats.Accuracy = 5;
             Stats.Agility = 5;
 
-            // 初始化基础属性
+            
             BaseDC = 0;
             BaseMC = 0;
             BaseSC = 0;
@@ -278,83 +319,245 @@ namespace GameServer
             Accuracy = 5;
             Agility = 5;
             Lucky = 0;
+            
+            
+            _visibleObjectFlag = 0;
+            AddVisibleObjectType(ObjectType.NPC);          
+            AddVisibleObjectType(ObjectType.Player);       
+            AddVisibleObjectType(ObjectType.Monster);      
+            AddVisibleObjectType(ObjectType.DownItem);     
+            AddVisibleObjectType(ObjectType.VisibleEvent); 
+            AddVisibleObjectType(ObjectType.Pet);          
         }
 
-        /// <summary>
-        /// 设置发送消息委托（用于通过GameClient发送编码消息）
-        /// </summary>
+        
+        
+        
+        public override byte GetRunSpeed()
+        {
+            try
+            {
+                
+                if (MountSystem != null && MountSystem.IsRiding())
+                    return MountSystem.GetRunSpeed();
+            }
+            catch { }
+            return 2;
+        }
+
+        
+        
+        
         public void SetSendMessageDelegate(SendEncodedMessageDelegate sendMessageDelegate)
         {
             _sendEncodedMessage = sendMessageDelegate;
         }
 
-        /// <summary>
-        /// 初始化玩家
-        /// </summary>
+        
+        
+        
         public bool Init(MirCommon.CREATEHUMANDESC createDesc)
         {
             try
             {
                 LogManager.Default.Info($"开始初始化玩家");
-                // 设置数据库信息
+                
                 var dbinfo = createDesc.dbinfo;
 
-                // 设置基础属性
-                Level = (byte)Math.Clamp(dbinfo.wLevel, (ushort)0, (ushort)255);
-                Exp = dbinfo.dwCurExp;
-                Gold = dbinfo.dwGold;
+                
+                ushort dbLevel = dbinfo.wLevel;
+                IsFirstLogin = dbLevel == 0;
+
+                var firstLogin = IsFirstLogin ? GameWorld.Instance.GetFirstLoginInfo() : null;
+                int initLevel = IsFirstLogin
+                    ? Math.Clamp(firstLogin?.Level ?? 1, 1, 255)
+                    : Math.Clamp((int)dbLevel, 1, 255);
+
+                
+                Level = (byte)initLevel;
+                Exp = IsFirstLogin ? 0u : dbinfo.dwCurExp;
+                Gold = IsFirstLogin ? (firstLogin?.Gold ?? dbinfo.dwGold) : dbinfo.dwGold;
                 Yuanbao = dbinfo.dwYuanbao;
 
-                // 设置位置
+                
+                MapId = (int)dbinfo.mapid;
                 X = (ushort)dbinfo.x;
                 Y = (ushort)dbinfo.y;
+                _startPointName = string.IsNullOrWhiteSpace(dbinfo.szStartPoint) ? "0" : dbinfo.szStartPoint;
 
-                // 设置职业、性别、发型
+                var logicMap = LogicMapMgr.Instance.GetLogicMapById((uint)MapId);
+                if (logicMap == null)
+                {
+                    if (GameWorld.Instance.GetBornPoint(dbinfo.btClass, out int bornMapId, out int bornX, out int bornY, dbinfo.szStartPoint))
+                    {
+                        LogManager.Default.Warning($"角色地图ID无效，使用出生点: mapid={dbinfo.mapid}, startPoint='{dbinfo.szStartPoint}', bornMapId={bornMapId}, ({bornX},{bornY})");
+                        MapId = bornMapId;
+                        X = (ushort)bornX;
+                        Y = (ushort)bornY;
+                    }
+                    else
+                    {
+                        LogManager.Default.Warning($"角色地图ID无效且无法获取出生点: mapid={dbinfo.mapid}, startPoint='{dbinfo.szStartPoint}'");
+                    }
+                }
+
+                
                 Job = dbinfo.btClass;
                 Sex = dbinfo.btSex;
                 Hair = dbinfo.btHair;
 
-                // 设置HP/MP
-                CurrentHP = dbinfo.hp;
-                MaxHP = dbinfo.maxhp;
-                CurrentMP = dbinfo.mp;
-                MaxMP = dbinfo.maxmp;
+                
+                
+                
+                var humanDataDesc = GameWorld.Instance.GetHumanDataDesc(Job, Level);
+                int descMaxHp = humanDataDesc?.Hp ?? 100;
+                int descMaxMp = humanDataDesc?.Mp ?? 100;
 
-                // 设置战斗属性
-                Stats.MinDC = dbinfo.mindc;
-                Stats.MaxDC = dbinfo.maxdc;
-                Stats.MinMC = dbinfo.minmc;
-                Stats.MaxMC = dbinfo.maxmc;
-                Stats.MinSC = dbinfo.minsc;
-                Stats.MaxSC = dbinfo.maxsc;
-                Stats.MinAC = dbinfo.minac;
-                Stats.MaxAC = dbinfo.maxac;
-                Stats.MinMAC = dbinfo.minmac;
-                Stats.MaxMAC = dbinfo.maxmac;
-                Stats.Accuracy = 5; // 默认值
-                Stats.Agility = 5;  // 默认值
-                Stats.Lucky = 0;    // 默认值
+                int dbCurHp = dbinfo.hp;
+                int dbCurMp = dbinfo.mp;
+                int dbMaxHp = dbinfo.maxhp;
+                int dbMaxMp = dbinfo.maxmp;
 
-                // 设置基础属性
-                BaseDC = dbinfo.mindc;
-                BaseMC = dbinfo.minmc;
-                BaseSC = dbinfo.minsc;
-                BaseAC = dbinfo.minac;
-                BaseMAC = dbinfo.minmac;
-                Accuracy = 5;
-                Agility = 5;
+                
+                int baseMaxHp = dbMaxHp > 0 ? dbMaxHp : descMaxHp;
+                int baseMaxMp = dbMaxMp > 0 ? dbMaxMp : descMaxMp;
+
+                baseMaxHp = Math.Max(1, baseMaxHp);
+                baseMaxMp = Math.Max(1, baseMaxMp);
+
+                MaxHP = baseMaxHp;
+                MaxMP = baseMaxMp;
+
+                LogManager.Default.Info($"初始化HP/MP: DB hp/mp={dbCurHp}/{dbCurMp}, DB maxhp/maxmp={dbMaxHp}/{dbMaxMp}, Desc hp/mp={descMaxHp}/{descMaxMp}, Base maxhp/maxmp={baseMaxHp}/{baseMaxMp}");
+
+                
+                CurrentHP = dbCurHp;
+                CurrentMP = dbCurMp;
+
+                if (IsFirstLogin)
+                {
+                    
+                    CurrentHP = MaxHP;
+                    CurrentMP = MaxMP;
+                }
+                else
+                {
+                    
+                    if (CurrentHP <= 0)
+                    {
+                        CurrentHP = MaxHP / 2; 
+                    }
+                    if (CurrentMP <= 0) CurrentMP = MaxMP;
+                }
+
+                
+                MaxHP = Math.Max(MaxHP, CurrentHP);
+                MaxMP = Math.Max(MaxMP, CurrentMP);
+
+                MaxHP = Math.Clamp(MaxHP, 1, 65535);
+                MaxMP = Math.Clamp(MaxMP, 1, 65535);
+                CurrentHP = Math.Clamp(CurrentHP, 0, MaxHP);
+                CurrentMP = Math.Clamp(CurrentMP, 0, MaxMP);
+
+
+
+                
+                
+                bool useHumanAsBase = IsFirstLogin && humanDataDesc != null;
+
+                int baseMinDC = useHumanAsBase ? humanDataDesc!.MinDc : dbinfo.mindc;
+                int baseMaxDC = useHumanAsBase ? humanDataDesc!.MaxDc : dbinfo.maxdc;
+                int baseMinMC = useHumanAsBase ? humanDataDesc!.MinMc : dbinfo.minmc;
+                int baseMaxMC = useHumanAsBase ? humanDataDesc!.MaxMc : dbinfo.maxmc;
+                int baseMinSC = useHumanAsBase ? humanDataDesc!.MinSc : dbinfo.minsc;
+                int baseMaxSC = useHumanAsBase ? humanDataDesc!.MaxSc : dbinfo.maxsc;
+                int baseMinAC = useHumanAsBase ? humanDataDesc!.MinAc : dbinfo.minac;
+                int baseMaxAC = useHumanAsBase ? humanDataDesc!.MaxAc : dbinfo.maxac;
+                int baseMinMAC = useHumanAsBase ? humanDataDesc!.MinMac : dbinfo.minmac;
+                int baseMaxMAC = useHumanAsBase ? humanDataDesc!.MaxMac : dbinfo.maxmac;
+
+                int baseHitRate = (int)(humanDataDesc?.HitRate ?? 5);
+                int baseEscape = (int)(humanDataDesc?.Escape ?? 5);
+
+                Stats.MinDC = baseMinDC;
+                Stats.MaxDC = baseMaxDC;
+                Stats.MinMC = baseMinMC;
+                Stats.MaxMC = baseMaxMC;
+                Stats.MinSC = baseMinSC;
+                Stats.MaxSC = baseMaxSC;
+                Stats.MinAC = baseMinAC;
+                Stats.MaxAC = baseMaxAC;
+                Stats.MinMAC = baseMinMAC;
+                Stats.MaxMAC = baseMaxMAC;
+                Stats.Accuracy = baseHitRate;
+                Stats.Agility = baseEscape;
+                Stats.Lucky = 0;
+
+                
+                BaseDC = baseMinDC;
+                BaseMC = baseMinMC;
+                BaseSC = baseMinSC;
+                BaseAC = baseMinAC;
+                BaseMAC = baseMinMAC;
+                Accuracy = baseHitRate;
+                Agility = baseEscape;
                 Lucky = 0;
 
-                // 设置行会信息
+                
+                _dbBaseStats.MinDC = baseMinDC;
+                _dbBaseStats.MaxDC = baseMaxDC;
+                _dbBaseStats.MinMC = baseMinMC;
+                _dbBaseStats.MaxMC = baseMaxMC;
+                _dbBaseStats.MinSC = baseMinSC;
+                _dbBaseStats.MaxSC = baseMaxSC;
+                _dbBaseStats.MinAC = baseMinAC;
+                _dbBaseStats.MaxAC = baseMaxAC;
+                _dbBaseStats.MinMAC = baseMinMAC;
+                _dbBaseStats.MaxMAC = baseMaxMAC;
+                _dbBaseStats.Accuracy = baseHitRate;
+                _dbBaseStats.Agility = baseEscape;
+                _dbBaseStats.Lucky = 0;
+                _dbBaseMaxHP = baseMaxHp;
+                _dbBaseMaxMP = baseMaxMp;
+                _dbBaseStatsLoaded = true;
+
+                
+                _equipStatsCache.MaxHP = 0;
+                _equipStatsCache.MaxMP = 0;
+                _equipStatsCache.MinDC = 0;
+                _equipStatsCache.MaxDC = 0;
+                _equipStatsCache.MinMC = 0;
+                _equipStatsCache.MaxMC = 0;
+                _equipStatsCache.MinSC = 0;
+                _equipStatsCache.MaxSC = 0;
+                _equipStatsCache.MinAC = 0;
+                _equipStatsCache.MaxAC = 0;
+                _equipStatsCache.MinMAC = 0;
+                _equipStatsCache.MaxMAC = 0;
+                _equipStatsCache.Accuracy = 0;
+                _equipStatsCache.Agility = 0;
+                _equipStatsCache.Lucky = 0;
+
+                
                 GuildGroupName = dbinfo.szGuildName;
 
-                // 设置首次登录标志
-                IsFirstLogin = dbinfo.dwFlag[0] == 0; 
+                
+                _dbFlag0 = (dbinfo.dwFlag != null && dbinfo.dwFlag.Length > 0) ? dbinfo.dwFlag[0] : 0;
+                _forgePoint = dbinfo.dwForgePoint;
+                _curBagWeight = dbinfo.weight != 0
+                    ? dbinfo.weight
+                    : (ushort)Math.Clamp((int)(humanDataDesc?.BagWeight ?? 0), 0, ushort.MaxValue);
+                _curBodyWeight = dbinfo.bodyweight != 0
+                    ? dbinfo.bodyweight
+                    : (byte)Math.Clamp((int)(humanDataDesc?.BodyWeight ?? 0), 0, 255);
+                _curHandWeight = dbinfo.handweight != 0
+                    ? dbinfo.handweight
+                    : (byte)Math.Clamp((int)(humanDataDesc?.HandWeight ?? 0), 0, 255);
 
-                // 发送初始化消息
+                
                 SendInitMessages();
 
-                // 发送状态更新
+                
                 LogManager.Default.Info($"发送状态改变消息");
                 SendStatusChanged();
                 LogManager.Default.Info($"发送天气改变消息");
@@ -364,7 +567,7 @@ namespace GameServer
                 LogManager.Default.Info($"发送元宝更新消息");
                 SendMoneyChanged(MoneyType.Yuanbao);
 
-                // 设置初始状态
+                
                 LogManager.Default.Info($"发送攻击模式消息");
                 ChangeAttackMode(e_humanattackmode.HAM_PEACE);
                 SaySystemAttrib(CC.GREEN, "更改攻击模式 CTRL+H 查看攻击模式信息 @atkinfo");
@@ -373,7 +576,7 @@ namespace GameServer
                 ChangeChatChannel(e_chatchannel.CCH_NORMAL);
                 SaySystemAttrib(CC.GREEN, "更改频道 CTRL+S 查看频道信息 @ccinfo");
 
-                // 更新属性
+                
                 LogManager.Default.Info($"发送属性消息");
                 UpdateProp();
                 LogManager.Default.Info($"发送子属性消息");
@@ -389,145 +592,282 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送初始化消息
-        /// </summary>
+        
+        
+        
         private void SendInitMessages()
         {
-            // 发送版本信息
-            LogManager.Default.Info($"发送初始化消息1");
-            SendMsg(0, 0x100, 0, 0, 0, "1.0.0"); // SM_READY
+            
+            
+            
+            
+            
+            
+            
+            
+            
 
-            // 发送背包大小
-            ushort bagSize = 40; // 默认大背包
-            LogManager.Default.Info($"发送背包大小消息1");
+            
+            ushort bagSize = 40; 
+            LogManager.Default.Info($"发送背包大小消息: bagSize={bagSize}");
             SendMsg((uint)ObjectId, 0x9594, 0, bagSize, 0);
 
-            // 发送准备就绪
-            LogManager.Default.Info($"发送准备就绪消息1");
-            SendMsg(0xf2d505d7, 0x100, 0, 0, 0); // SM_READY
+            
+            LogManager.Default.Info("发送SM_READY");
+            SendMsg(0xf2d505d7, ProtocolCmd.SM_READY, 0, 0, 0);
 
-            // 发送地图信息
+            
+            string version = GameWorld.Instance.GetGameName(GameName.Version);
+            LogManager.Default.Info($"发送版本信息: {version}");
+            SendMsg((uint)ObjectId, 0x9591, 0, 0, 0, version);
+
+            
             var map = LogicMapMgr.Instance?.GetLogicMapById((uint)MapId);
             LogManager.Default.Info($"map = {map}");
             if (map != null)
             {
-                LogManager.Default.Info($"发送设置地图消息1");
-                SendMsg((uint)ObjectId, 0x101, (ushort)X, (ushort)Y, (ushort)((Sex << 8) | Direction), map.MapName); // SM_SETMAP
+                LogManager.Default.Info("发送SM_SETMAP");
+                var mapFile = string.IsNullOrWhiteSpace(map.MapFile) ? map.MapName : map.MapFile;
+                SendMsg((uint)ObjectId, ProtocolCmd.SM_SETMAP, (ushort)X, (ushort)Y, (ushort)((Sex << 8) | Direction), mapFile);
 
-                // 发送玩家信息
                 uint[] dwParam = { GetFeather(), 0, GetStatus(), 0 };
-                LogManager.Default.Info($"发送设置玩家消息1");
-                SendMsg((uint)ObjectId, 0x102, (ushort)X, (ushort)Y, (ushort)((Sex << 8) | Direction), dwParam); // SM_SETPLAYER
+                LogManager.Default.Info("发送SM_SETPLAYER");
+                SendMsg((uint)ObjectId, ProtocolCmd.SM_SETPLAYER, (ushort)X, (ushort)Y, (ushort)((Sex << 8) | Direction), dwParam);
 
-                // 发送玩家名称
-                LogManager.Default.Info($"发送玩家名称消息1");
-                SendMsg((uint)ObjectId, 0x103, GetNameColor(this), 0, 0, Name); // SM_SETPLAYERNAME
+                LogManager.Default.Info("发送SM_SETPLAYERNAME");
+                SendMsg((uint)ObjectId, ProtocolCmd.SM_SETPLAYERNAME, GetNameColor(this), 0, 0, Name);
 
-                // 发送地图名称
-                LogManager.Default.Info($"发送地图名称消息1");
-                SendMsg(0, 0x104, 0, 0, 0, map.MapName); // SM_SETMAPNAME
-
-                // 发送地图战斗属性
-                LogManager.Default.Info($"发送地图战斗属性消息1");
+                
+                LogManager.Default.Info("发送地图战斗属性(0x2c4)");
                 SendMsg(map.IsFightMap() ? 1u : 0u, 0x2c4, 0, 0, 0);
+
+                
+                LogManager.Default.Info("发送SM_SETMAPNAME");
+                SendMsg(0, ProtocolCmd.SM_SETMAPNAME, 0, 0, 0, map.MapName);
             }
         }
 
-        /// <summary>
-        /// 进入地图
-        /// </summary>
-        public void OnEnterMap(LogicMap map)
+        
+        
+        
+        protected override void OnEnterMap(LogicMap map)
         {
             if (map == null) return;
 
-            // 发送地图进入消息
+            
             SendMapEnterMessages(map);
 
-            // 调用基类方法
+            
             base.OnEnterMap(map);
 
-            // 更新状态
+            
             SendTimeWeatherChanged();
-            // UpdateViewName();
+            
 
             if (GetStatus() > 0)
                 SendStatusChanged();
 
-            // 特殊处理
-            // - 沙城宫殿进入处理
-            // - 宠物跟随处理
-            // - 特殊装备刷新
+            
+            
+            
+            
         }
 
-        /// <summary>
-        /// 发送地图进入消息
-        /// </summary>
+        
+        
+        
         private void SendMapEnterMessages(LogicMap map)
         {
             if (map == null) return;
 
-            // 发送地图信息
-            LogManager.Default.Info($"发送设置地图消息2");
-            SendMsg((uint)ObjectId, 0x101, (ushort)X, (ushort)Y, (ushort)((Sex << 8) | Direction), map.MapName); // SM_SETMAP
+            
+            LogManager.Default.Info("发送SM_SETMAP(进入地图)");
+            var mapFile = string.IsNullOrWhiteSpace(map.MapFile) ? map.MapName : map.MapFile;
+            SendMsg((uint)ObjectId, ProtocolCmd.SM_SETMAP, (ushort)X, (ushort)Y, (ushort)((Sex << 8) | Direction), mapFile);
 
-            // 发送玩家信息
+            
             uint[] dwParam = { GetFeather(), 0, GetStatus(), 0 };
-            LogManager.Default.Info($"发送设置玩家消息2");
-            SendMsg((uint)ObjectId, 0x102, (ushort)X, (ushort)Y, (ushort)((Sex << 8) | Direction), dwParam); // SM_SETPLAYER
+            LogManager.Default.Info("发送SM_SETPLAYER(进入地图)");
+            SendMsg((uint)ObjectId, ProtocolCmd.SM_SETPLAYER, (ushort)X, (ushort)Y, (ushort)((Sex << 8) | Direction), dwParam);
 
-            // 发送玩家名称
-            LogManager.Default.Info($"发送玩家名称消息2");
-            SendMsg((uint)ObjectId, 0x103, GetNameColor(this), 0, 0, Name); // SM_SETPLAYERNAME
 
-            // 发送地图名称
-            LogManager.Default.Info($"发送地图名称消息2");
-            SendMsg(0, 0x104, 0, 0, 0, map.MapName); // SM_SETMAPNAME
+            LogManager.Default.Info("发送SM_SETPLAYERNAME(进入地图)");
+            SendMsg((uint)ObjectId, ProtocolCmd.SM_SETPLAYERNAME, GetNameColor(this), 0, 0, Name);
 
-            // 发送地图战斗属性
-            LogManager.Default.Info($"发送地图战斗属性消息2");
+            LogManager.Default.Info("发送地图战斗属性(0x2c4, 进入地图)");
             SendMsg(map.IsFightMap() ? 1u : 0u, 0x2c4, 0, 0, 0);
+
+            LogManager.Default.Info("发送SM_SETMAPNAME(进入地图)");
+            SendMsg(0, ProtocolCmd.SM_SETMAPNAME, 0, 0, 0, map.MapName);
+
+            
         }
 
-        /// <summary>
-        /// 获取特征值
-        /// </summary>
-        public uint GetFeather()
+        
+        
+        
+        public bool ChangeMap(uint targetMapId, ushort targetX, ushort targetY)
         {
-            // 特征值计算：根据职业、性别、发型等计算
-            uint feather = 0;
-            feather |= (uint)(Job << 24);
-            feather |= (uint)(Sex << 16);
-            feather |= (uint)(Hair << 8);
-            return feather;
+            try
+            {
+                var toMap = LogicMapMgr.Instance?.GetLogicMapById(targetMapId) ?? MapManager.Instance.GetMap(targetMapId);
+                if (toMap == null)
+                {
+                    SaySystem("目标地图不存在");
+                    return false;
+                }
+
+                int tx = targetX;
+                int ty = targetY;
+
+                
+                if (toMap.IsBlocked(tx, ty))
+                {
+                    var pts = new Point[1];
+                    if (toMap.GetValidPoint(tx, ty, pts, 1) > 0)
+                    {
+                        tx = pts[0].X;
+                        ty = pts[0].Y;
+                    }
+                    else
+                    {
+                        SaySystem("目标位置不可到达");
+                        return false;
+                    }
+                }
+
+                var fromMap = CurrentMap;
+                int ox = X;
+                int oy = Y;
+                string fromMapName = fromMap == null ? string.Empty : (string.IsNullOrWhiteSpace(fromMap.MapFile) ? fromMap.MapName : fromMap.MapFile);
+                string toMapName = string.IsNullOrWhiteSpace(toMap.MapFile) ? toMap.MapName : toMap.MapFile;
+
+                
+                try { fromMap?.RemoveObject(this); } catch { }
+
+                
+                SendMsg(ObjectId, ProtocolCmd.SM_CLEAROBJECTS, 0, 0, 0);
+                SendMsg(ObjectId, ProtocolCmd.SM_CHANGEMAP, (ushort)tx, (ushort)ty, 0, toMapName);
+
+                
+                IsMapLoaded = false;
+                CleanVisibleList();
+
+                bool added = toMap.AddObject(this, tx, ty);
+
+                if (!added)
+                {
+                    
+                    if (fromMap != null)
+                    {
+                        fromMap.AddObject(this, ox, oy);
+
+                        if (!string.IsNullOrWhiteSpace(fromMapName))
+                        {
+                            SendMsg(ObjectId, ProtocolCmd.SM_CHANGEMAP, (ushort)ox, (ushort)oy, 0, fromMapName);
+                        }
+                    }
+
+                    SaySystem("切换地图失败");
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Warning($"切换地图失败: player={Name} - {ex.Message}");
+                return false;
+            }
         }
 
-        /// <summary>
-        /// 获取状态
-        /// </summary>
-        public uint GetStatus()
+
+        
+        
+        
+        private static uint MakeFeather(byte b1, byte b2, byte b3, byte b4)
         {
-            // 状态标志计算
-            return 0; // 需要根据实际状态计算
+            
+            return ((uint)b1 << 24) | ((uint)b2 << 16) | ((uint)b3 << 8) | b4;
         }
 
-        /// <summary>
-        /// 获取名称颜色
-        /// </summary>
-        public byte GetNameColor(HumanPlayer? viewer = null)
+        
+        
+        
+        public override uint GetFeather()
         {
-            // 根据PK值、行会关系、沙城战状态等计算名称颜色
+            
+            byte dress = 0;
+            byte hair = (byte)Math.Clamp((int)Hair, 0, 255);
+            byte weapon = 0;
+            byte horse = 0;
+
+            var armor = Equipment.GetItem(EquipSlot.Dress);
+            if (armor != null)
+            {
+                
+                int shapeNibble = armor.Definition.Shape & 0x0F;
+                int colorNibble = armor.DressColor & 0x0F;
+                dress = (byte)((shapeNibble << 4) | colorNibble);
+            }
+
+            var weaponItem = Equipment.GetItem(EquipSlot.Weapon);
+            if (weaponItem != null)
+            {
+                
+                weapon = weaponItem.Definition.StateView;
+            }
+
+            var horseItem = Equipment.GetItem(EquipSlot.Mount);
+            if (horseItem != null && MountSystem.IsRiding())
+            {
+                
+                horse = (byte)Math.Clamp((horseItem.Definition.Shape & 0xFF) + 0x40, 0, 255);
+            }
+
+            return MakeFeather(dress, hair, weapon, horse);
+        }
+
+        
+        
+        
+        public override uint GetHealth()
+        {
+            ushort cur = (ushort)Math.Clamp(CurrentHP, 0, 65535);
+            ushort max = (ushort)Math.Clamp(MaxHP, 1, 65535); 
+            return ((uint)max << 16) | cur;
+        }
+
+
+        
+        
+        
+        public override uint GetStatus()
+        {
+            
+            return 0;
+        }
+
+        public override byte GetSex() => (byte)Math.Clamp((int)Sex, 0, 255);
+
+        
+        
+        
+        public override byte GetNameColor(MapObject? viewer = null)
+        {
+            
+            
             return 255;
         }
 
-        /// <summary>
-        /// 发送消息给玩家（封装方法）
-        /// </summary>
+        
+        
+        
         public void SendMsg(uint dwFlag, ushort wCmd, ushort w1, ushort w2, ushort w3, object? data = null)
         {
             try
             {
-                // 如果有发送消息委托，使用委托发送编码消息
+                
                 if (_sendEncodedMessage != null)
                 {
                     byte[]? payload = null;
@@ -539,7 +879,7 @@ namespace GameServer
                         }
                         else if (data is uint[] uintArray)
                         {
-                            // 将uint数组转换为字节数组
+                            
                             payload = new byte[uintArray.Length * 4];
                             Buffer.BlockCopy(uintArray, 0, payload, 0, payload.Length);
                         }
@@ -557,7 +897,7 @@ namespace GameServer
                 }
                 else
                 {
-                    // 如果没有委托，使用GameMessageHandler编码消息
+                    
                     byte[]? payload = null;
                     if (data != null)
                     {
@@ -567,7 +907,7 @@ namespace GameServer
                         }
                         else if (data is uint[] uintArray)
                         {
-                            // 将uint数组转换为字节数组
+                            
                             payload = new byte[uintArray.Length * 4];
                             Buffer.BlockCopy(uintArray, 0, payload, 0, payload.Length);
                         }
@@ -581,16 +921,16 @@ namespace GameServer
                         }
                     }
 
-                    // 创建MirMsg并编码
+                    
                     var msg = new MirCommon.MirMsgOrign
                     {
                         dwFlag = dwFlag,
                         wCmd = wCmd,
                         wParam = new ushort[3] { w1, w2, w3 },
-                        //data = new byte[4]
+                        
                     };
 
-                    // 编码并发送消息
+                    
                     byte[] encodedMessage = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(msg, payload);
                     if (encodedMessage.Length > 0)
                     {
@@ -604,9 +944,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 更改攻击模式
-        /// </summary>
+        
+        
+        
         public void ChangeAttackMode(e_humanattackmode newMode)
         {
             if (newMode < e_humanattackmode.HAM_PEACE || newMode >= e_humanattackmode.HAM_MAX)
@@ -614,15 +954,15 @@ namespace GameServer
 
             _attackMode = newMode;
 
-            // 发送攻击模式更新消息给客户端
-            SendMsg((uint)ObjectId, 0x105, (ushort)newMode, 0, 0); // SM_ATTACKMODE
+            
+            SendMsg((uint)ObjectId, 0x105, (ushort)newMode, 0, 0); 
 
             LogManager.Default.Debug($"{Name} 更改攻击模式为: {newMode}");
         }
 
-        /// <summary>
-        /// 更改聊天频道
-        /// </summary>
+        
+        
+        
         public void ChangeChatChannel(e_chatchannel newChannel)
         {
             if (newChannel < e_chatchannel.CCH_NORMAL || newChannel >= e_chatchannel.CCH_MAX)
@@ -630,113 +970,138 @@ namespace GameServer
 
             _chatChannel = newChannel;
 
-            // 发送聊天频道更新消息给客户端
-            SendMsg((uint)ObjectId, 0x106, (ushort)newChannel, 0, 0); // SM_CHATCHANNEL
+            
+            SendMsg((uint)ObjectId, 0x106, (ushort)newChannel, 0, 0); 
 
             LogManager.Default.Debug($"{Name} 更改聊天频道为: {newChannel}");
         }
 
-        /// <summary>
-        /// 发送时间天气变化消息
-        /// </summary>
+        
+        
+        
         public void SendTimeWeatherChanged()
         {
-            // 获取当前游戏世界的时间和天气
+            
             var gameWorld = GameWorld.Instance;
             if (gameWorld == null)
                 return;
 
-            // 发送时间信息
+            
             var currentTime = DateTime.Now;
-            SendMsg((uint)ObjectId, 0x107, (ushort)currentTime.Hour, (ushort)currentTime.Minute, 0); // SM_GAMETIME
+            SendMsg((uint)ObjectId, 0x107, (ushort)currentTime.Hour, (ushort)currentTime.Minute, 0); 
 
-            // 发送天气信息
-            SendMsg((uint)ObjectId, 0x108, 0, 0, 0); // SM_WEATHER
+            
+            SendMsg((uint)ObjectId, 0x108, 0, 0, 0); 
 
             LogManager.Default.Debug($"{Name} 收到时间天气更新");
         }
 
-        /// <summary>
-        /// 发送组队模式消息
-        /// </summary>
+        
+        
+        
         public void SendGroupMode()
         {
-            // 发送组队信息
+            
             if (GroupId > 0)
             {
-                // 有组队，发送组队信息
-                SendMsg((uint)ObjectId, 0x109, 1, 0, 0, GroupId.ToString()); // SM_GROUPMODE
+                
+                SendMsg((uint)ObjectId, 0x109, 1, 0, 0, GroupId.ToString()); 
             }
             else
             {
-                // 无组队
-                SendMsg((uint)ObjectId, 0x109, 0, 0, 0); // SM_GROUPMODE
+                
+                SendMsg((uint)ObjectId, 0x109, 0, 0, 0); 
             }
 
             LogManager.Default.Debug($"{Name} 收到组队模式更新");
         }
 
-        /// <summary>
-        /// 发送金钱变化消息
-        /// </summary>
+        
+        
+        
         public void SendMoneyChanged(MoneyType moneyType)
         {
-            uint amount = 0;
-            ushort cmd = 0;
+            
+            
+            
+            uint amount;
+            ushort cmd;
 
             switch (moneyType)
             {
                 case MoneyType.Gold:
                     amount = Gold;
-                    cmd = 0x10A; // SM_GOLDCHANGED
+                    cmd = MirCommon.ProtocolCmd.SM_GOLDCHANGED;
                     break;
                 case MoneyType.Yuanbao:
                     amount = Yuanbao;
-                    cmd = 0x10B; // SM_YUANBAOCHANGED
+                    cmd = MirCommon.ProtocolCmd.SM_SETSUPERGOLD;
                     break;
                 default:
                     return;
             }
 
-            SendMsg((uint)ObjectId, cmd, (ushort)(amount & 0xFFFF), (ushort)(amount >> 16), 0);
-
+            SendMsg(amount, cmd, 0, 0, 0);
             LogManager.Default.Debug($"{Name} {moneyType} 更新为: {amount}");
         }
 
         public override ObjectType GetObjectType() => ObjectType.Player;
 
+        
+        
+        
+        
+        protected override int GetAutoRecoverHp()
+        {
+            var humanData = GameWorld.Instance.GetHumanDataDesc(Job, Level);
+            int recover = 9 + (int)(humanData?.HpRecover ?? 0);
+            return Math.Max(0, recover);
+        }
+
+        
+        
+        
+        protected override int GetAutoRecoverMp()
+        {
+            var humanData = GameWorld.Instance.GetHumanDataDesc(Job, Level);
+            int recover = 9 + (int)(humanData?.MagicRecover ?? 0);
+            return Math.Max(0, recover);
+        }
+
         public override void Update()
         {
             base.Update();
 
-            // 检查断线
+            
             if (_tcpClient != null && !_tcpClient.Connected)
             {
                 OnDisconnected();
                 return;
             }
 
-            // 更新任务系统
+            
             QuestManager.Update();
 
-            // 更新PK系统
+            
             PKSystem.Update();
 
-            // 更新最后活动时间
+            
+
+            
             LastActivity = DateTime.Now;
 
-            // 检查动作完成
+            
             if (CompleteAction())
             {
-                // 动作完成后的处理
+                
             }
         }
 
         #region 网络消息
 
-        /// <summary>
-        /// 发送消息给玩家
-        /// </summary>
+        
+        
+        
         public override void SendMessage(byte[] message)
         {
             if (_stream == null || !_tcpClient!.Connected)
@@ -744,8 +1109,40 @@ namespace GameServer
 
             try
             {
-                _stream.Write(message, 0, message.Length);
-                _stream.Flush();
+                
+                
+                bool isEncoded = message.Length >= 2 && message[0] == (byte)'#' && message[message.Length - 1] == (byte)'!';
+                if (!isEncoded && message.Length >= MirCommon.MirMsgOrign.Size)
+                {
+                    uint dwFlag = BitConverter.ToUInt32(message, 0);
+                    ushort wCmd = BitConverter.ToUInt16(message, 4);
+                    ushort w1 = BitConverter.ToUInt16(message, 6);
+                    ushort w2 = BitConverter.ToUInt16(message, 8);
+                    ushort w3 = BitConverter.ToUInt16(message, 10);
+
+                    byte[]? payload = null;
+                    int payloadLen = message.Length - MirCommon.MirMsgOrign.Size;
+                    if (payloadLen > 0)
+                    {
+                        payload = new byte[payloadLen];
+                        Buffer.BlockCopy(message, MirCommon.MirMsgOrign.Size, payload, 0, payloadLen);
+                    }
+
+                    var msg = new MirCommon.MirMsgOrign
+                    {
+                        dwFlag = dwFlag,
+                        wCmd = wCmd,
+                        wParam = new ushort[3] { w1, w2, w3 },
+                    };
+
+                    message = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(msg, payload);
+                }
+
+                lock (_stream)
+                {
+                    _stream.Write(message, 0, message.Length);
+                    _stream.Flush();
+                }
             }
             catch (Exception ex)
             {
@@ -754,28 +1151,18 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送协议消息
-        /// </summary>
+        
+        
+        
         public void SendProtocolMsg(ushort cmd, byte[] data)
         {
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(cmd);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            if (data.Length > 0)
-            {
-                builder.WriteBytes(data);
-            }
-
-            SendMessage(builder.Build());
+            
+            SendMsg(ObjectId, cmd, 0, 0, 0, data);
         }
 
-        /// <summary>
-        /// 断开连接
-        /// </summary>
+        
+        
+        
         private void OnDisconnected()
         {
             try
@@ -788,7 +1175,7 @@ namespace GameServer
             _stream = null;
             _tcpClient = null;
 
-            // 从地图移除
+            
             CurrentMap?.RemoveObject(this);
 
             LogManager.Default.Info($"玩家断开连接: {Name}");
@@ -796,17 +1183,131 @@ namespace GameServer
 
         #endregion
 
+        
+        
+        
+        public bool IsMapLoaded { get; set; } = false;
+        private int _debugViewEnterCount = 0;
+
+        
+        private readonly Dictionary<ushort, (ushort Cur, ushort Max)> _bodyEffects = new();
+
+        
+        
+        
+        public void SetBodyEffect(ushort effectId, ushort cur, ushort max)
+        {
+            if (effectId == 0)
+                return;
+
+            lock (_bodyEffects)
+            {
+                if (cur == 0 && max == 0)
+                    _bodyEffects.Remove(effectId);
+                else
+                    _bodyEffects[effectId] = (cur, max);
+            }
+
+            BroadcastBodyEffect(effectId, cur, max);
+        }
+
+        private void BroadcastBodyEffect(ushort effectId, ushort cur, ushort max)
+        {
+            if (CurrentMap == null)
+                return;
+
+            foreach (var viewer in CurrentMap.GetPlayersInRange(X, Y, 18))
+            {
+                viewer.SendMsg(ObjectId, ProtocolCmd.SM_STARTBODYEFFECT, cur, max, effectId);
+            }
+        }
+
+        private void SendBodyEffectsTo(HumanPlayer viewer)
+        {
+            if (viewer == null)
+                return;
+
+            List<KeyValuePair<ushort, (ushort Cur, ushort Max)>> snapshot;
+            lock (_bodyEffects)
+            {
+                snapshot = _bodyEffects.ToList();
+            }
+
+            foreach (var kv in snapshot)
+            {
+                viewer.SendMsg(ObjectId, ProtocolCmd.SM_STARTBODYEFFECT, kv.Value.Cur, kv.Value.Max, kv.Key);
+            }
+        }
+
+        public override void OnObjectEnterView(MapObject obj)
+        {
+            if (!IsMapLoaded)
+                return;
+
+            
+            if (obj.GetViewMsg(out var msg, this))
+            {
+                SendMessage(msg);
+                int n = System.Threading.Interlocked.Increment(ref _debugViewEnterCount);
+                if (n <= 30)
+                {
+                    LogManager.Default.Debug($"视野进入: viewer={Name}({ObjectId:X8}) objType={obj.GetObjectType()} objId={obj.ObjectId:X8} pos=({obj.X},{obj.Y}) msgLen={msg.Length}");
+                }
+            }
+            else
+            {
+                int n = System.Threading.Interlocked.Increment(ref _debugViewEnterCount);
+                if (n <= 30)
+                {
+                    LogManager.Default.Debug($"视野进入: viewer={Name}({ObjectId:X8}) objType={obj.GetObjectType()} objId={obj.ObjectId:X8} pos=({obj.X},{obj.Y}) GetViewMsg=false");
+                }
+            }
+
+            
+            if (obj is HumanPlayer otherPlayer)
+            {
+                otherPlayer.SendBodyEffectsTo(this);
+            }
+        }
+
+        public override void OnObjectLeaveView(MapObject obj)
+        {
+            if (!IsMapLoaded)
+                return;
+
+            
+            if (obj is DownItemObject downItem)
+            {
+                if (downItem.GetOutViewMsg(out var outMsg, this))
+                {
+                    SendMessage(outMsg);
+                    return;
+                }
+            }
+
+            if (obj is VisibleEvent visibleEvent)
+            {
+                if (visibleEvent.GetOutViewMsg(out var outMsg, this))
+                {
+                    SendMessage(outMsg);
+                    return;
+                }
+            }
+
+            SendMsg(obj.ObjectId, MirCommon.ProtocolCmd.SM_DISAPPEAR, obj.X, obj.Y, 0);
+        }
+
         #region 辅助方法
 
-        /// <summary>
-        /// 检查是否在范围内
-        /// </summary>
+        
+        
+        
         private bool IsInRange(GameObject target, int range)
         {
             if (target == null || CurrentMap == null)
                 return false;
 
-            // 将GameObject转换为MapObject来获取坐标
+            
             if (target is MapObject mapObject)
             {
                 int distanceX = Math.Abs(X - mapObject.X);
@@ -814,42 +1315,42 @@ namespace GameServer
                 return distanceX <= range && distanceY <= range;
             }
 
-            // 如果target不是MapObject，返回false
+            
             return false;
         }
 
-        /// <summary>
-        /// 说话
-        /// </summary>
+        
+        
+        
         public override void Say(string message)
         {
             if (string.IsNullOrEmpty(message))
                 return;
 
-            // 检查聊天冷却时间
+            
             if (!CheckChatCooldown(MirCommon.ChatChannel.WORLD))
                 return;
 
-            // 使用聊天过滤器处理消息
+            
             string processedMessage = ChatFilter.Instance.ProcessChatMessage(message);
 
-            // 检查是否可以发送消息
+            
             if (!ChatFilter.Instance.CanSendMessage(processedMessage, out string reason))
             {
                 SaySystem($"无法发送消息：{reason}");
                 return;
             }
 
-            // 记录日志
+            
             LogManager.Default.Info($"{Name}: {processedMessage}");
 
-            // 发送聊天消息给附近玩家
+            
             SendChatMessage(MirCommon.ChatChannel.WORLD, processedMessage, null);
         }
 
-        /// <summary>
-        /// 系统消息（发送给玩家自己）
-        /// </summary>
+        
+        
+        
         public void SaySystem(string message)
         {
             if (string.IsNullOrEmpty(message))
@@ -857,31 +1358,31 @@ namespace GameServer
 
             LogManager.Default.Info($"[系统] {Name}: {message}");
 
-            // 发送系统消息给玩家自己
+            
             SendSystemMessage(message);
         }
 
-        /// <summary>
-        /// 发送聊天消息
-        /// </summary>
+        
+        
+        
         private void SendChatMessage(MirCommon.ChatChannel channel, string message, string? targetName)
         {
             if (CurrentMap == null)
                 return;
 
-            // 构建完整的聊天文本
+            
             string fullMessage = $"{Name}: {message}";
 
-            // 根据频道发送消息
+            
             switch (channel)
             {
                 case MirCommon.ChatChannel.WORLD:
-                    // 发送给附近玩家
+                    
                     SendToNearbyPlayers(fullMessage, channel);
                     break;
 
                 case MirCommon.ChatChannel.PRIVATE:
-                    // 密谈频道
+                    
                     if (!string.IsNullOrEmpty(targetName))
                     {
                         SendWisperMessage(targetName, message);
@@ -897,34 +1398,34 @@ namespace GameServer
                     break;
 
                 case MirCommon.ChatChannel.HORN:
-                    // 喊话频道（全地图可见）
+                    
                     SendToMapPlayers(fullMessage, channel);
                     break;
 
                 case MirCommon.ChatChannel.TEAM:
-                    // 组队频道
+                    
                     SendToGroupMembers(fullMessage);
                     break;
 
                 case MirCommon.ChatChannel.GUILD:
-                    // 行会频道
+                    
                     SendToGuildMembers(fullMessage);
                     break;
             }
 
-            // 更新聊天计时器
+            
             UpdateChatTimer(channel);
         }
 
-        /// <summary>
-        /// 检查聊天冷却时间
-        /// </summary>
+        
+        
+        
         private bool CheckChatCooldown(MirCommon.ChatChannel channel)
         {
-            // 获取频道冷却时间
+            
             int cooldownSeconds = GetChannelCooldown(channel);
 
-            // 将MirCommon.ChatChannel转换为e_chatchannel
+            
             e_chatchannel eChannel = ConvertToEChannel(channel);
 
             if (_chatChannelTimers.TryGetValue(eChannel, out var lastChatTime))
@@ -941,26 +1442,27 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 获取频道冷却时间
-        /// </summary>
+        
+        
+        
         private int GetChannelCooldown(MirCommon.ChatChannel channel)
         {
-            // 这里应该从服务器配置读取
+            
+            
             return channel switch
             {
-                MirCommon.ChatChannel.WORLD => 1,    // 1秒
-                MirCommon.ChatChannel.HORN => 10,      // 10秒
-                MirCommon.ChatChannel.TEAM => 1,     // 1秒
-                MirCommon.ChatChannel.GUILD => 1,     // 1秒
-                MirCommon.ChatChannel.PRIVATE => 1,    // 1秒
+                MirCommon.ChatChannel.WORLD => 1,    
+                MirCommon.ChatChannel.HORN => 10,      
+                MirCommon.ChatChannel.TEAM => 1,     
+                MirCommon.ChatChannel.GUILD => 1,     
+                MirCommon.ChatChannel.PRIVATE => 1,    
                 _ => 1
             };
         }
 
-        /// <summary>
-        /// 获取频道名称
-        /// </summary>
+        
+        
+        
         private string GetChannelName(MirCommon.ChatChannel channel)
         {
             return channel switch
@@ -974,22 +1476,22 @@ namespace GameServer
             };
         }
 
-        /// <summary>
-        /// 更新聊天计时器
-        /// </summary>
+        
+        
+        
         private void UpdateChatTimer(MirCommon.ChatChannel channel)
         {
-            // 将MirCommon.ChatChannel转换为e_chatchannel
+            
             e_chatchannel eChannel = ConvertToEChannel(channel);
             _chatChannelTimers[eChannel] = DateTime.Now;
         }
 
-        /// <summary>
-        /// 将MirCommon.ChatChannel转换为e_chatchannel
-        /// </summary>
+        
+        
+        
         private e_chatchannel ConvertToEChannel(MirCommon.ChatChannel channel)
         {
-            // 简单的映射转换
+            
             return channel switch
             {
                 MirCommon.ChatChannel.WORLD => e_chatchannel.CCH_NORMAL,
@@ -1001,50 +1503,43 @@ namespace GameServer
             };
         }
 
-        /// <summary>
-        /// 发送给附近玩家
-        /// </summary>
+        
+        
+        
         private void SendToNearbyPlayers(string message, MirCommon.ChatChannel channel)
         {
             if (CurrentMap == null)
                 return;
 
-            // 获取附近玩家
+            
             var nearbyPlayers = CurrentMap.GetObjectsInRange(X, Y, 10)
                 .Where(obj => obj is HumanPlayer && obj != this)
                 .Cast<HumanPlayer>();
 
-            // 构建消息数据
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x64); // SM_CHAT
-            builder.WriteUInt16(0x9700); // 属性
-            builder.WriteUInt16(0x38); // 颜色
-            builder.WriteUInt16(0x100); // 标志
-            builder.WriteString(message);
+            
+            const ushort cmd = MirCommon.ProtocolCmd.SM_SYSCHAT; 
+            const ushort attrib = 0x9700;
+            const ushort color = 0x38;
+            const ushort flags = 0x100;
 
-            byte[] packet = builder.Build();
-
-            // 发送给每个附近玩家
             foreach (var player in nearbyPlayers)
             {
-                // 检查玩家是否禁用了该频道
                 if (!player.IsChannelDisabled(channel))
                 {
-                    player.SendMessage(packet);
+                    player.SendMsg(ObjectId, cmd, attrib, color, flags, message);
                 }
             }
 
-            // 也发送给自己
-            SendMessage(packet);
+            
+            SendMsg(ObjectId, cmd, attrib, color, flags, message);
         }
 
-        /// <summary>
-        /// 发送密谈消息
-        /// </summary>
+        
+        
+        
         private void SendWisperMessage(string targetName, string message)
         {
-            // 查找目标玩家
+            
             var targetPlayer = HumanPlayerMgr.Instance.FindByName(targetName);
 
             if (targetPlayer == null)
@@ -1059,47 +1554,39 @@ namespace GameServer
                 return;
             }
 
-            // 检查目标是否禁用了密谈频道
+            
             if (targetPlayer.IsChannelDisabled(MirCommon.ChatChannel.PRIVATE))
             {
                 SaySystem("对方关闭了密谈频道，请稍候再试！");
                 return;
             }
 
-            // 发送密谈消息
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x67); // SM_WISPER
-            builder.WriteUInt16(0xfffc); // 属性
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(1); // 标志
-            builder.WriteString($"{Name}=>{message}");
+            
+            const ushort cmd = 0x67; 
+            const ushort attrib = 0xfffc;
+            const ushort color = 0;
+            const ushort flags = 1;
+            targetPlayer.SendMsg(ObjectId, cmd, attrib, color, flags, $"{Name}=>{message}");
 
-            targetPlayer.SendMessage(builder.Build());
-
-            // 设置当前密谈对象
+            
             _currentWisperTarget = targetName;
         }
 
-        /// <summary>
-        /// 发送给地图所有玩家（喊话频道）
-        /// </summary>
+        
+        
+        
         private void SendToMapPlayers(string message, MirCommon.ChatChannel channel)
         {
             if (CurrentMap == null)
                 return;
 
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x64); // SM_CHAT
-            builder.WriteUInt16(0x9700); // 属性
-            builder.WriteUInt16(0x38); // 颜色
-            builder.WriteUInt16(0x100); // 标志
-            builder.WriteString($"(!){message}");
+            
+            const ushort cmd = MirCommon.ProtocolCmd.SM_SYSCHAT; 
+            const ushort attrib = 0x9700;
+            const ushort color = 0x38;
+            const ushort flags = 0x100;
 
-            byte[] packet = builder.Build();
-
-            // 发送给附近玩家代替全地图玩家
+            
             var nearbyPlayers = CurrentMap.GetObjectsInRange(X, Y, 20)
                 .Where(obj => obj is HumanPlayer)
                 .Cast<HumanPlayer>();
@@ -1108,14 +1595,14 @@ namespace GameServer
             {
                 if (!player.IsChannelDisabled(channel))
                 {
-                    player.SendMessage(packet);
+                    player.SendMsg(ObjectId, cmd, attrib, color, flags, $"(!){message}");
                 }
             }
         }
 
-        /// <summary>
-        /// 发送给组队成员
-        /// </summary>
+        
+        
+        
         private void SendToGroupMembers(string message)
         {
             if (GroupId == 0)
@@ -1124,7 +1611,7 @@ namespace GameServer
                 return;
             }
 
-            // 使用新的组队系统发送消息
+            
             var group = GroupObjectManager.Instance?.GetPlayerGroup(this);
             if (group == null)
             {
@@ -1135,9 +1622,9 @@ namespace GameServer
             group.SendChatMessage(this, message);
         }
 
-        /// <summary>
-        /// 发送给行会成员
-        /// </summary>
+        
+        
+        
         private void SendToGuildMembers(string message)
         {
             if (Guild == null)
@@ -1146,52 +1633,48 @@ namespace GameServer
                 return;
             }
 
-            // 这里需要根据实际的行会系统来完善
+            
+            
             SaySystem("行会频道功能暂未完全实现");
         }
 
-        /// <summary>
-        /// 发送系统消息给玩家
-        /// </summary>
+        
+        
+        
         private void SendSystemMessage(string message)
         {
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x64); // SM_CHAT
-            builder.WriteUInt16(0xff00); // 系统消息属性
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteString($"[系统] {message}");
-
-            SendMessage(builder.Build());
+            
+            const ushort cmd = MirCommon.ProtocolCmd.SM_SYSCHAT; 
+            const ushort attrib = 0xff00;
+            SendMsg(ObjectId, cmd, attrib, 0, 0, $"[系统] {message}");
         }
 
-        /// <summary>
-        /// 检查是否禁用了指定频道
-        /// </summary>
+        
+        
+        
         private bool IsChannelDisabled(MirCommon.ChatChannel channel)
         {
-            // 将MirCommon.ChatChannel转换为e_chatchannel
+            
             e_chatchannel eChannel = ConvertToEChannel(channel);
 
-            // 检查频道是否被禁用
+            
             if ((int)eChannel < _chatChannelDisabled.Length)
             {
                 return _chatChannelDisabled[(int)eChannel];
             }
 
-            // 如果索引超出范围，返回false
+            
             return false;
         }
 
-        /// <summary>
-        /// 发送组队解散消息
-        /// </summary>
+        
+        
+        
         public void SendGroupDestroyed()
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x28F); // SM_GROUPDESTROYED
+            builder.WriteUInt16(0x28F); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -1199,26 +1682,24 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送系统消息（带属性）
-        /// </summary>
+        
+        
+        
         public void SaySystemAttrib(uint attrib, string message)
         {
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x64); // SM_SYSCHAT
-            builder.WriteUInt16((ushort)(attrib & 0xFFFF));
-            builder.WriteUInt16((ushort)(attrib >> 16));
-            builder.WriteUInt16(0);
-            builder.WriteString(message);
-
-            SendMessage(builder.Build());
+            
+            SendMsg(ObjectId,
+                MirCommon.ProtocolCmd.SM_SYSCHAT,
+                (ushort)(attrib & 0xFFFF),
+                (ushort)(attrib >> 16),
+                0,
+                message);
         }
 
 
-        /// <summary>
-        /// 检查是否在范围内
-        /// </summary>
+        
+        
+        
         private bool IsInRange(MapObject target, int range)
         {
             if (target == null || CurrentMap != target.CurrentMap)
@@ -1229,45 +1710,45 @@ namespace GameServer
             return dx <= range && dy <= range;
         }
 
-        /// <summary>
-        /// 计算修理费用
-        /// </summary>
+        
+        
+        
         private uint CalculateRepairCost(ItemInstance item)
         {
             if (item == null)
                 return 0;
 
-            // 基础修理费用 = 物品售价 * 耐久度损失比例
+            
             float durabilityLossRatio = 1.0f - ((float)item.Durability / item.MaxDurability);
             uint baseCost = (uint)(item.Definition.SellPrice * durabilityLossRatio);
 
-            // 强化等级增加修理费用
+            
             if (item.EnhanceLevel > 0)
                 baseCost += (uint)(baseCost * item.EnhanceLevel * 0.1f);
 
-            return Math.Max(10, baseCost); // 最低10金币
+            return Math.Max(10, baseCost); 
         }
 
-        /// <summary>
-        /// 发送背包更新消息
-        /// </summary>
+        
+        
+        
         private void SendInventoryUpdate()
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x288); // SM_INVENTORYUPDATE
+            builder.WriteUInt16(0x288); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
 
-            // 添加背包物品信息
+            
             var allItems = Inventory.GetAllItems();
             builder.WriteByte((byte)allItems.Count);
 
             foreach (var kvp in allItems)
             {
                 var item = kvp.Value;
-                builder.WriteByte((byte)kvp.Key); // 槽位
+                builder.WriteByte((byte)kvp.Key); 
                 builder.WriteUInt32((uint)item.InstanceId);
                 builder.WriteInt32(item.ItemId);
                 builder.WriteString(item.Definition.Name);
@@ -1279,14 +1760,14 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送装备更新消息
-        /// </summary>
+        
+        
+        
         private void SendEquipmentUpdate(EquipSlot slot, ItemInstance? item)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x287); // SM_EQUIPMENTUPDATE
+            builder.WriteUInt16(0x287); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -1314,56 +1795,66 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送HP/MP更新消息
-        /// </summary>
+        
+        
+        
         private void SendHPMPUpdate()
         {
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x286); // SM_HPMPUPDATE
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16((ushort)CurrentHP);
-            builder.WriteUInt16((ushort)MaxHP);
-            builder.WriteUInt16((ushort)CurrentMP);
-            builder.WriteUInt16((ushort)MaxMP);
-
-            SendMessage(builder.Build());
+            SendHpMpChanged();
         }
 
-        /// <summary>
-        /// 完善治疗方法，添加HP更新消息
-        /// </summary>
+        
+        
+        
+        
+        
+        protected override void SendHpMpChanged()
+        {
+            ushort curHp = (ushort)Math.Max(0, Math.Min(CurrentHP, ushort.MaxValue));
+            ushort curMp = (ushort)Math.Max(0, Math.Min(CurrentMP, ushort.MaxValue));
+            ushort maxHp = (ushort)Math.Max(0, Math.Min(MaxHP, ushort.MaxValue));
+
+            var msg = new MirCommon.MirMsgOrign
+            {
+                dwFlag = ObjectId,
+                wCmd = MirCommon.ProtocolCmd.SM_HPMPCHANGED,
+                wParam = new ushort[3] { curHp, curMp, maxHp },
+            };
+
+            byte[] encoded = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(msg, null);
+            if (encoded.Length <= 0)
+                return;
+
+            
+            SendMessage(encoded);
+
+            
+            CurrentMap?.SendToNearbyPlayers(X, Y, 18, encoded, ObjectId);
+        }
+
         public override void Heal(int amount)
         {
             base.Heal(amount);
-            SendHPMPUpdate();
         }
 
-        /// <summary>
-        /// 完善恢复MP方法，添加MP更新消息
-        /// </summary>
         public override void RestoreMP(int amount)
         {
             base.RestoreMP(amount);
-            SendHPMPUpdate();
         }
 
-        /// <summary>
-        /// 完善挖矿逻辑
-        /// </summary>
+        
+        
+        
         public bool DoMine(byte direction)
         {
-            // 检查挖矿冷却时间
+            
             if ((DateTime.Now - _lastMineTime).TotalMilliseconds < 800)
             {
                 Say("挖矿太快了，请稍等");
                 return false;
             }
 
-            // 检查是否可以执行攻击动作
+            
             if (!CanDoAttack())
             {
                 Say("无法执行挖矿动作");
@@ -1372,13 +1863,13 @@ namespace GameServer
 
             Direction = direction;
 
-            // 设置攻击动作
+            
             SetAttackAction();
 
-            // 检查地图标志
+            
             if (CurrentMap is LogicMap logicMap)
             {
-                // 检查地图是否允许挖矿
+                
                 if (!logicMap.IsFlagSeted(MapFlag.MF_MINE))
                 {
                     Say("这个地图不能挖矿");
@@ -1386,65 +1877,65 @@ namespace GameServer
                 }
             }
 
-            // 增加挖矿计数器
+            
             _mineCounter++;
 
-            // 更新挖矿效果
+            
             UpdateMineEffect();
 
-            // 根据挖矿计数器判断是否获得矿石
+            
             if (_mineCounter % 10 == 0)
             {
-                // 每10次挖矿获得高级矿石
+                
                 Say("挖到了高级矿石！");
                 GiveMineReward(MineRewardType.High);
             }
             else if (_mineCounter % 5 == 0)
             {
-                // 每5次挖矿获得中级矿石
+                
                 Say("挖到了中级矿石！");
                 GiveMineReward(MineRewardType.Medium);
             }
             else
             {
-                // 普通挖矿
+                
                 Say("挖到了普通矿石！");
                 GiveMineReward(MineRewardType.Low);
             }
 
-            // 更新挖矿时间
+            
             _lastMineTime = DateTime.Now;
 
             return true;
         }
 
-        /// <summary>
-        /// 检查是否可以执行攻击动作
-        /// </summary>
+        
+        
+        
         private bool CanDoAttack()
         {
-            // 检查是否在战斗中
+            
             if (IsInCombat())
             {
                 Say("战斗中无法挖矿");
                 return false;
             }
 
-            // 检查是否在摆摊中
+            
             if (IsInPrivateShop())
             {
                 Say("摆摊中无法挖矿");
                 return false;
             }
 
-            // 检查是否在安全区
+            
             if (InSafeArea())
             {
                 Say("安全区无法挖矿");
                 return false;
             }
 
-            // 检查是否有足够的体力
+            
             if (CurrentHP < 10)
             {
                 Say("体力不足，无法挖矿");
@@ -1454,43 +1945,43 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 设置攻击动作
-        /// </summary>
+        
+        
+        
         private void SetAttackAction()
         {
-            // 设置当前动作为攻击
+            
             StartAction(ActionType.Attack, 0);
 
-            // 发送攻击动作消息给附近玩家
+            
             SendAttackActionMessage();
         }
 
-        /// <summary>
-        /// 更新挖矿效果
-        /// </summary>
+        
+        
+        
         private void UpdateMineEffect()
         {
-            // 发送挖矿特效消息
+            
             SendMineEffectMessage();
 
-            // 播放挖矿音效
+            
             PlayMineSound();
 
-            // 减少少量体力（挖矿消耗体力）
+            
             int staminaCost = 1;
             CurrentHP = Math.Max(0, CurrentHP - staminaCost);
 
-            // 发送HP更新消息
+            
             SendHPMPUpdate();
         }
 
-        /// <summary>
-        /// 给予挖矿奖励
-        /// </summary>
+        
+        
+        
         private void GiveMineReward(MineRewardType rewardType)
         {
-            // 根据奖励类型创建不同的矿石
+            
             ItemDefinition definition;
             switch (rewardType)
             {
@@ -1509,23 +2000,23 @@ namespace GameServer
                     break;
             }
 
-            // 创建物品实例
-            var item = new ItemInstance(definition, (long)DateTime.Now.Ticks);
+            
+            var item = new ItemInstance(definition, (long)ItemManager.Instance.AllocateTempMakeIndex());
 
-            // 添加到背包
+            
             if (Inventory.AddItem(item))
             {
-                // 记录日志
+                
                 LogManager.Default.Info($"{Name} 挖到了 {definition.Name}");
 
-                // 增加挖矿技能经验
+                
                 AddMiningSkillExp(10);
             }
             else
             {
                 Say("背包已满，矿石掉落到地上");
 
-                // 创建地图物品
+                
                 if (CurrentMap != null)
                 {
                     var mapItem = new MapItem(item)
@@ -1533,20 +2024,20 @@ namespace GameServer
                         OwnerPlayerId = ObjectId
                     };
 
-                    // 放置在玩家脚下
+                    
                     CurrentMap.AddObject(mapItem, X, Y);
                 }
             }
         }
 
-        /// <summary>
-        /// 发送攻击动作消息
-        /// </summary>
+        
+        
+        
         private void SendAttackActionMessage()
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x28F); // SM_ATTACKACTION
+            builder.WriteUInt16(0x28F); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -1555,14 +2046,14 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送挖矿特效消息
-        /// </summary>
+        
+        
+        
         private void SendMineEffectMessage()
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x290); // SM_MINEEFFECT
+            builder.WriteUInt16(0x290); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -1571,34 +2062,34 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 播放挖矿音效
-        /// </summary>
+        
+        
+        
         private void PlayMineSound()
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x291); // SM_MINESOUND
+            builder.WriteUInt16(0x291); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
-            builder.WriteUInt16(1001); // 挖矿音效ID
+            builder.WriteUInt16(1001); 
 
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 增加挖矿技能经验
-        /// </summary>
+        
+        
+        
         private void AddMiningSkillExp(int exp)
         {
-            // 检查是否有挖矿技能
-            var miningSkill = SkillBook.GetSkill(1001); // 假设1001是挖矿技能ID
+            
+            var miningSkill = SkillBook.GetSkill(1001); 
             if (miningSkill != null)
             {
                 miningSkill.AddExp(exp);
 
-                // 检查技能升级
+                
                 if (miningSkill.CanLevelUp())
                 {
                     miningSkill.LevelUp();
@@ -1607,30 +2098,30 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 完善挖肉逻辑
-        /// </summary>
+        
+        
+        
         public bool GetMeal(byte direction)
         {
             Direction = direction;
 
-            // 根据方向计算目标位置
+            
             int targetX = X;
             int targetY = Y;
 
             switch (direction)
             {
-                case 0: targetY--; break; // 上
-                case 1: targetX++; targetY--; break; // 右上
-                case 2: targetX++; break; // 右
-                case 3: targetX++; targetY++; break; // 右下
-                case 4: targetY++; break; // 下
-                case 5: targetX--; targetY++; break; // 左下
-                case 6: targetX--; break; // 左
-                case 7: targetX--; targetY--; break; // 左上
+                case 0: targetY--; break; 
+                case 1: targetX++; targetY--; break; 
+                case 2: targetX++; break; 
+                case 3: targetX++; targetY++; break; 
+                case 4: targetY++; break; 
+                case 5: targetX--; targetY++; break; 
+                case 6: targetX--; break; 
+                case 7: targetX--; targetY--; break; 
             }
 
-            // 检查目标位置是否有怪物尸体
+            
             if (CurrentMap == null)
                 return false;
 
@@ -1641,18 +2132,18 @@ namespace GameServer
                 return false;
             }
 
-            // 执行挖肉
+            
             return GetMeat(corpse);
         }
 
-        /// <summary>
-        /// 实现训练马匹逻辑
-        /// </summary>
+        
+        
+        
         public bool DoTrainHorse(byte direction)
         {
             Direction = direction;
 
-            // 检查是否有坐骑
+            
             var mount = Equipment.GetEquipment(EquipSlot.Mount);
             if (mount == null)
             {
@@ -1660,82 +2151,82 @@ namespace GameServer
                 return false;
             }
 
-            // 检查坐骑是否需要训练
+            
             if (mount.Durability >= mount.MaxDurability)
             {
                 Say("坐骑不需要训练");
                 return false;
             }
 
-            // 检查金币是否足够
-            uint trainCost = 100; // 训练费用
+            
+            uint trainCost = 100; 
             if (Gold < trainCost)
             {
                 Say($"训练需要 {trainCost} 金币");
                 return false;
             }
 
-            // 扣除金币
+            
             if (!TakeGold(trainCost))
                 return false;
 
-            // 训练坐骑（增加耐久度）
+            
             mount.Durability = Math.Min(mount.Durability + 10, mount.MaxDurability);
 
-            // 记录日志
+            
             LogManager.Default.Info($"{Name} 训练了坐骑，花费 {trainCost} 金币");
 
-            // 发送训练成功消息
+            
             SaySystem($"训练了坐骑，花费 {trainCost} 金币");
 
-            // 发送装备更新消息
+            
             SendEquipmentUpdate(EquipSlot.Mount, mount);
 
             return true;
         }
 
-        /// <summary>
-        /// 实现动作系统 - 开始动作
-        /// </summary>
+        
+        
+        
         private void StartAction(ActionType actionType, uint targetId)
         {
-            // 设置当前动作
+            
             _currentAction = actionType;
             _currentActionTarget = targetId;
             _actionStartTime = DateTime.Now;
 
-            // 发送动作开始消息
+            
             SendActionStart(actionType, targetId);
         }
 
-        /// <summary>
-        /// 实现动作系统 - 完成动作检查
-        /// </summary>
+        
+        
+        
         public override bool CompleteAction()
         {
             if (_currentAction == ActionType.None)
                 return false;
 
-            // 检查动作是否完成（根据动作类型和经过的时间）
+            
             var elapsed = DateTime.Now - _actionStartTime;
             bool isComplete = false;
 
             switch (_currentAction)
             {
                 case ActionType.Mining:
-                    isComplete = elapsed.TotalSeconds >= 3.0; // 挖矿需要3秒
+                    isComplete = elapsed.TotalSeconds >= 3.0; 
                     break;
                 case ActionType.GetMeat:
-                    isComplete = elapsed.TotalSeconds >= 2.0; // 挖肉需要2秒
+                    isComplete = elapsed.TotalSeconds >= 2.0; 
                     break;
                 default:
-                    isComplete = elapsed.TotalSeconds >= 1.0; // 默认1秒
+                    isComplete = elapsed.TotalSeconds >= 1.0; 
                     break;
             }
 
             if (isComplete)
             {
-                // 执行动作完成逻辑
+                
                 switch (_currentAction)
                 {
                     case ActionType.Mining:
@@ -1746,11 +2237,11 @@ namespace GameServer
                         break;
                 }
 
-                // 清除动作状态
+                
                 _currentAction = ActionType.None;
                 _currentActionTarget = 0;
 
-                // 发送动作完成消息
+                
                 SendActionComplete();
 
                 return true;
@@ -1759,33 +2250,34 @@ namespace GameServer
             return false;
         }
 
-        /// <summary>
-        /// 实现过程系统 - 添加过程
-        /// </summary>
+        
+        
+        
         private void AddProcess(ProcessType processType, uint param1, uint param2)
         {
-            // 创建过程对象
-            // 注意：需要将ProcessType转换为GlobeProcessType
+            
+            
+            
             var process = new GlobeProcess(GlobeProcessType.None, param1, param2)
             {
-                // 使用构造函数已经设置了Type、Param1、Param2
+                
             };
 
-            // 添加到全局进程队列
-            // GameWorld.Instance?.AddProcess(process); 
+            
+            
 
-            // 发送过程开始消息
+            
             SendProcessStart(processType, param1, param2);
         }
 
-        /// <summary>
-        /// 发送动作开始消息
-        /// </summary>
+        
+        
+        
         private void SendActionStart(ActionType actionType, uint targetId)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x28B); // SM_ACTIONSTART
+            builder.WriteUInt16(0x28B); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -1795,14 +2287,14 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送动作完成消息
-        /// </summary>
+        
+        
+        
         private void SendActionComplete()
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x28C); // SM_ACTIONCOMPLETE
+            builder.WriteUInt16(0x28C); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -1810,14 +2302,14 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送过程开始消息
-        /// </summary>
+        
+        
+        
         private void SendProcessStart(ProcessType processType, uint param1, uint param2)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x28E); // SM_PROCESSSTART
+            builder.WriteUInt16(0x28E); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -1828,7 +2320,7 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        // 动作系统相关字段
+        
         private ActionType _currentAction = ActionType.None;
         private uint _currentActionTarget = 0;
         private DateTime _actionStartTime = DateTime.MinValue;
@@ -1837,9 +2329,9 @@ namespace GameServer
 
         #region 系统标志和状态方法
 
-        /// <summary>
-        /// 设置系统标志
-        /// </summary>
+        
+        
+        
         public void SetSystemFlag(int flag, bool value)
         {
             lock (_flagLock)
@@ -1856,9 +2348,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取系统标志
-        /// </summary>
+        
+        
+        
         public bool GetSystemFlag(int flag)
         {
             lock (_flagLock)
@@ -1868,147 +2360,299 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取数据库ID
-        /// </summary>
+        
+        
+        
         public uint GetDBId()
         {
             return CharDBId;
         }
 
-        /// <summary>
-        /// 获取背包
-        /// </summary>
+        
+        
+        
         public Inventory GetBag()
         {
             return Inventory;
         }
 
-        /// <summary>
-        /// 获取装备信息
-        /// </summary>
+        
+        
+        
         public int GetEquipments(MirCommon.EQUIPMENT[] equipments)
         {
             if (equipments == null || equipments.Length < 20)
                 return 0;
 
-            // 获取所有装备
-            var allEquipment = Equipment.GetAllEquipment();
             int count = 0;
-
-            foreach (var equip in allEquipment)
+            for (int i = 0; i < (int)MirCommon.EquipPos.U_MAX && count < equipments.Length; i++)
             {
-                if (count >= equipments.Length)
-                    break;
+                var equip = Equipment.GetItem((EquipSlot)i);
+                if (equip == null)
+                    continue;
 
-                // 创建EQUIPMENT结构体
                 var equipment = new MirCommon.EQUIPMENT();
-                // 注意：ItemInstance可能没有Slot属性，使用默认值0
-                equipment.pos = 0; // (ushort)equip.Slot;
+                equipment.pos = (ushort)i;
 
-                // 创建ITEMCLIENT结构体
-                var itemClient = new MirCommon.ITEMCLIENT();
-                // 注意：ItemInstance可能没有InstanceId属性，使用默认值0
-                itemClient.dwMakeIndex = 0; // (uint)equip.InstanceId;
-
-                // 设置基础物品信息
-                // 注意：ItemInstance可能没有ItemId属性，使用默认值0
-                itemClient.baseitem.wImageIndex = 0; // (ushort)equip.ItemId;
-                // 注意：ItemInstance可能没有Durability和MaxDurability属性，使用默认值0
-                itemClient.wCurDura = 0; // (ushort)equip.Durability;
-                itemClient.wMaxDura = 0; // (ushort)equip.MaxDurability;
-
+                var itemClient = ItemPacketBuilder.BuildITEMCLIENT(equip);
                 equipment.item = itemClient;
-                equipments[count] = equipment;
-                count++;
+                equipments[count++] = equipment;
             }
 
             return count;
         }
 
-        /// <summary>
-        /// 发送特征变化消息
-        /// </summary>
+        
+        
+        
+        public void NotifyAppearanceChanged()
+        {
+            SendFeatureChanged();
+        }
+
+        
+        
+        
         public void SendFeatureChanged()
         {
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x28F); // SM_FEATURECHANGED
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt32(GetFeather());
+            uint feather = GetFeather();
+            ushort w1 = (ushort)(feather & 0xFFFF);
+            ushort w2 = (ushort)((feather >> 16) & 0xFFFF);
+            ushort w3 = (ushort)(GetSex() << 8);
 
-            SendMessage(builder.Build());
+            
+            SendMsg(ObjectId, ProtocolCmd.SM_FEATURECHANGED, w1, w2, w3);
+
+            
+            if (CurrentMap == null)
+                return;
+
+            foreach (var viewer in CurrentMap.GetPlayersInRange(X, Y, 18))
+            {
+                if (viewer.ObjectId == ObjectId)
+                    continue;
+
+                viewer.SendMsg(ObjectId, ProtocolCmd.SM_FEATURECHANGED, w1, w2, w3);
+            }
         }
 
-        /// <summary>
-        /// 更新属性
-        /// </summary>
+        
+        
+        
+        public void SendDuraChanged(int pos, int curDura, int maxDura)
+        {
+            ushort wPos = (ushort)Math.Clamp(pos, 0, ushort.MaxValue);
+            uint dwCur = (uint)Math.Clamp(curDura, 0, ushort.MaxValue);
+            ushort wMax = (ushort)Math.Clamp(maxDura, 0, ushort.MaxValue);
+            SendMsg(dwCur, ProtocolCmd.SM_ITEMDURACHANGED, wPos, wMax, 0);
+        }
+
+        public void SendAllEquipmentDura()
+        {
+            for (int i = 0; i < (int)MirCommon.EquipPos.U_MAX; i++)
+            {
+                var item = Equipment.GetItem((EquipSlot)i);
+                if (item == null)
+                {
+                    SendDuraChanged(i, 0, 0);
+                    continue;
+                }
+
+                SendDuraChanged(i, item.Durability, item.MaxDurability);
+            }
+        }
+
+        private ushort GetCurBagWeight() => Inventory?.CalcWeight() ?? 0;
+
+        private byte GetCurHandWeight()
+        {
+            int weight = Equipment?.GetEquipment(EquipSlot.Weapon)?.Definition?.Weight ?? 0;
+            return (byte)Math.Clamp(weight, 0, 255);
+        }
+
+        private byte GetCurBodyWeight()
+        {
+            int weight = Equipment?.CalcEquipmentsWeight(-1) ?? 0;
+            return (byte)Math.Clamp(weight, 0, 255);
+        }
+
+        private ushort GetMaxBagWeight(ulong fallback) =>
+            _curBagWeight != 0 ? _curBagWeight : (ushort)Math.Clamp((long)fallback, 0, ushort.MaxValue);
+
+        private byte GetMaxBodyWeight(ulong fallback) =>
+            _curBodyWeight != 0 ? _curBodyWeight : (byte)Math.Clamp((long)fallback, 0, 255);
+
+        private byte GetMaxHandWeight(ulong fallback) =>
+            _curHandWeight != 0 ? _curHandWeight : (byte)Math.Clamp((long)fallback, 0, 255);
+
+        
+        
+        
+        public void SendWeightChanged()
+        {
+            ushort curBag = GetCurBagWeight();
+            ushort curBody = GetCurBodyWeight();
+            ushort curHand = GetCurHandWeight();
+            SendMsg(curBag, MirCommon.ProtocolCmd.SM_WEIGHTCHANGED, curBody, curHand, 0);
+        }
+
+        
+        
+        
         public void UpdateProp()
         {
-            // 重新计算总属性
+            
             RecalcTotalStats();
 
-            // 发送属性更新消息
-            SendStatsChanged();
+            var humanData = GameWorld.Instance.GetHumanDataDesc(Job, Level);
+            uint maxExp = humanData?.LevelupExp ?? 0;
+
+            static byte ClampByte(int value) => (byte)Math.Clamp(value, 0, 255);
+            static ushort ClampUShort(int value) => (ushort)Math.Clamp(value, 0, ushort.MaxValue);
+
+            ushort curHp = ClampUShort(CurrentHP);
+            ushort maxHp = ClampUShort(MaxHP);
+            ushort curMp = ClampUShort(CurrentMP);
+            ushort maxMp = ClampUShort(MaxMP);
+
+            var prop = new MirCommon.HumanProp
+            {
+                wLevel = Level,
+
+                btMinDef = ClampByte(Stats.MinAC),
+                btMaxDef = ClampByte(Stats.MaxAC),
+                btMinMagicDef = ClampByte(Stats.MinMAC),
+                btMaxMagicDef = ClampByte(Stats.MaxMAC),
+                btMinAtk = ClampByte(Stats.MinDC),
+                btMaxAtk = ClampByte(Stats.MaxDC),
+                btMinMagAtk = ClampByte(Stats.MinMC),
+                btMaxMagAtk = ClampByte(Stats.MaxMC),
+                btMinSprAtk = ClampByte(Stats.MinSC),
+                btMaxSprAtk = ClampByte(Stats.MaxSC),
+
+                wCurHp = curHp,
+                wCurMp = curMp,
+                wMaxHp = maxHp,
+                wMaxMp = maxMp,
+
+                btHpRecover = (byte)Math.Clamp((int)(humanData?.HpRecover ?? 0), 0, 255),
+                btMagRecover = (byte)Math.Clamp((int)(humanData?.MagicRecover ?? 0), 0, 255),
+
+                dwCurexp = Exp,
+                dwMaxexp = maxExp,
+
+                
+                wCurBagWeight = GetCurBagWeight(),
+                wMaxBagWeight = GetMaxBagWeight((ulong)(humanData?.BagWeight ?? 0)),
+                btCurBodyWeight = GetCurBodyWeight(),
+                btMaxBodyWeight = GetMaxBodyWeight((ulong)(humanData?.BodyWeight ?? 0)),
+                btCurHandWeight = GetCurHandWeight(),
+                btMaxHandWeight = GetMaxHandWeight((ulong)(humanData?.HandWeight ?? 0)),
+            };
+
+            byte[] payload = StructToBytes(prop);
+
+            
+            SendMsg(Gold, MirCommon.ProtocolCmd.SM_UPDATEPROP, (ushort)Job, 0, 0, payload);
         }
 
-        /// <summary>
-        /// 更新子属性
-        /// </summary>
+        
+        
+        
         public void UpdateSubProp()
         {
-            // 更新子属性（如准确、敏捷、幸运等）
-            // 这里可以添加子属性的重新计算逻辑
+            
+            
+            
+            RecalcTotalStats();
 
-            // 发送子属性更新消息
-            SendSubPropChanged();
+            var humanData = GameWorld.Instance.GetHumanDataDesc(Job, Level);
+
+            byte escape = (byte)Math.Clamp(Stats.Agility, 0, 255);
+            byte hitRate = (byte)Math.Clamp(Stats.Accuracy, 0, 255);
+            byte poisonEscape = (byte)Math.Clamp((int)(humanData?.PoisonEscape ?? 0), 0, 255);
+            byte mageEscape = (byte)Math.Clamp((int)(humanData?.MageEscape ?? 0), 0, 255);
+
+            
+            uint dwArr = ((_dbFlag0 & 0xffffu) << 8) | mageEscape;
+
+            
+            ushort w1 = (ushort)((escape << 8) | hitRate);
+            ushort w2 = poisonEscape;
+            ushort w3 = 4;
+
+            ushort forgeLo = (ushort)(_forgePoint & 0xffff);
+            ushort forgeHi = (ushort)((_forgePoint >> 16) & 0xffff);
+
+            ushort[] wArray = { _huoli, HUOLI_MAX, 1, forgeLo, forgeHi };
+            byte[] payload = new byte[wArray.Length * 2];
+            Buffer.BlockCopy(wArray, 0, payload, 0, payload.Length);
+
+            SendMsg(dwArr, 0x2f0, w1, w2, w3, payload);
         }
 
-        /// <summary>
-        /// 发送状态变化消息
-        /// </summary>
+        
+        
+        
         public void SendStatusChanged()
         {
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x290); // SM_STATUSCHANGED
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
+            
+            
+            
+            
+            uint status = GetStatus();
+            ushort w1 = (ushort)(status & 0xffff);
+            ushort w2 = (ushort)((status >> 16) & 0xffff);
+            ushort w3 = 0; 
 
-            // 写入状态信息
-            builder.WriteUInt16((ushort)CurrentHP);
-            builder.WriteUInt16((ushort)MaxHP);
-            builder.WriteUInt16((ushort)CurrentMP);
-            builder.WriteUInt16((ushort)MaxMP);
-            builder.WriteUInt16((ushort)Stats.MinDC);
-            builder.WriteUInt16((ushort)Stats.MaxDC);
-            builder.WriteUInt16((ushort)Stats.MinAC);
-            builder.WriteUInt16((ushort)Stats.MaxAC);
-            builder.WriteUInt16((ushort)Stats.MinMAC);
-            builder.WriteUInt16((ushort)Stats.MaxMAC);
-            builder.WriteUInt16((ushort)Stats.Accuracy);
-            builder.WriteUInt16((ushort)Stats.Agility);
-            builder.WriteUInt16((ushort)Stats.Lucky);
+            
+            SendMsg(ObjectId, MirCommon.ProtocolCmd.SM_CHARSTATUSCHANGED, w1, w2, w3);
 
-            SendMessage(builder.Build());
+            
+            var msg = new MirCommon.MirMsgOrign
+            {
+                dwFlag = ObjectId,
+                wCmd = MirCommon.ProtocolCmd.SM_CHARSTATUSCHANGED,
+                wParam = new ushort[3] { w1, w2, w3 },
+            };
+            byte[] encoded = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(msg, null);
+            if (encoded.Length > 0)
+            {
+                CurrentMap?.SendToNearbyPlayers(X, Y, 18, encoded, ObjectId);
+            }
         }
 
-        /// <summary>
-        /// 发送子属性变化消息
-        /// </summary>
+        private static byte[] StructToBytes<T>(T structure) where T : struct
+        {
+            int size = System.Runtime.InteropServices.Marshal.SizeOf<T>();
+            byte[] bytes = new byte[size];
+            IntPtr ptr = System.Runtime.InteropServices.Marshal.AllocHGlobal(size);
+            try
+            {
+                System.Runtime.InteropServices.Marshal.StructureToPtr(structure, ptr, false);
+                System.Runtime.InteropServices.Marshal.Copy(ptr, bytes, 0, size);
+            }
+            finally
+            {
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(ptr);
+            }
+
+            return bytes;
+        }
+
+        
+        
+        
         private void SendSubPropChanged()
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x291); // SM_SUBPROPCHANGED
+            builder.WriteUInt16(0x291); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
 
-            // 写入子属性信息
+            
             builder.WriteUInt16((ushort)Accuracy);
             builder.WriteUInt16((ushort)Agility);
             builder.WriteUInt16((ushort)Lucky);
@@ -2016,19 +2660,19 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送属性变化消息
-        /// </summary>
+        
+        
+        
         private void SendStatsChanged()
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x292); // SM_STATSCHANGED
+            builder.WriteUInt16(0x292); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
 
-            // 写入属性信息
+            
             builder.WriteUInt16((ushort)BaseDC);
             builder.WriteUInt16((ushort)BaseMC);
             builder.WriteUInt16((ushort)BaseSC);
@@ -2038,62 +2682,58 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 检查是否是首次登录
-        /// </summary>
+        
+        
+        
         public bool CheckIsFirstLogin()
         {
             return IsFirstLogin;
         }
 
-        /// <summary>
-        /// 添加过程
-        /// </summary>
+        
+        
+        
         public void AddProcess(int processType, uint param1, uint param2, uint param3, uint param4, uint param5, uint param6, object? data)
         {
-            // 创建过程对象
+            
             var process = new GlobeProcess((GlobeProcessType)processType, param1, param2, param3, param4, param5, (int)param6, data?.ToString());
 
-            // 添加到全局进程队列
-            // GameWorld.Instance?.AddProcess(process); 
+            
+            
 
-            // 发送过程开始消息
+            
             SendProcessStart((ProcessType)processType, param1, param2);
         }
 
-        /// <summary>
-        /// 加载变量
-        /// </summary>
-        public void LoadVars()
+        
+        
+        
+        
+        public void OnCommunityInfo(byte[] data)
         {
-            // 这里应该从数据库加载玩家变量
-        }
+            _communityInfoRaw = data ?? Array.Empty<byte>();
+            LogManager.Default.Debug($"[{Name}] OnCommunityInfo: len={_communityInfoRaw.Length}");
 
-        /// <summary>
-        /// 设置背包物品位置
-        /// </summary>
-        public void SetBagItemPos(MirCommon.BAGITEMPOS[] itempos, int count)
-        {
-            // 这里应该设置背包物品的位置
+            
         }
 
         #endregion
 
         #region 数据库消息处理方法
 
-        /// <summary>
-        /// 处理任务信息
-        /// </summary>
+        
+        
+        
         public void OnTaskInfo(MirCommon.Database.TaskInfo taskInfo)
         {
             try
             {
                 LogManager.Default.Debug($"处理任务信息: 任务ID={taskInfo.dwTaskId}, 状态={taskInfo.dwState}");
 
-                // 更新任务管理器
-                // QuestManager.UpdateTask(taskInfo); 
+                
+                
 
-                // 发送任务更新消息给客户端
+                
                 SendTaskUpdate(taskInfo);
             }
             catch (Exception ex)
@@ -2102,16 +2742,16 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 设置升级物品
-        /// </summary>
+        
+        
+        
         public void SetUpgradeItem(MirCommon.Item item)
         {
             try
             {
                 LogManager.Default.Debug($"设置升级物品: 物品ID={item.dwMakeIndex}");
 
-                // 创建物品实例
+                
                 var itemDef = ItemManager.Instance.GetDefinition((int)item.baseitem.wImageIndex);
                 if (itemDef == null)
                 {
@@ -2126,7 +2766,7 @@ namespace GameServer
                     Count = 1
                 };
 
-                // 添加到背包
+                
                 if (Inventory.AddItem(itemInstance))
                 {
                     SaySystem($"获得了升级物品: {itemDef.Name}");
@@ -2143,43 +2783,108 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 设置技能
-        /// </summary>
+        
+        
+        
         public void SetMagic(MirCommon.Database.MAGICDB magicDb, byte key)
         {
             try
             {
                 LogManager.Default.Debug($"设置技能: 技能ID={magicDb.wMagicId}, 等级={magicDb.btCurLevel}, 快捷键={key}");
 
-                // 获取技能定义
+                
                 var skillDef = SkillManager.Instance.GetDefinition((int)magicDb.wMagicId);
                 if (skillDef == null)
                 {
-                    LogManager.Default.Error($"找不到技能定义: {magicDb.wMagicId}");
-                    return;
+                    
+                    
+                    
+                    if (MagicManager.Instance.GetMagicCount() == 0)
+                    {
+                        
+                        MagicManager.Instance.LoadAll();
+                    }
+
+                    var magicClass = MagicManager.Instance.GetClassById((int)magicDb.wMagicId);
+                    if (magicClass != null)
+                    {
+                        var dynamicDef = new SkillDefinition((int)magicDb.wMagicId, magicClass.szName, SkillType.Attack)
+                        {
+                            Description = magicClass.szDesc ?? string.Empty,
+                            RequireJob = magicClass.btJob,
+                            RequireLevel = magicClass.btNeedLv[0],
+                            RequireSkill = magicClass.wNeedMagic[0],
+                            Range = 7,
+                            MaxLevel = 3
+                        };
+
+                        
+                        dynamicDef.LevelData[1] = new SkillLevelData(1)
+                        {
+                            MPCost = magicClass.sSpell,
+                            Power = magicClass.sPower,
+                            Cooldown = magicClass.wDelay,
+                            Range = 7,
+                            LearnCost = 0
+                        };
+
+                        SkillManager.Instance.AddDefinition(dynamicDef);
+                        skillDef = dynamicDef;
+                        LogManager.Default.Warning($"未找到技能定义，已从basemagic动态补齐: id={magicDb.wMagicId}, name={magicClass.szName}");
+                    }
+                    else
+                    {
+                        
+                        var placeholder = new SkillDefinition((int)magicDb.wMagicId, $"Skill{magicDb.wMagicId}", SkillType.Attack)
+                        {
+                            Description = "(placeholder)",
+                            RequireJob = 0,
+                            RequireLevel = 0,
+                            RequireSkill = 0,
+                            Range = 7,
+                            MaxLevel = 3
+                        };
+                        placeholder.LevelData[1] = new SkillLevelData(1)
+                        {
+                            MPCost = 0,
+                            Power = 0,
+                            Cooldown = 0,
+                            Range = 7,
+                            LearnCost = 0
+                        };
+
+                        SkillManager.Instance.AddDefinition(placeholder);
+                        skillDef = placeholder;
+                        LogManager.Default.Warning($"未找到技能定义/魔法配置，已创建占位技能定义: id={magicDb.wMagicId}");
+                    }
                 }
 
-                // 学习或更新技能
+                
                 var skill = SkillBook.GetSkill((int)magicDb.wMagicId);
                 if (skill == null)
                 {
-                    // 学习新技能
-                    skill = new PlayerSkill(skillDef);
+                    
                     SkillBook.LearnSkill(skillDef);
+                    skill = SkillBook.GetSkill((int)magicDb.wMagicId);
+                    if (skill == null)
+                    {
+                        LogManager.Default.Warning($"学习技能失败(技能栏已满?): id={magicDb.wMagicId}, name={skillDef.Name}");
+                        return;
+                    }
                     SaySystem($"学会了新技能: {skillDef.Name}");
                 }
-                else
-                {
-                    // 更新技能等级
-                    skill.Level = magicDb.btCurLevel;
-                }
 
-                // 设置技能快捷键
-                // skill.Key = key; 
+                
+                skill.Level = magicDb.btCurLevel;
+                skill.UseCount = magicDb.dwCurTrain > int.MaxValue ? int.MaxValue : (int)magicDb.dwCurTrain;
+                skill.Key = magicDb.btUserKey != 0 ? magicDb.btUserKey : key;
 
-                // 发送技能列表给客户端
+                
                 SendMagicList();
+
+                
+                RecalcHitSpeed();
+                UpdateSubProp();
             }
             catch (Exception ex)
             {
@@ -2187,9 +2892,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送技能列表给客户端
-        /// </summary>
+        
+        
+        
         public void SendMagicList()
         {
             try
@@ -2197,27 +2902,57 @@ namespace GameServer
                 var skills = SkillBook.GetAllSkills();
                 LogManager.Default.Debug($"发送技能列表: {skills.Count}个技能");
 
-                var builder = new PacketBuilder();
-                builder.WriteUInt32(ObjectId);
-                builder.WriteUInt16(0x293); // SM_MAGICLIST
-                builder.WriteUInt16(0);
-                builder.WriteUInt16(0);
-                builder.WriteUInt16(0);
-
-                // 写入技能数量
-                builder.WriteUInt16((ushort)skills.Count);
-
-                // 写入每个技能的信息
-                foreach (var skill in skills)
+                if (MagicManager.Instance.GetMagicCount() == 0)
                 {
-                    builder.WriteUInt32((uint)skill.Definition.SkillId);
-                    builder.WriteByte((byte)skill.Level);
-                    builder.WriteByte(0); 
-                    builder.WriteUInt32((uint)skill.UseCount);
-                    builder.WriteString(skill.Definition.Name);
+                    MagicManager.Instance.LoadAll();
                 }
 
-                SendMessage(builder.Build());
+                var buf = new MirCommon.MAGIC[Math.Min(255, skills.Count)];
+                int count = 0;
+
+                foreach (var skill in skills)
+                {
+                    if (count >= buf.Length)
+                        break;
+
+                    if (!MagicManager.Instance.CreateMagic((uint)skill.SkillId, out var magic))
+                        continue;
+
+                    var m = new MirCommon.MAGIC
+                    {
+                        cKey = skill.Key,
+                        btLevel = (byte)Math.Clamp(skill.Level, 0, 255),
+                        iCurExp = skill.UseCount,
+                        wId = (ushort)skill.SkillId,
+                        btEffectType = magic.btEffectType,
+                        btEffect = magic.btEffect,
+                        wSpell = magic.wSpell,
+                        wPower = magic.wPower,
+                        job = magic.job,
+                        wDelayTime = magic.wDelayTime,
+                        btDefSpell = magic.btDefSpell,
+                        btDefPower = magic.btDefPower,
+                        wMaxPower = magic.wMaxPower,
+                        wDefMaxPower = magic.wDefMaxPower,
+                    };
+
+                    
+                    string name = string.IsNullOrWhiteSpace(magic.szName) ? skill.Definition.Name : magic.szName;
+                    var nameBytes = System.Text.Encoding.GetEncoding("GBK").GetBytes(name);
+                    int nameLen = Math.Min(12, nameBytes.Length);
+                    m.btNameLength = (byte)nameLen;
+                    Array.Copy(nameBytes, 0, m.szName, 0, nameLen);
+
+                    
+                    Array.Copy(magic.btNeedLevel, 0, m.btNeedLevel, 0, Math.Min(4, magic.btNeedLevel.Length));
+                    Array.Copy(magic.iLevelupExp, 0, m.iLevelupExp, 0, Math.Min(4, magic.iLevelupExp.Length));
+
+                    buf[count++] = m;
+                }
+
+                
+                byte[] payload = count > 0 ? StructArrayToBytes(buf, count) : Array.Empty<byte>();
+                SendMsg(0, 0xD3, 0, 0, 0, payload);
             }
             catch (Exception ex)
             {
@@ -2225,20 +2960,48 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 处理宠物仓库物品
-        /// </summary>
+        private static byte[] StructArrayToBytes<T>(T[] array, int count) where T : struct
+        {
+            if (array == null || count <= 0)
+                return Array.Empty<byte>();
+
+            if (count > array.Length)
+                count = array.Length;
+
+            int elementSize = System.Runtime.InteropServices.Marshal.SizeOf<T>();
+            byte[] result = new byte[elementSize * count];
+
+            for (int i = 0; i < count; i++)
+            {
+                IntPtr ptr = System.Runtime.InteropServices.Marshal.AllocHGlobal(elementSize);
+                try
+                {
+                    System.Runtime.InteropServices.Marshal.StructureToPtr(array[i], ptr, false);
+                    System.Runtime.InteropServices.Marshal.Copy(ptr, result, i * elementSize, elementSize);
+                }
+                finally
+                {
+                    System.Runtime.InteropServices.Marshal.FreeHGlobal(ptr);
+                }
+            }
+
+            return result;
+        }
+
+        
+        
+        
         public void OnPetBank(MirCommon.Item[] items, int count)
         {
             try
             {
                 LogManager.Default.Debug($"处理宠物仓库物品: {count}个");
 
-                // 清空宠物背包
+                
                 var petBag = PetSystem.GetPetBag();
-                // petBag.Clear(); 
+                
 
-                // 添加新物品到宠物背包
+                
                 for (int i = 0; i < count; i++)
                 {
                     var item = items[i];
@@ -2256,7 +3019,7 @@ namespace GameServer
                     petBag.AddItem(itemInstance);
                 }
 
-                // 发送宠物背包更新消息
+                
                 SendPetBagUpdate();
             }
             catch (Exception ex)
@@ -2265,14 +3028,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送任务更新消息
-        /// </summary>
+        
+        
+        
         private void SendTaskUpdate(MirCommon.Database.TaskInfo taskInfo)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x294); // SM_TASKUPDATE
+            builder.WriteUInt16(0x294); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -2283,9 +3046,9 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送宠物背包更新消息
-        /// </summary>
+        
+        
+        
         private void SendPetBagUpdate()
         {
             var petBag = PetSystem.GetPetBag();
@@ -2293,23 +3056,28 @@ namespace GameServer
 
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x295); // SM_PETBAGUPDATE
+            builder.WriteUInt16(0x295); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
 
-            // 写入物品数量
+            
             builder.WriteUInt16((ushort)items.Count);
 
-            // 写入每个物品的信息
+            
             foreach (var item in items.Values)
             {
                 builder.WriteUInt64((ulong)item.InstanceId);
                 builder.WriteUInt32((uint)item.ItemId);
-                builder.WriteString(item.Definition.Name);
                 builder.WriteUInt16((ushort)item.Count);
                 builder.WriteUInt16((ushort)item.Durability);
                 builder.WriteUInt16((ushort)item.MaxDurability);
+                builder.WriteByte((byte)item.EnhanceLevel);
+                builder.WriteByte(0); 
+
+                builder.WriteUInt32(0); 
+                builder.WriteUInt32(0); 
+                builder.WriteUInt32(0); 
             }
 
             SendMessage(builder.Build());
@@ -2319,41 +3087,63 @@ namespace GameServer
 
         #region 数据库保存方法
 
-        /// <summary>
-        /// 更新到数据库
-        /// </summary>
-        public void UpdateToDB()
+        
+        
+        
+        public void UpdateToDB(MirCommon.Database.DBServerClient? dbClient)
         {
             try
             {
-                // 保存玩家基本信息
-                SavePlayerInfoToDB();
+                if (dbClient == null)
+                {
+                    LogManager.Default.Warning($"UpdateToDB跳过：DBServerClient为空 player={Name}");
+                    return;
+                }
 
-                // 保存物品数据
-                UpdateItemsToDB();
+                
+                
+                
+                bool bagLoaded = GetSystemFlag((int)MirCommon.SystemFlag.SF_BAGLOADED);
+                bool equipLoaded = GetSystemFlag((int)MirCommon.SystemFlag.SF_EQUIPMENTLOADED);
+                bool magicLoaded = IsMagicLoadedForSave();
 
-                // 保存技能数据
-                UpdateSkillsToDB();
+                
+                var info = BuildCharDbInfoForSave();
+                dbClient.SendPutCharDBInfo(info).GetAwaiter().GetResult();
 
-                // 保存任务数据
-                UpdateTasksToDB();
+                
+                if (magicLoaded)
+                {
+                    var magics = BuildMagicDbForSave();
+                    dbClient.SendUpdateMagic(GetDBId(), magics).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    LogManager.Default.Debug($"UpdateToDB跳过保存技能：技能数据未加载 player={Name}");
+                }
 
-                // 保存邮件数据
-                UpdateMailsToDB();
+                
+                if (bagLoaded)
+                {
+                    var bagItems = BuildDbItemsForBagSave();
+                    dbClient.SendUpdateItems(GetDBId(), (byte)ItemDataFlag.IDF_BAG, bagItems).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    LogManager.Default.Debug($"UpdateToDB跳过保存背包：背包数据未加载 player={Name}");
+                }
 
-                // 保存成就数据
-                UpdateAchievementsToDB();
+                if (equipLoaded)
+                {
+                    var equipItems = BuildDbItemsForEquipmentSave();
+                    dbClient.SendUpdateItems(GetDBId(), (byte)ItemDataFlag.IDF_EQUIPMENT, equipItems).GetAwaiter().GetResult();
+                }
+                else
+                {
+                    LogManager.Default.Debug($"UpdateToDB跳过保存装备：装备数据未加载 player={Name}");
+                }
 
-                // 保存宠物数据
-                UpdatePetsToDB();
-
-                // 保存坐骑数据
-                UpdateMountToDB();
-
-                // 保存PK数据
-                UpdatePKDataToDB();
-
-                LogManager.Default.Info($"{Name} 数据已保存到数据库");
+                LogManager.Default.Info($"{Name} 数据已保存到数据库(dbid={GetDBId()})");
             }
             catch (Exception ex)
             {
@@ -2361,15 +3151,199 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 保存玩家基本信息到数据库
-        /// </summary>
+        
+        
+        
+        public void UpdateToDB()
+        {
+            UpdateToDB(null);
+        }
+
+        private MirCommon.Database.CHARDBINFO BuildCharDbInfoForSave()
+        {
+            
+            
+            int baseMaxHp = _dbBaseStatsLoaded ? _dbBaseMaxHP : MaxHP;
+            int baseMaxMp = _dbBaseStatsLoaded ? _dbBaseMaxMP : MaxMP;
+            baseMaxHp = Math.Max(1, baseMaxHp);
+            baseMaxMp = Math.Max(1, baseMaxMp);
+
+            
+            int saveHp = Math.Clamp(CurrentHP, 0, 65535);
+            int saveMp = Math.Clamp(CurrentMP, 0, 65535);
+
+            if (!IsDead && saveHp == 0)
+            {
+                
+                saveHp = Math.Clamp(baseMaxHp, 1, 65535);
+            }
+            else if (IsDead)
+            {
+                saveHp = 0;
+            }
+
+            int baseMinDC = _dbBaseStatsLoaded ? _dbBaseStats.MinDC : Stats.MinDC;
+            int baseMaxDC = _dbBaseStatsLoaded ? _dbBaseStats.MaxDC : Stats.MaxDC;
+            int baseMinMC = _dbBaseStatsLoaded ? _dbBaseStats.MinMC : Stats.MinMC;
+            int baseMaxMC = _dbBaseStatsLoaded ? _dbBaseStats.MaxMC : Stats.MaxMC;
+            int baseMinSC = _dbBaseStatsLoaded ? _dbBaseStats.MinSC : Stats.MinSC;
+            int baseMaxSC = _dbBaseStatsLoaded ? _dbBaseStats.MaxSC : Stats.MaxSC;
+            int baseMinAC = _dbBaseStatsLoaded ? _dbBaseStats.MinAC : Stats.MinAC;
+            int baseMaxAC = _dbBaseStatsLoaded ? _dbBaseStats.MaxAC : Stats.MaxAC;
+            int baseMinMAC = _dbBaseStatsLoaded ? _dbBaseStats.MinMAC : Stats.MinMAC;
+            int baseMaxMAC = _dbBaseStatsLoaded ? _dbBaseStats.MaxMAC : Stats.MaxMAC;
+
+            var info = new MirCommon.Database.CHARDBINFO
+            {
+                dwClientKey = 0,
+                szName = Name ?? string.Empty,
+                dwDBId = GetDBId(),
+                mapid = (uint)Math.Max(0, MapId),
+                x = X,
+                y = Y,
+                dwGold = Gold,
+                dwYuanbao = Yuanbao,
+                dwCurExp = Exp,
+                wLevel = Level,
+                btClass = Job,
+                btHair = Hair,
+                btSex = Sex,
+                flag = 0,
+                hp = (ushort)Math.Clamp(saveHp, 0, 65535),
+                mp = (ushort)Math.Clamp(saveMp, 0, 65535),
+                maxhp = (ushort)Math.Clamp(baseMaxHp, 0, 65535),
+                maxmp = (ushort)Math.Clamp(baseMaxMp, 0, 65535),
+                mindc = (byte)Math.Clamp(baseMinDC, 0, 255),
+                maxdc = (byte)Math.Clamp(baseMaxDC, 0, 255),
+                minmc = (byte)Math.Clamp(baseMinMC, 0, 255),
+                maxmc = (byte)Math.Clamp(baseMaxMC, 0, 255),
+                minsc = (byte)Math.Clamp(baseMinSC, 0, 255),
+                maxsc = (byte)Math.Clamp(baseMaxSC, 0, 255),
+                minac = (byte)Math.Clamp(baseMinAC, 0, 255),
+                maxac = (byte)Math.Clamp(baseMaxAC, 0, 255),
+                minmac = (byte)Math.Clamp(baseMinMAC, 0, 255),
+                maxmac = (byte)Math.Clamp(baseMaxMAC, 0, 255),
+                weight = _curBagWeight,
+                handweight = _curHandWeight,
+                bodyweight = _curBodyWeight,
+                dwForgePoint = _forgePoint,
+                szStartPoint = _startPointName,
+                szGuildName = Guild?.Name ?? string.Empty,
+            };
+
+            
+            
+            info.dwFlag[0] = _dbFlag0;
+            info.dwFlag[1] = PKSystem?.GetPkValue() ?? 0u; 
+            info.dwFlag[2] = 0;
+            info.dwFlag[3] = 0;
+
+            
+            for (int i = 0; i < info.dwProp.Length; i++)
+                info.dwProp[i] = 0;
+
+            
+            _dbFlag0 = info.dwFlag[0];
+
+            return info;
+        }
+
+        private MirCommon.Database.MAGICDB[] BuildMagicDbForSave()
+        {
+            var skills = SkillBook.GetAllSkills();
+            if (skills.Count == 0)
+                return Array.Empty<MirCommon.Database.MAGICDB>();
+
+            var list = new List<MirCommon.Database.MAGICDB>(Math.Min(255, skills.Count));
+            foreach (var s in skills)
+            {
+                if (list.Count >= 255)
+                    break;
+
+                var m = new MirCommon.Database.MAGICDB
+                {
+                    btUserKey = (byte)Math.Clamp((int)s.Key, 0, 255),
+                    btCurLevel = (byte)Math.Clamp((int)s.Level, 0, 255),
+                    wMagicId = (ushort)Math.Clamp(s.SkillId, 0, ushort.MaxValue),
+                    dwCurTrain = (uint)Math.Clamp(s.UseCount, 0, int.MaxValue)
+                };
+                list.Add(m);
+            }
+
+            return list.ToArray();
+        }
+
+        private MirCommon.Database.DBITEM[] BuildDbItemsForBagSave()
+        {
+            var items = Inventory.GetAllItems();
+            if (items.Count == 0)
+                return Array.Empty<MirCommon.Database.DBITEM>();
+
+            var list = new List<MirCommon.Database.DBITEM>(items.Count);
+            foreach (var kvp in items)
+            {
+                int slot = kvp.Key;
+                var inst = kvp.Value;
+                if (inst == null)
+                    continue;
+
+                var item = BuildMirItemForDb(inst);
+                list.Add(new MirCommon.Database.DBITEM
+                {
+                    item = item,
+                    wPos = (ushort)Math.Clamp(slot, 0, ushort.MaxValue),
+                    btFlag = (byte)ItemDataFlag.IDF_BAG
+                });
+            }
+
+            return list.ToArray();
+        }
+
+        private MirCommon.Database.DBITEM[] BuildDbItemsForEquipmentSave()
+        {
+            var list = new List<MirCommon.Database.DBITEM>();
+
+            for (int i = 0; i < (int)MirCommon.EquipPos.U_MAX; i++)
+            {
+                var inst = Equipment.GetEquipment((EquipSlot)i);
+                if (inst == null)
+                    continue;
+
+                var item = BuildMirItemForDb(inst);
+                list.Add(new MirCommon.Database.DBITEM
+                {
+                    item = item,
+                    wPos = (ushort)i,
+                    btFlag = (byte)ItemDataFlag.IDF_EQUIPMENT
+                });
+            }
+
+            return list.ToArray();
+        }
+
+        private static MirCommon.Item BuildMirItemForDb(ItemInstance inst)
+        {
+            var baseItem = ItemPacketBuilder.BuildBaseItem(inst);
+
+            return new MirCommon.Item
+            {
+                baseitem = baseItem,
+                dwMakeIndex = unchecked((uint)inst.InstanceId),
+                wCurDura = (ushort)Math.Clamp(inst.Durability, 0, ushort.MaxValue),
+                wMaxDura = (ushort)Math.Clamp(inst.MaxDurability, 0, ushort.MaxValue),
+                dwParam = new uint[4] { 0, 0, 0, 0 }
+            };
+        }
+
+        
+        
+        
         private void SavePlayerInfoToDB()
         {
-            // 这里应该调用数据库接口保存玩家基本信息
-            // 包括：等级、经验、金币、元宝、属性、位置等
+            
+            
 
-            // 构建玩家信息数据包
+            
             var builder = new PacketBuilder();
             builder.WriteUInt32(CharDBId);
             builder.WriteString(Name);
@@ -2388,7 +3362,7 @@ namespace GameServer
             builder.WriteUInt16((ushort)Y);
             builder.WriteUInt16((ushort)Direction);
 
-            // 基础属性
+            
             builder.WriteInt32(BaseDC);
             builder.WriteInt32(BaseMC);
             builder.WriteInt32(BaseSC);
@@ -2398,48 +3372,49 @@ namespace GameServer
             builder.WriteInt32(Agility);
             builder.WriteInt32(Lucky);
 
-            // 行会信息
+            
             builder.WriteString(Guild?.Name ?? "");
             builder.WriteString(GuildGroupName);
             builder.WriteUInt32(GuildLevel);
 
-            // PK值
+            
             builder.WriteUInt32(PKSystem.GetPkValue());
 
-            // 登录时间
+            
             builder.WriteUInt64((ulong)LoginTime.Ticks);
 
-            // 最后活动时间
+            
             builder.WriteUInt64((ulong)LastActivity.Ticks);
 
-            // 是否首次登录
+            
             builder.WriteByte(IsFirstLogin ? (byte)1 : (byte)0);
 
-            // 组队ID
+            
             builder.WriteUInt32(GroupId);
 
-            // 发送到数据库服务器
-            // 这里需要调用实际的数据库接口
+            
+            
+            
             LogManager.Default.Debug($"保存玩家基本信息: {Name}");
         }
 
-        /// <summary>
-        /// 更新物品到数据库
-        /// </summary>
+        
+        
+        
         private void UpdateItemsToDB()
         {
             try
             {
-                // 保存背包物品
+                
                 SaveInventoryToDB();
 
-                // 保存装备物品
+                
                 SaveEquipmentToDB();
 
-                // 保存宠物背包物品
+                
                 SavePetBagToDB();
 
-                // 保存银行物品
+                
                 SaveBankToDB();
 
                 LogManager.Default.Debug($"保存物品数据: {Name}");
@@ -2450,24 +3425,24 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 保存背包物品到数据库
-        /// </summary>
+        
+        
+        
         private void SaveInventoryToDB()
         {
             var items = Inventory.GetAllItems();
             if (items.Count == 0)
                 return;
 
-            // 构建物品数据包
+            
             var builder = new PacketBuilder();
             builder.WriteUInt32(CharDBId);
-            builder.WriteUInt16(0x01); // 背包标识
+            builder.WriteUInt16(0x01); 
 
-            // 写入物品数量
+            
             builder.WriteUInt16((ushort)items.Count);
 
-            // 写入每个物品的信息
+            
             foreach (var kvp in items)
             {
                 var item = kvp.Value;
@@ -2477,20 +3452,21 @@ namespace GameServer
                 builder.WriteUInt16((ushort)item.Durability);
                 builder.WriteUInt16((ushort)item.MaxDurability);
                 builder.WriteByte((byte)item.EnhanceLevel);
-                builder.WriteByte((byte)kvp.Key); // 背包槽位
+                builder.WriteByte((byte)kvp.Key); 
 
-                builder.WriteUInt32(0); // 属性1
-                builder.WriteUInt32(0); // 属性2
-                builder.WriteUInt32(0); // 属性3
+                
+                builder.WriteUInt32(0); 
+                builder.WriteUInt32(0); 
+                builder.WriteUInt32(0); 
             }
 
-            // 发送到数据库服务器
-            // 这里需要调用实际的数据库接口
+            
+            
         }
 
-        /// <summary>
-        /// 保存装备物品到数据库
-        /// </summary>
+        
+        
+        
         private void SaveEquipmentToDB()
         {
             var equipment = Equipment.GetAllEquipment();
@@ -2499,7 +3475,7 @@ namespace GameServer
 
             var builder = new PacketBuilder();
             builder.WriteUInt32(CharDBId);
-            builder.WriteUInt16(0x02); // 装备标识
+            builder.WriteUInt16(0x02); 
 
             builder.WriteUInt16((ushort)equipment.Count);
 
@@ -2512,16 +3488,16 @@ namespace GameServer
                 builder.WriteByte((byte)equip.EnhanceLevel);
                 builder.WriteByte((byte)0); 
 
-                // 装备属性
-                builder.WriteUInt32(0); // 属性1
-                builder.WriteUInt32(0); // 属性2
-                builder.WriteUInt32(0); // 属性3
+                
+                builder.WriteUInt32(0); 
+                builder.WriteUInt32(0); 
+                builder.WriteUInt32(0); 
             }
         }
 
-        /// <summary>
-        /// 保存宠物背包物品到数据库
-        /// </summary>
+        
+        
+        
         private void SavePetBagToDB()
         {
             var petBag = PetSystem.GetPetBag();
@@ -2531,7 +3507,7 @@ namespace GameServer
 
             var builder = new PacketBuilder();
             builder.WriteUInt32(CharDBId);
-            builder.WriteUInt16(0x03); // 宠物背包标识
+            builder.WriteUInt16(0x03); 
 
             builder.WriteUInt16((ushort)items.Count);
 
@@ -2543,25 +3519,26 @@ namespace GameServer
                 builder.WriteUInt16((ushort)item.Durability);
                 builder.WriteUInt16((ushort)item.MaxDurability);
                 builder.WriteByte((byte)item.EnhanceLevel);
-                builder.WriteByte(0); // 宠物背包槽位
+                builder.WriteByte(0); 
 
-                builder.WriteUInt32(0); // 属性1
-                builder.WriteUInt32(0); // 属性2
-                builder.WriteUInt32(0); // 属性3
+                builder.WriteUInt32(0); 
+                builder.WriteUInt32(0); 
+                builder.WriteUInt32(0); 
             }
         }
 
-        /// <summary>
-        /// 保存银行物品到数据库
-        /// </summary>
+        
+        
+        
         private void SaveBankToDB()
         {
-            // 这里需要根据实际的银行系统实现
+            
+            
         }
 
-        /// <summary>
-        /// 保存技能数据到数据库
-        /// </summary>
+        
+        
+        
         private void UpdateSkillsToDB()
         {
             var skills = SkillBook.GetAllSkills();
@@ -2570,7 +3547,7 @@ namespace GameServer
 
             var builder = new PacketBuilder();
             builder.WriteUInt32(CharDBId);
-            builder.WriteUInt16(0x04); // 技能标识
+            builder.WriteUInt16(0x04); 
 
             builder.WriteUInt16((ushort)skills.Count);
 
@@ -2578,23 +3555,24 @@ namespace GameServer
             {
                 builder.WriteUInt32((uint)skill.Definition.SkillId);
                 builder.WriteUInt16((ushort)skill.Level);
-                builder.WriteUInt32((uint)skill.UseCount); // 使用技能经验代替
+                builder.WriteUInt32((uint)skill.UseCount); 
                 builder.WriteUInt32((uint)skill.UseCount);
                 builder.WriteByte(0); 
             }
         }
 
-        /// <summary>
-        /// 保存任务数据到数据库
-        /// </summary>
+        
+        
+        
         private void UpdateTasksToDB()
         {
-            // 这里需要根据实际的任务系统实现
+            
+            
         }
 
-        /// <summary>
-        /// 保存邮件数据到数据库
-        /// </summary>
+        
+        
+        
         private void UpdateMailsToDB()
         {
             var mails = MailSystem.GetMails();
@@ -2603,7 +3581,7 @@ namespace GameServer
 
             var builder = new PacketBuilder();
             builder.WriteUInt32(CharDBId);
-            builder.WriteUInt16(0x05); // 邮件标识
+            builder.WriteUInt16(0x05); 
 
             builder.WriteUInt16((ushort)mails.Count);
 
@@ -2618,7 +3596,7 @@ namespace GameServer
                 builder.WriteByte(mail.IsRead ? (byte)1 : (byte)0);
                 builder.WriteByte(mail.AttachmentsClaimed ? (byte)1 : (byte)0);
 
-                // 附件信息
+                
                 if (mail.Attachments != null && mail.Attachments.Count > 0)
                 {
                     builder.WriteByte((byte)mail.Attachments.Count);
@@ -2636,9 +3614,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 保存成就数据到数据库
-        /// </summary>
+        
+        
+        
         private void UpdateAchievementsToDB()
         {
             var achievements = AchievementSystem.GetAchievements();
@@ -2647,7 +3625,7 @@ namespace GameServer
 
             var builder = new PacketBuilder();
             builder.WriteUInt32(CharDBId);
-            builder.WriteUInt16(0x06); // 成就标识
+            builder.WriteUInt16(0x06); 
 
             builder.WriteUInt16((ushort)achievements.Count);
 
@@ -2666,17 +3644,18 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 保存宠物数据到数据库
-        /// </summary>
+        
+        
+        
         private void UpdatePetsToDB()
         {
-            // 这里需要根据实际的宠物系统实现
+            
+            
         }
 
-        /// <summary>
-        /// 保存坐骑数据到数据库
-        /// </summary>
+        
+        
+        
         private void UpdateMountToDB()
         {
             var mount = MountSystem.GetHorse();
@@ -2685,7 +3664,7 @@ namespace GameServer
 
             var builder = new PacketBuilder();
             builder.WriteUInt32(CharDBId);
-            builder.WriteUInt16(0x07); // 坐骑标识
+            builder.WriteUInt16(0x07); 
 
             builder.WriteString(mount.Name);
             builder.WriteUInt16((ushort)mount.Level);
@@ -2695,25 +3674,25 @@ namespace GameServer
             builder.WriteByte(MountSystem.IsHorseRest() ? (byte)1 : (byte)0);
         }
 
-        /// <summary>
-        /// 保存PK数据到数据库
-        /// </summary>
+        
+        
+        
         private void UpdatePKDataToDB()
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(CharDBId);
-            builder.WriteUInt16(0x08); // PK数据标识
+            builder.WriteUInt16(0x08); 
 
             builder.WriteUInt32(PKSystem.GetPkValue());
             builder.WriteByte(PKSystem.IsSelfDefense() ? (byte)1 : (byte)0);
         }
 
-        /// <summary>
-        /// 定时保存数据
-        /// </summary>
+        
+        
+        
         private void CheckAndSaveToDB()
         {
-            // 每5分钟自动保存一次数据
+            
             if ((DateTime.Now - LastActivity).TotalMinutes >= 5)
             {
                 UpdateToDB();

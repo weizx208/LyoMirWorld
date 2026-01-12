@@ -6,9 +6,6 @@ using MirCommon.Utils;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 事件时间定义
-    /// </summary>
     public struct EventTimeup
     {
         public ushort Year;
@@ -47,9 +44,6 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 时间脚本定义
-    /// </summary>
     public class TimeScript
     {
         public string ScriptPage { get; set; } = string.Empty;
@@ -68,21 +62,14 @@ namespace GameServer
 
         private AutoScriptManager() { }
 
-        /// <summary>
-        /// 销毁管理器
-        /// </summary>
         public void Destroy()
         {
             ClearTimeScripts();
             _scriptTarget = null;
         }
 
-        /// <summary>
-        /// 每分钟检查
-        /// </summary>
         public void OnMinuteChange(DateTime currentTime)
         {
-            // 避免重复处理同一分钟
             if (_lastMinuteCheck.Year == currentTime.Year &&
                 _lastMinuteCheck.Month == currentTime.Month &&
                 _lastMinuteCheck.Day == currentTime.Day &&
@@ -94,7 +81,6 @@ namespace GameServer
 
             _lastMinuteCheck = currentTime;
             
-            // 检查所有时间脚本
             var current = _timeScripts;
             while (current != null)
             {
@@ -106,9 +92,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载自动脚本配置
-        /// </summary>
         public void Load(string filePath)
         {
             if (!File.Exists(filePath))
@@ -150,9 +133,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 添加时间脚本
-        /// </summary>
         public void AddTimeScript(ref EventTimeup timeup, string scriptPage)
         {
             var newScript = new TimeScript
@@ -165,31 +145,19 @@ namespace GameServer
             _timeScripts = newScript;
         }
 
-        /// <summary>
-        /// 更新管理器
-        /// </summary>
         public void Update()
         {
             var currentTime = DateTime.Now;
             OnMinuteChange(currentTime);
         }
 
-        /// <summary>
-        /// 获取脚本目标
-        /// </summary>
         public HumanPlayer? GetScriptTarget() => _scriptTarget;
 
-        /// <summary>
-        /// 设置脚本目标
-        /// </summary>
         public void SetScriptTarget(HumanPlayer? target)
         {
             _scriptTarget = target;
         }
 
-        /// <summary>
-        /// 获取所有时间脚本
-        /// </summary>
         public List<TimeScript> GetAllTimeScripts()
         {
             var scripts = new List<TimeScript>();
@@ -204,18 +172,11 @@ namespace GameServer
             return scripts;
         }
 
-        /// <summary>
-        /// 清除所有时间脚本
-        /// </summary>
         public void ClearTimeScripts()
         {
             _timeScripts = null;
         }
 
-        /// <summary>
-        /// 解析事件时间
-        /// 格式: YYYY/MM/DD/HH:MM 或 */*/*/*:* (通配符)
-        /// </summary>
         private EventTimeup ParseEventTimeup(string timeStr)
         {
             var timeup = new EventTimeup();
@@ -225,19 +186,15 @@ namespace GameServer
                 var parts = timeStr.Split('/');
                 if (parts.Length >= 4)
                 {
-                    // 解析年
                     if (parts[0] != "*" && ushort.TryParse(parts[0], out ushort year))
                         timeup.Year = year;
 
-                    // 解析月
                     if (parts[1] != "*" && ushort.TryParse(parts[1], out ushort month))
                         timeup.Month = month;
 
-                    // 解析日
                     if (parts[2] != "*" && ushort.TryParse(parts[2], out ushort day))
                         timeup.Day = day;
 
-                    // 解析时间
                     var timeParts = parts[3].Split(':');
                     if (timeParts.Length >= 2)
                     {
@@ -248,7 +205,6 @@ namespace GameServer
                             timeup.Minute = minute;
                     }
 
-                    // 如果有星期信息
                     if (parts.Length > 4 && parts[4] != "*" && ushort.TryParse(parts[4], out ushort dayOfWeek))
                         timeup.DayOfWeek = dayOfWeek;
                 }
@@ -261,17 +217,12 @@ namespace GameServer
             return timeup;
         }
 
-        /// <summary>
-        /// 执行时间脚本
-        /// </summary>
         private void ExecuteTimeScript(TimeScript script)
         {
             try
             {
                 LogManager.Default.Info($"执行自动脚本: {script.ScriptPage} 时间: {FormatEventTimeup(script.Timeup)}");
                 
-                // 这里应该调用脚本系统执行脚本
-                // ScriptSystem.Instance.ExecuteScript(script.ScriptPage, _scriptTarget);
             }
             catch (Exception ex)
             {
@@ -279,9 +230,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 格式化事件时间
-        /// </summary>
         private string FormatEventTimeup(EventTimeup timeup)
         {
             var year = timeup.Year != ushort.MaxValue ? timeup.Year.ToString() : "*";

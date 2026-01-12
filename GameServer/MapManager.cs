@@ -4,9 +4,9 @@ using MirCommon.Utils;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 地图管理器
-    /// </summary>
+    
+    
+    
     public class MapManager
     {
         private static MapManager? _instance;
@@ -17,48 +17,31 @@ namespace GameServer
 
         private MapManager()
         {
-            // 不再在构造函数中初始化，等待Load方法调用
+            
         }
 
-        /// <summary>
-        /// 从LogicMapMgr加载地图数据
-        /// </summary>
+        
+        
+        
         public bool Load()
         {
             try
             {
-                // 从LogicMapMgr获取所有地图配置
+                
                 var logicMaps = LogicMapMgr.Instance.GetAllMaps();
                 int loadedCount = 0;
                 
                 foreach (var logicMap in logicMaps)
                 {
-                    // 创建LogicMap实例
-                    var map = new LogicMap(logicMap.MapId, logicMap.MapName, logicMap.Width, logicMap.Height)
-                    {
-                        IsSafeZone = logicMap.IsSafeZone,
-                        AllowPK = logicMap.AllowPK,
-                        AllowPets = logicMap.AllowPets,
-                        AllowMounts = logicMap.AllowMounts,
-                        AllowTeleport = logicMap.AllowTeleport,
-                        AllowRecall = logicMap.AllowRecall,
-                        ExpFactor = logicMap.ExpFactor,
-                        DropFactor = logicMap.DropFactor,
-                        MinLevel = logicMap.MinLevel,
-                        MaxLevel = logicMap.MaxLevel,
-                        NeedItem = logicMap.NeedItem,
-                        NeedQuest = logicMap.NeedQuest,
-                        ScriptFile = logicMap.ScriptFile
-                    };
-
-                    // 添加地图
-                    AddMap(map);
-                    loadedCount++;
                     
+                    
+                    AddMap(logicMap);
+                    loadedCount++;
+
                     LogManager.Default.Debug($"加载地图: ID={logicMap.MapId}, 名称={logicMap.MapName}, 大小={logicMap.Width}x{logicMap.Height}");
                 }
 
-                // 如果没有加载到地图，使用默认地图作为后备
+                
                 if (loadedCount == 0)
                 {
                     LogManager.Default.Warning("未从LogicMapMgr加载到地图，使用默认地图");
@@ -72,18 +55,18 @@ namespace GameServer
             catch (Exception ex)
             {
                 LogManager.Default.Error($"加载地图数据失败: {ex.Message}", exception: ex);
-                // 发生异常时使用默认地图作为后备
+                
                 InitializeDefaultMaps();
                 return false;
             }
         }
 
-        /// <summary>
-        /// 初始化默认地图（后备方案）
-        /// </summary>
+        
+        
+        
         private void InitializeDefaultMaps()
         {
-            // 添加一些默认地图
+            
             AddMap(new LogicMap(0, "比奇城", 1000, 1000)
             {
                 IsSafeZone = true,
@@ -217,9 +200,9 @@ namespace GameServer
             LogManager.Default.Info($"已加载 {_maps.Count} 个默认地图");
         }
 
-        /// <summary>
-        /// 添加地图
-        /// </summary>
+        
+        
+        
         public void AddMap(LogicMap map)
         {
             lock (_lock)
@@ -228,9 +211,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取地图
-        /// </summary>
+        
+        
+        
         public LogicMap? GetMap(uint mapId)
         {
             lock (_lock)
@@ -240,9 +223,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 移除地图
-        /// </summary>
+        
+        
+        
         public bool RemoveMap(uint mapId)
         {
             lock (_lock)
@@ -251,9 +234,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取所有地图
-        /// </summary>
+        
+        
+        
         public List<LogicMap> GetAllMaps()
         {
             lock (_lock)
@@ -262,9 +245,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取地图数量
-        /// </summary>
+        
+        
+        
         public int GetMapCount()
         {
             lock (_lock)
@@ -273,9 +256,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 检查地图是否存在
-        /// </summary>
+        
+        
+        
         public bool HasMap(uint mapId)
         {
             lock (_lock)
@@ -284,18 +267,18 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取地图名称
-        /// </summary>
+        
+        
+        
         public string GetMapName(uint mapId)
         {
             var map = GetMap(mapId);
             return map?.MapName ?? "未知地图";
         }
 
-        /// <summary>
-        /// 获取地图大小
-        /// </summary>
+        
+        
+        
         public (int width, int height) GetMapSize(uint mapId)
         {
             var map = GetMap(mapId);
@@ -304,81 +287,81 @@ namespace GameServer
             return (map.Width, map.Height);
         }
 
-        /// <summary>
-        /// 检查是否可以传送到指定地图
-        /// </summary>
+        
+        
+        
         public bool CanTeleportTo(uint mapId)
         {
             var map = GetMap(mapId);
             return map?.AllowTeleport ?? false;
         }
 
-        /// <summary>
-        /// 检查是否可以回城到指定地图
-        /// </summary>
+        
+        
+        
         public bool CanRecallTo(uint mapId)
         {
             var map = GetMap(mapId);
             return map?.AllowRecall ?? false;
         }
 
-        /// <summary>
-        /// 检查地图是否安全区
-        /// </summary>
+        
+        
+        
         public bool IsSafeZone(uint mapId)
         {
             var map = GetMap(mapId);
             return map?.IsSafeZone ?? false;
         }
 
-        /// <summary>
-        /// 检查地图是否允许PK
-        /// </summary>
+        
+        
+        
         public bool AllowPK(uint mapId)
         {
             var map = GetMap(mapId);
             return map?.AllowPK ?? false;
         }
 
-        /// <summary>
-        /// 检查地图是否允许宠物
-        /// </summary>
+        
+        
+        
         public bool AllowPets(uint mapId)
         {
             var map = GetMap(mapId);
             return map?.AllowPets ?? false;
         }
 
-        /// <summary>
-        /// 检查地图是否允许坐骑
-        /// </summary>
+        
+        
+        
         public bool AllowMounts(uint mapId)
         {
             var map = GetMap(mapId);
             return map?.AllowMounts ?? false;
         }
 
-        /// <summary>
-        /// 获取地图经验倍率
-        /// </summary>
+        
+        
+        
         public float GetExpFactor(uint mapId)
         {
             var map = GetMap(mapId);
             return map?.ExpFactor ?? 1.0f;
         }
 
-        /// <summary>
-        /// 获取地图掉落倍率
-        /// </summary>
+        
+        
+        
         public float GetDropFactor(uint mapId)
         {
             var map = GetMap(mapId);
             return map?.DropFactor ?? 1.0f;
         }
 
-        /// <summary>
-        /// 设置地图经验倍率
-        /// </summary>
+        
+        
+        
         public void SetExpFactor(uint mapId, float factor)
         {
             var map = GetMap(mapId);
@@ -388,9 +371,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 设置地图掉落倍率
-        /// </summary>
+        
+        
+        
         public void SetDropFactor(uint mapId, float factor)
         {
             var map = GetMap(mapId);
@@ -400,9 +383,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 更新所有地图
-        /// </summary>
+        
+        
+        
         public void UpdateAllMaps()
         {
             lock (_lock)
@@ -414,9 +397,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取地图上的玩家总数
-        /// </summary>
+        
+        
+        
         public int GetTotalPlayerCount()
         {
             int total = 0;
@@ -430,9 +413,9 @@ namespace GameServer
             return total;
         }
 
-        /// <summary>
-        /// 获取地图上的怪物总数
-        /// </summary>
+        
+        
+        
         public int GetTotalMonsterCount()
         {
             int total = 0;
@@ -446,9 +429,9 @@ namespace GameServer
             return total;
         }
 
-        /// <summary>
-        /// 获取地图上的NPC总数
-        /// </summary>
+        
+        
+        
         public int GetTotalNPCCount()
         {
             int total = 0;
@@ -462,9 +445,9 @@ namespace GameServer
             return total;
         }
 
-        /// <summary>
-        /// 获取地图上的物品总数
-        /// </summary>
+        
+        
+        
         public int GetTotalItemCount()
         {
             int total = 0;
@@ -478,9 +461,9 @@ namespace GameServer
             return total;
         }
 
-        /// <summary>
-        /// 获取地图上的总对象数
-        /// </summary>
+        
+        
+        
         public int GetTotalObjectCount()
         {
             int total = 0;
@@ -494,9 +477,9 @@ namespace GameServer
             return total;
         }
 
-        /// <summary>
-        /// 显示所有地图信息
-        /// </summary>
+        
+        
+        
         public void ShowAllMapInfo()
         {
             lock (_lock)
@@ -509,9 +492,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 查找玩家所在的地图
-        /// </summary>
+        
+        
+        
         public LogicMap? FindPlayerMap(uint playerId)
         {
             lock (_lock)
@@ -527,9 +510,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 查找怪物所在的地图
-        /// </summary>
+        
+        
+        
         public LogicMap? FindMonsterMap(uint monsterId)
         {
             lock (_lock)
@@ -545,9 +528,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 查找NPC所在的地图
-        /// </summary>
+        
+        
+        
         public LogicMap? FindNPCMap(uint npcId)
         {
             lock (_lock)
@@ -563,9 +546,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 查找物品所在的地图
-        /// </summary>
+        
+        
+        
         public LogicMap? FindItemMap(uint itemId)
         {
             lock (_lock)
@@ -581,42 +564,28 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 传送玩家到指定地图
-        /// </summary>
+        
+        
+        
         public bool TeleportPlayer(HumanPlayer player, uint targetMapId, int x, int y)
         {
-            var currentMap = player.CurrentMap;
             var targetMap = GetMap(targetMapId);
 
             if (targetMap == null)
             {
-                player.Say("目标地图不存在");
+                player.SaySystem("目标地图不存在");
                 return false;
             }
 
-            if (!targetMap.CanMoveTo(x, y))
-            {
-                player.Say("目标位置不可到达");
-                return false;
-            }
-
-            // 从当前地图移除玩家
-            currentMap?.RemoveObject(player);
-
-            // 添加到目标地图
-            if (targetMap.AddObject(player, x, y))
-            {
-                player.Say($"已传送到 {targetMap.MapName}");
-                return true;
-            }
-
-            return false;
+            
+            x = Math.Clamp(x, 0, Math.Max(0, targetMap.Width - 1));
+            y = Math.Clamp(y, 0, Math.Max(0, targetMap.Height - 1));
+            return player.ChangeMap(targetMapId, (ushort)x, (ushort)y);
         }
 
-        /// <summary>
-        /// 回城玩家到安全区
-        /// </summary>
+        
+        
+        
         public bool RecallPlayer(HumanPlayer player, uint targetMapId)
         {
             var targetMap = GetMap(targetMapId);
@@ -626,16 +595,16 @@ namespace GameServer
                 return false;
             }
 
-            // 传送到地图中心
+            
             int centerX = targetMap.Width / 2;
             int centerY = targetMap.Height / 2;
 
             return TeleportPlayer(player, targetMapId, centerX, centerY);
         }
 
-        /// <summary>
-        /// 随机传送玩家
-        /// </summary>
+        
+        
+        
         public bool RandomTeleportPlayer(HumanPlayer player, uint targetMapId)
         {
             var targetMap = GetMap(targetMapId);

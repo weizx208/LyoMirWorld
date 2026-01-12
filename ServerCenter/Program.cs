@@ -27,7 +27,7 @@ namespace ServerCenter
 
             try
             {
-                // 使用INI配置文件
+                
                 var iniReader = new IniFileReader("config.ini");
                 if (!iniReader.Open())
                 {
@@ -35,7 +35,7 @@ namespace ServerCenter
                     return;
                 }
 
-                // 初始化日志
+                
                 var logger = new Logger("logs", true, true);
                 LogManager.SetDefaultLogger(logger);
 
@@ -101,9 +101,9 @@ namespace ServerCenter
         }
     }
 
-    /// <summary>
-    /// 服务器信息（内部使用，与MirCommon结构体兼容）
-    /// </summary>
+    
+    
+    
     public class RegisteredServer
     {
         public MirCommon.ServerId Id { get; set; } = new MirCommon.ServerId();
@@ -114,9 +114,9 @@ namespace ServerCenter
         public DateTime RegisterTime { get; set; }
     }
 
-    /// <summary>
-    /// 服务器中心应用
-    /// </summary>
+    
+    
+    
     public class ServerCenterApp
     {
         private readonly IniFileReader _config;
@@ -124,7 +124,7 @@ namespace ServerCenter
         private readonly List<ServerCenterClient> _clients = new();
         private readonly object _clientLock = new();
         
-        // 按服务器类型分组的服务器列表
+        
         private readonly Dictionary<ServerType, List<uint>> _serverArrays = new();
         private readonly Dictionary<ServerType, int> _pickPointers = new();
         
@@ -138,7 +138,7 @@ namespace ServerCenter
         {
             _config = config;
             
-            // 初始化服务器数组
+            
             foreach (ServerType type in Enum.GetValues(typeof(ServerType)))
             {
                 if (type != ServerType.ST_UNKNOWN)
@@ -153,7 +153,7 @@ namespace ServerCenter
         {
             try
             {
-                // 从INI文件的[服务器中心]节读取配置
+                
                 string sectionName = "服务器中心";
                 _address = _config.GetString(sectionName, "addr", "127.0.0.1");
                 _port = _config.GetInteger(sectionName, "port", 6000);
@@ -270,16 +270,16 @@ namespace ServerCenter
             serverId.bIndex = (byte)clientId;
             regInfo.Id = serverId;
             
-            // 确保ServerAddr.addr字段被正确初始化
-            // 创建一个新的ServerAddr，只复制有效的地址数据
+            
+            
             var cleanAddr = new ServerAddr();
             cleanAddr.nPort = info.addr.nPort;
             
-            // 使用GetAddress方法获取地址字符串，然后重新设置
+            
             string addressStr = info.addr.GetAddress();
             if (string.IsNullOrEmpty(addressStr))
             {
-                // 如果GetAddress返回空，尝试直接解析字节数组
+                
                 byte[] addrBytes = info.addr.addr;
                 int nullIndex = Array.IndexOf(addrBytes, (byte)0);
                 if (nullIndex < 0) nullIndex = addrBytes.Length;
@@ -289,11 +289,11 @@ namespace ServerCenter
                 }
                 else
                 {
-                    addressStr = "127.0.0.1"; // 默认地址
+                    addressStr = "127.0.0.1"; 
                 }
             }
             
-            // 使用SetAddress方法正确设置地址
+            
             cleanAddr.SetAddress(addressStr);
             
             regInfo.Addr = cleanAddr;
@@ -307,7 +307,7 @@ namespace ServerCenter
 
             result.Id = regInfo.Id;
 
-            // 分配数据库服务器
+            
             if (type != ServerType.ST_DATABASESERVER)
             {
                 int dbCount = type == ServerType.ST_GAMESERVER ? 2 : 1;
@@ -318,7 +318,7 @@ namespace ServerCenter
             }
             else
             {
-                // 如果是数据库服务器注册，通知其他服务器
+                
                 var dbServers = PrepareServers(ServerType.ST_DATABASESERVER, 2);
                 if (dbServers.Length == 2)
                 {
@@ -513,9 +513,9 @@ namespace ServerCenter
             }
         }
 
-        /// <summary>
-        /// 根据ID获取客户端（内部连接ID）
-        /// </summary>
+        
+        
+        
         public ServerCenterClient? GetClientById(uint id)
         {
             lock (_clientLock)
@@ -524,9 +524,9 @@ namespace ServerCenter
             }
         }
 
-        /// <summary>
-        /// 根据服务器索引获取客户端（bIndex）
-        /// </summary>
+        
+        
+        
         public ServerCenterClient? GetClientByIndex(byte index)
         {
             lock (_clientLock)
@@ -535,9 +535,9 @@ namespace ServerCenter
             }
         }
 
-        /// <summary>
-        /// 根据组ID获取客户端列表
-        /// </summary>
+        
+        
+        
         public List<ServerCenterClient> GetClientsByGroup(ushort groupId)
         {
             var result = new List<ServerCenterClient>();
@@ -557,9 +557,9 @@ namespace ServerCenter
             return result;
         }
 
-        /// <summary>
-        /// 根据服务器类型获取客户端列表
-        /// </summary>
+        
+        
+        
         public List<ServerCenterClient> GetClientsByType(ServerType serverType)
         {
             var result = new List<ServerCenterClient>();
@@ -586,9 +586,9 @@ namespace ServerCenter
         }
     }
 
-    /// <summary>
-    /// 服务器中心客户端（代表一个已注册的服务器）
-    /// </summary>
+    
+    
+    
     public class ServerCenterClient
     {
         private readonly TcpClient _client;
@@ -633,12 +633,12 @@ namespace ServerCenter
             var reader = new PacketReader(data);
             uint dwFlag = reader.ReadUInt32();
             ushort wCmd = reader.ReadUInt16();
-            ushort w1 = reader.ReadUInt16(); // 要转发的命令
-            ushort w2 = reader.ReadUInt16(); // 发送类型
-            ushort w3 = reader.ReadUInt16(); // 目标参数
+            ushort w1 = reader.ReadUInt16(); 
+            ushort w2 = reader.ReadUInt16(); 
+            ushort w3 = reader.ReadUInt16(); 
             byte[] payload = reader.ReadBytes(length - 12);
 
-            // 添加详细日志：接收到的数据包信息
+            
             LogManager.Default.Info($"[ServerCenter接收] 消息头: dwFlag={dwFlag}, wCmd={wCmd}, w1={w1}, w2={w2}, w3={w3}");
             LogManager.Default.Info($"[ServerCenter接收] 数据长度: {length}字节, 负载长度: {payload.Length}字节");
 
@@ -663,7 +663,7 @@ namespace ServerCenter
         {
             try
             {
-                // 解析二进制结构体数据
+                
                 if (data.Length < Marshal.SizeOf<MirCommon.RegisterServerInfo>())
                 {
                     LogManager.Default.Error($"注册数据长度不足: {data.Length}字节");
@@ -671,10 +671,10 @@ namespace ServerCenter
                     return;
                 }
                 
-                // 将字节数组转换为RegisterServerInfo结构体
+                
                 var info = BytesToStruct<MirCommon.RegisterServerInfo>(data);
                 
-                // 将服务器类型字节转换为ServerType枚举
+                
                 ServerType type = (ServerType)info.Id.bType;
                 
                 if (type == ServerType.ST_UNKNOWN)
@@ -686,12 +686,12 @@ namespace ServerCenter
 
                 if (_server.RegisterServer(this, info, out var result))
                 {
-                    // 发送成功响应，使用SM_REGISTERSERVEROK命令
+                    
                     SendMessage(1, ProtocolCmd.SM_REGISTERSERVEROK, 0, 0, 0, result);
                 }
                 else
                 {
-                    // 发送失败响应
+                    
                     SendMessage(0, ProtocolCmd.SM_REGISTERSERVEROK, 0, 0, 0, null);
                 }
             }
@@ -708,7 +708,7 @@ namespace ServerCenter
         {
             try
             {
-                // 解析查找请求
+                
                 string requestData = System.Text.Encoding.GetEncoding("GBK").GetString(data).TrimEnd('\0');
                 string[] parts = requestData.Split('/');
                 
@@ -722,7 +722,7 @@ namespace ServerCenter
                 string serverTypeStr = parts[0];
                 string serverName = parts[1];
                 
-                // 解析服务器类型
+                
                 ServerType type = serverTypeStr switch
                 {
                     "DBServer" => ServerType.ST_DATABASESERVER,
@@ -761,27 +761,27 @@ namespace ServerCenter
             await Task.CompletedTask;
         }
 
-        /// <summary>
-        /// 处理获取游戏服务器地址请求
-        /// </summary>
+        
+        
+        
         private async Task HandleGetGameServerAddr(uint clientId, ushort w1, ushort w2, ushort w3, byte[] data)
         {
             try
             {
-                //[18:40:22.491] INFO    收到获取游戏服务器地址请求: 客户端ID=0, w1=0, w2=0, w3=0, 数据长度=9
-                //[18:40:22.492] ERROR 获取游戏服务器地址请求格式错误: heartbeat
+                
+                
                 LogManager.Default.Info($"收到获取游戏服务器地址请求: 客户端ID={clientId}, w1={w1}, w2={w2}, w3={w3}, 数据长度={data.Length}");
                 
                 string account;
                 string charName;
-                string mapName = "0"; // 默认地图
+                string mapName = "0"; 
                 
-                // 尝试解析EnterGameServer结构体（64字节）
-                if (data.Length >= 64) // EnterGameServer结构体大小为64字节
+                
+                if (data.Length >= 64) 
                 {
                     try
                     {
-                        // 将字节数组转换为EnterGameServer结构体
+                        
                         var enterInfo = BytesToStruct<MirCommon.EnterGameServer>(data);
                         account = enterInfo.GetAccount();
                         charName = enterInfo.GetName();
@@ -791,7 +791,7 @@ namespace ServerCenter
                     catch (Exception ex)
                     {
                         LogManager.Default.Error($"解析EnterGameServer结构体失败: {ex.Message}");
-                        // 回退到字符串格式
+                        
                         string requestData = System.Text.Encoding.GetEncoding("GBK").GetString(data).TrimEnd('\0');
                         string[] parts = requestData.Split('/');
                         
@@ -809,7 +809,7 @@ namespace ServerCenter
                 }
                 else
                 {
-                    // 字符串格式：格式为"account/charName/mapName"
+                    
                     string requestData = System.Text.Encoding.GetEncoding("GBK").GetString(data).TrimEnd('\0');
                     if(requestData.Equals("heartbeat"))
                     {
@@ -832,15 +832,16 @@ namespace ServerCenter
                 
                 LogManager.Default.Info($"获取游戏服务器地址: 账号={account}, 角色={charName}, 地图={mapName}");
                 
-                // 查找游戏服务器
+                
+                
                 var gameServers = _server.GetClientsByType(ServerType.ST_GAMESERVER);
                 if (gameServers.Count > 0)
                 {
-                    // 选择第一个游戏服务器
+                    
                     var gameServer = gameServers[0];
                     var gameServerInfo = gameServer.GetRegInfo();
                     
-                    // 创建FindServerResult结构体
+                    
                     var findResult = new MirCommon.FindServerResult
                     {
                         Id = gameServerInfo.Id,
@@ -849,7 +850,7 @@ namespace ServerCenter
                     
                     LogManager.Default.Info($"找到游戏服务器: {gameServerInfo.Name}, 地址={gameServerInfo.Addr.GetAddress()}:{gameServerInfo.Addr.nPort}, 索引={gameServerInfo.Id.bIndex}");
                     
-                    // 发送成功响应
+                    
                     SendMessage(0, ProtocolCmd.SCM_GETGAMESERVERADDR, (ushort)SERVER_ERROR.SE_OK, 0, 0, findResult);
                 }
                 else
@@ -867,33 +868,34 @@ namespace ServerCenter
             await Task.CompletedTask;
         }
 
-        /// <summary>
-        /// 处理跨服务器消息
-        /// </summary>
+        
+        
+        
         private async Task HandleMsgAcrossServer(uint dwFlag, ushort cmd, ushort w2, ushort targetIndex, byte[] data)
         {
             try
             {
                 LogManager.Default.Info($"收到跨服务器消息: dwFlag={dwFlag}, 命令={cmd:X4}, w2={w2}, 目标索引={targetIndex}, 数据长度={data.Length}");
                 
-                // 重要：dwFlag是发送者的bIndex（服务器索引），不是连接ID
+                
+                
                 byte senderIndex = (byte)dwFlag;
                 
-                // 首先尝试使用当前连接的注册信息
+                
                 var senderInfo = _regInfo;
                 
-                // 检查当前连接的注册信息是否匹配发送者索引
+                
                 if (senderInfo.Id.bIndex != senderIndex)
                 {
-                    // 如果senderIndex为0，这可能是一个特殊值，表示发送者索引未知
-                    // 在这种情况下，直接使用当前连接的注册信息
+                    
+                    
                     if (senderIndex == 0)
                     {
                         LogManager.Default.Info($"发送者索引为0，使用当前连接的注册信息: bType={senderInfo.Id.bType}, bIndex={senderInfo.Id.bIndex}, Name={senderInfo.Name}");
                     }
                     else
                     {
-                        // 根据发送者索引查找正确的客户端
+                        
                         var correctClient = _server.GetClientByIndex(senderIndex);
                         if (correctClient != null)
                         {
@@ -904,15 +906,15 @@ namespace ServerCenter
                         {
                             LogManager.Default.Warning($"当前连接的bIndex({_regInfo.Id.bIndex})不匹配发送者索引({senderIndex})，且找不到bIndex={senderIndex}的发送者");
                             
-                            // 如果找不到，尝试使用当前连接的注册信息，但需要更新bIndex
+                            
                             if (senderInfo.Id.bType == 0 && string.IsNullOrEmpty(senderInfo.Name))
                             {
                                 LogManager.Default.Warning($"当前连接未注册，无法作为发送者");
                                 return;
                             }
                             
-                            // 更新bIndex为发送者索引
-                            // 注意：Id是一个结构体，需要创建新的实例
+                            
+                            
                             var newId = senderInfo.Id;
                             newId.bIndex = senderIndex;
                             senderInfo.Id = newId;
@@ -921,23 +923,23 @@ namespace ServerCenter
                     }
                 }
                 
-                // 添加详细的调试信息
+                
                 LogManager.Default.Info($"发送者注册信息检查: dwId={senderInfo.Id.dwId}, bType={senderInfo.Id.bType}, bIndex={senderInfo.Id.bIndex}, Name={senderInfo.Name}");
                 
-                // 检查发送者是否已注册
-                // 注意：dwId为0表示未注册，但有时bType和bIndex可能已设置
-                // 这里放宽检查：只要bType不是ST_UNKNOWN(0)就认为是已注册
-                // 或者Name不为空也表示已注册
+                
+                
+                
+                
                 if (senderInfo.Id.bType == 0 && string.IsNullOrEmpty(senderInfo.Name))
                 {
                     LogManager.Default.Warning($"当前连接未注册，无法作为发送者");
                     LogManager.Default.Warning($"注册信息: dwId={senderInfo.Id.dwId}, bType={senderInfo.Id.bType}, bIndex={senderInfo.Id.bIndex}, Name={senderInfo.Name}");
                     
-                    // 尝试从连接ID获取注册信息
+                    
                     uint clientId = GetId();
                     LogManager.Default.Warning($"连接ID: {clientId}");
                     
-                    // 检查ServerCenterApp中是否有此连接的注册信息
+                    
                     var serverApp = _server;
                     var clientFromApp = serverApp?.GetClientById(clientId);
                     if (clientFromApp != null)
@@ -945,7 +947,7 @@ namespace ServerCenter
                         var regInfoFromApp = clientFromApp.GetRegInfo();
                         LogManager.Default.Warning($"从ServerCenterApp获取的注册信息: dwId={regInfoFromApp.Id.dwId}, bType={regInfoFromApp.Id.bType}, bIndex={regInfoFromApp.Id.bIndex}, Name={regInfoFromApp.Name}");
                         
-                        // 使用从ServerCenterApp获取的注册信息
+                        
                         if (regInfoFromApp.Id.bType != 0 || !string.IsNullOrEmpty(regInfoFromApp.Name))
                         {
                             LogManager.Default.Info($"使用从ServerCenterApp获取的注册信息作为发送者");
@@ -962,52 +964,52 @@ namespace ServerCenter
                     }
                 }
                 
-                // 再次检查发送者信息
+                
                 LogManager.Default.Info($"发送者信息最终: dwId={senderInfo.Id.dwId}, bType={senderInfo.Id.bType}, bIndex={senderInfo.Id.bIndex}, Name={senderInfo.Name}");
                 
                 LogManager.Default.Info($"发送者信息: 类型={senderInfo.Id.bType}, 索引={senderInfo.Id.bIndex}, 名称={senderInfo.Name}");
                 
-                // 分析w2参数：w2可能是发送类型，也可能是wType（发送者信息编码）
-                // 如果w2的值看起来像是wType（高4位是类型，低4位是索引），则使用它
-                // 否则，使用默认的发送类型（MST_SINGLE）
+                
+                
+                
                 ushort sendType = ProtocolCmd.MST_SINGLE;
                 byte wType = 0;
                 
-                // 检查w2是否看起来像是wType编码
-                // wType编码：高4位是发送者类型，低4位是发送者索引
+                
+                
                 byte decodedType = (byte)((w2 >> 4) & 0x0F);
                 byte decodedIndex = (byte)(w2 & 0x0F);
                 
                 if (decodedType > 0 && decodedType <= 6 && decodedIndex < 10)
                 {
-                    // w2看起来像是wType编码
+                    
                     wType = (byte)w2;
-                    sendType = ProtocolCmd.MST_SINGLE; // 默认使用单播
+                    sendType = ProtocolCmd.MST_SINGLE; 
                     LogManager.Default.Info($"w2参数解析为wType: 发送者类型={decodedType}, 发送者索引={decodedIndex}, wType={wType:X2}");
                 }
                 else if (w2 <= 2)
                 {
-                    // w2是标准的发送类型
+                    
                     sendType = w2;
                     LogManager.Default.Info($"w2参数解析为发送类型: {sendType}");
                 }
                 else
                 {
-                    // 未知的w2值，使用默认的单播
+                    
                     LogManager.Default.Warning($"未知的w2参数值: {w2}, 使用默认的单播发送类型");
                     sendType = ProtocolCmd.MST_SINGLE;
                 }
                 
-                // 根据发送类型转发消息
+                
                 switch (sendType)
                 {
-                    case ProtocolCmd.MST_SINGLE: // 发给单个服务器
+                    case ProtocolCmd.MST_SINGLE: 
                         await ForwardToSingleServer(senderInfo, cmd, targetIndex, data, wType);
                         break;
-                    case ProtocolCmd.MST_GROUP: // 发给一个服务器组
+                    case ProtocolCmd.MST_GROUP: 
                         await ForwardToServerGroup(senderInfo, cmd, targetIndex, data, wType);
                         break;
-                    case ProtocolCmd.MST_TYPE: // 发给一类服务器
+                    case ProtocolCmd.MST_TYPE: 
                         await ForwardToServerType(senderInfo, cmd, targetIndex, data, wType);
                         break;
                     default:
@@ -1023,31 +1025,33 @@ namespace ServerCenter
             await Task.CompletedTask;
         }
 
-        /// <summary>
-        /// 转发给单个服务器
-        /// </summary>
+        
+        
+        
         private async Task ForwardToSingleServer(RegisteredServer senderInfo, ushort cmd, ushort targetIndex, byte[] data, byte wType = 0)
         {
             try
             {
-                // 查找目标服务器 - targetIndex是服务器的bIndex（字节类型）
+                
                 var targetClient = _server.GetClientByIndex((byte)targetIndex);
                 if (targetClient != null)
                 {
-                    // 如果wType为0，则使用发送者信息计算wType
+                    
                     if (wType == 0)
                     {
-                        // wType的高4位是发送者服务器类型，低4位是发送者索引
+                        
+                        
+                        
                         wType = (byte)(((senderInfo.Id.bType & 0x0F) << 4) | (senderInfo.Id.bIndex & 0x0F));
                     }
                     
-                    // 构建转发消息 - 发送原始二进制数据
+                    
                     var builder = new PacketBuilder();
-                    builder.WriteUInt32(0); // dwFlag - 使用0
-                    builder.WriteUInt16(ProtocolCmd.SCM_MSGACROSSSERVER); // 使用SCM_MSGACROSSSERVER作为命令
-                    builder.WriteUInt16(cmd); // w1 - 要转发的命令（MAS_ENTERGAMESERVER）
-                    builder.WriteUInt16(wType); // w2 - 发送者信息编码到wType中
-                    builder.WriteUInt16(targetIndex); // w3 - 目标服务器索引
+                    builder.WriteUInt32(0); 
+                    builder.WriteUInt16(ProtocolCmd.SCM_MSGACROSSSERVER); 
+                    builder.WriteUInt16(cmd); 
+                    builder.WriteUInt16(wType); 
+                    builder.WriteUInt16(targetIndex); 
                     builder.WriteBytes(data);
 
                     byte[] packet = builder.Build();
@@ -1055,7 +1059,7 @@ namespace ServerCenter
                     
                     LogManager.Default.Info($"已转发消息到服务器索引: {targetIndex}, 原始命令={cmd:X4}, 转发命令={ProtocolCmd.SCM_MSGACROSSSERVER:X4}, 发送者类型={senderInfo.Id.bType}, 发送者索引={senderInfo.Id.bIndex}, wType={wType:X2}, 数据长度={data.Length}");
                     
-                    // 添加详细调试信息
+                    
                     LogManager.Default.Debug($"转发消息包结构:");
                     LogManager.Default.Debug($"  - dwFlag: 0");
                     LogManager.Default.Debug($"  - wCmd: {ProtocolCmd.SCM_MSGACROSSSERVER:X4} (SCM_MSGACROSSSERVER)");
@@ -1075,34 +1079,36 @@ namespace ServerCenter
             }
         }
 
-        /// <summary>
-        /// 转发给服务器组
-        /// </summary>
+        
+        
+        
         private async Task ForwardToServerGroup(RegisteredServer senderInfo, ushort cmd, ushort groupId, byte[] data, byte wType = 0)
         {
             try
             {
-                // 查找指定组的所有服务器
+                
                 var groupClients = _server.GetClientsByGroup(groupId);
                 if (groupClients.Count > 0)
                 {
-                    // 如果wType为0，则使用发送者信息计算wType
+                    
                     if (wType == 0)
                     {
+                        
+                        
                         wType = (byte)(((senderInfo.Id.bType & 0x0F) << 4) | (senderInfo.Id.bIndex & 0x0F));
                     }
                     
                     var builder = new PacketBuilder();
-                    builder.WriteUInt32(0); // dwFlag - 使用0
+                    builder.WriteUInt32(0); 
                     builder.WriteUInt16(cmd);
-                    builder.WriteUInt16(0); // w1 - 不使用
-                    builder.WriteUInt16(wType); // w2 - 发送者信息编码到wType中
-                    builder.WriteUInt16(0); // w3 - 对于组播，不使用目标索引
+                    builder.WriteUInt16(0); 
+                    builder.WriteUInt16(wType); 
+                    builder.WriteUInt16(0); 
                     builder.WriteBytes(data);
 
                     byte[] packet = builder.Build();
                     
-                    // 转发给组内所有服务器
+                    
                     foreach (var client in groupClients)
                     {
                         await client.SendRawMessageAsync(packet);
@@ -1121,34 +1127,36 @@ namespace ServerCenter
             }
         }
 
-        /// <summary>
-        /// 转发给服务器类型
-        /// </summary>
+        
+        
+        
         private async Task ForwardToServerType(RegisteredServer senderInfo, ushort cmd, ushort serverType, byte[] data, byte wType = 0)
         {
             try
             {
-                // 查找指定类型的所有服务器
+                
                 var typeClients = _server.GetClientsByType((ServerType)serverType);
                 if (typeClients.Count > 0)
                 {
-                    // 如果wType为0，则使用发送者信息计算wType
+                    
                     if (wType == 0)
                     {
+                        
+                        
                         wType = (byte)(((senderInfo.Id.bType & 0x0F) << 4) | (senderInfo.Id.bIndex & 0x0F));
                     }
                     
                     var builder = new PacketBuilder();
-                    builder.WriteUInt32(0); // dwFlag - 使用0
+                    builder.WriteUInt32(0); 
                     builder.WriteUInt16(cmd);
-                    builder.WriteUInt16(0); // w1 - 不使用
-                    builder.WriteUInt16(wType); // w2 - 发送者信息编码到wType中
-                    builder.WriteUInt16(0); // w3 - 对于类型广播，不使用目标索引
+                    builder.WriteUInt16(0); 
+                    builder.WriteUInt16(wType); 
+                    builder.WriteUInt16(0); 
                     builder.WriteBytes(data);
 
                     byte[] packet = builder.Build();
                     
-                    // 转发给该类型所有服务器
+                    
                     foreach (var client in typeClients)
                     {
                         await client.SendRawMessageAsync(packet);
@@ -1167,9 +1175,9 @@ namespace ServerCenter
             }
         }
 
-        /// <summary>
-        /// 发送原始消息
-        /// </summary>
+        
+        
+        
         public async Task SendRawMessageAsync(byte[] data)
         {
             try
@@ -1192,7 +1200,7 @@ namespace ServerCenter
         {
             try
             {
-                // 添加详细日志：发送前的数据包信息
+                
                 LogManager.Default.Info($"[ServerCenter发送] 消息头: dwFlag={dwFlag}, wCmd={wCmd}, w1={w1}, w2={w2}, w3={w3}");
                 
                 var builder = new PacketBuilder();
@@ -1202,27 +1210,27 @@ namespace ServerCenter
                 builder.WriteUInt16(w2);
                 builder.WriteUInt16(w3);
                 
-                // 序列化data对象到字节数组
+                
                 if (data != null)
                 {
                     if (data is MirCommon.RegisterServerResult regResult)
                     {
-                        // 添加详细日志：注册服务器结果信息
+                        
                         LogManager.Default.Info($"[ServerCenter发送] 注册结果: 服务器类型={regResult.Id.bType}, 组={regResult.Id.bGroup}, 索引={regResult.Id.bIndex}, 数据库服务器数量={regResult.nDbCount}");
                         
-                        // 序列化RegisterServerResult
+                        
                         builder.WriteByte(regResult.Id.bType);
                         builder.WriteByte(regResult.Id.bGroup);
                         builder.WriteByte(regResult.Id.bIndex);
-                        builder.WriteByte(0); // padding
+                        builder.WriteByte(0); 
                         builder.WriteInt32(regResult.nDbCount);
                         
-                        // 序列化数据库服务器地址数组
-                        // 只序列化实际有数据的元素，根据nDbCount
+                        
+                        
                         for (int i = 0; i < regResult.nDbCount && i < regResult.DbAddr.Length; i++)
                         {
                             var addr = regResult.DbAddr[i];
-                            // ServerAddr.addr是16字节，不是64字节
+                            
                             byte[] addrBytes = addr.addr;
                             if (addrBytes.Length < 16)
                             {
@@ -1235,22 +1243,22 @@ namespace ServerCenter
                                 addrBytes = temp;
                             }
                             builder.WriteBytes(addrBytes);
-                            // nPort是uint（4字节），不是ushort（2字节）
+                            
                             builder.WriteUInt32(addr.nPort);
                         }
                     }
                     else if (data is MirCommon.FindServerResult findResult)
                     {
-                        // 添加详细日志：查找服务器结果信息
+                        
                         LogManager.Default.Info($"[ServerCenter发送] 查找结果: 服务器类型={findResult.Id.bType}, 组={findResult.Id.bGroup}, 索引={findResult.Id.bIndex}");
                         
-                        // 序列化FindServerResult
+                        
                         builder.WriteByte(findResult.Id.bType);
                         builder.WriteByte(findResult.Id.bGroup);
                         builder.WriteByte(findResult.Id.bIndex);
-                        builder.WriteByte(0); // padding
+                        builder.WriteByte(0); 
                         
-                        // ServerAddr.addr是16字节，不是64字节
+                        
                         byte[] addrBytes = findResult.addr.addr;
                         if (addrBytes.Length < 16)
                         {
@@ -1263,7 +1271,7 @@ namespace ServerCenter
                             addrBytes = temp;
                         }
                         builder.WriteBytes(addrBytes);
-                        // nPort是uint（4字节），不是ushort（2字节）
+                        
                         builder.WriteUInt32(findResult.addr.nPort);
                     }
                 }
@@ -1274,7 +1282,7 @@ namespace ServerCenter
                 _stream.Write(packet, 0, packet.Length);
                 _stream.Flush();
                 
-                // 添加详细日志：发送成功
+                
                 LogManager.Default.Info($"[ServerCenter发送] 发送成功: wCmd={wCmd}");
             }
             catch (Exception ex)
@@ -1293,9 +1301,9 @@ namespace ServerCenter
             catch { }
         }
 
-        /// <summary>
-        /// 将字节数组转换为结构体
-        /// </summary>
+        
+        
+        
         private T BytesToStruct<T>(byte[] bytes) where T : struct
         {
             int size = Marshal.SizeOf<T>();

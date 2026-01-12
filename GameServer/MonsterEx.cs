@@ -1,38 +1,50 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using MirCommon;
 using MirCommon.Utils;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 怪物扩展类
-    /// </summary>
+    
+    
+    
+    
     public class MonsterEx : AliveObject
     {
-        // 怪物类定义
-        private MonsterClass? _desc;
         
-        // 生成器引用
+        private MonsterClass? _desc;
+
+        public uint ExpValue => _desc?.Prop.Exp ?? 0;
+
+        
+        private const byte ATF_HUMAN = 1;
+        private const byte ATF_MONSTER = 2;
+        private const byte ATF_ANIMAL = 4;
+        private const byte ATF_CRIMER = 8;
+        private const byte ATF_ATTACKSANDCITY = 16;
+        private const byte ATF_PETS = 32;
+        
+        
         private MonsterGen? _gen;
         
-        // AI相关
+        
         private DateTime _lastAITime;
         private DateTime _lastAttackTime;
         private DateTime _delTimer;
         
-        // 怪物类型
+        
         private byte _type;
         
-        // 是否已切割
+        
         private bool _cuted;
         
-        // 是否前往目标点
+        
         private bool _gotoPoint;
         private ushort _gotoX;
         private ushort _gotoY;
         
-        // 更新键（用于UpdateFreeObjects）
+        
         private uint _updateKey;
 
         public MonsterEx()
@@ -48,9 +60,46 @@ namespace GameServer
             _updateKey = 0;
         }
 
-        /// <summary>
-        /// 初始化怪物
-        /// </summary>
+        private static int TileDistance(int x1, int y1, int x2, int y2)
+        {
+            
+            return Math.Max(Math.Abs(x1 - x2), Math.Abs(y1 - y2));
+        }
+
+        public override uint GetFeather()
+        {
+            
+            
+            
+            if (_desc == null)
+                return 0;
+
+            if (_desc.Base.Image == 0)
+                return _desc.Base.Feature & 0xffffff00;
+
+            return (uint)((_desc.Base.Image << 16) | _type);
+        }
+
+        public override byte GetSex()
+        {
+            if (_desc == null)
+                return 0;
+
+            if (_desc.Base.Image != 0)
+                return 0;
+
+            return (byte)(_desc.Base.Feature & 1);
+        }
+
+        public override byte GetNameColor(MapObject? viewer = null)
+        {
+            return _desc?.Base.NameColor ?? (byte)255;
+        }
+
+        
+        
+        
+        
         public bool Init(MonsterClass desc, int mapId, int x, int y, MonsterGen? gen = null)
         {
             if (desc == null)
@@ -59,17 +108,17 @@ namespace GameServer
             _desc = desc;
             _gen = gen;
             
-            // 设置基础属性
+            
             Name = desc.Base.ViewName;
             Level = desc.Base.Level;
             
-            // 设置生命值和魔法值
+            
             MaxHP = desc.Prop.HP;
             CurrentHP = MaxHP;
             MaxMP = desc.Prop.MP;
             CurrentMP = MaxMP;
             
-            // 设置属性
+            
             Stats.MinDC = desc.Prop.DC1;
             Stats.MaxDC = desc.Prop.DC2;
             Stats.MinAC = desc.Prop.AC1;
@@ -80,54 +129,53 @@ namespace GameServer
             Stats.MaxMC = desc.Prop.MC2;
             Stats.Accuracy = desc.Prop.Hit;
             
-            // 设置位置
-            CurrentMap = MapManager.Instance.GetMap((uint)mapId);
-            if (CurrentMap == null)
+            
+            var map = LogicMapMgr.Instance.GetLogicMapById((uint)mapId);
+            if (map == null)
                 return false;
-                
-            X = (ushort)x;
-            Y = (ushort)y;
+
             
-            // 添加到地图
-            if (!CurrentMap.AddObject(this, X, Y))
+            if (!map.AddObject(this, x, y))
                 return false;
+
             
-            // 设置怪物类型
-            _type = 0;
+            _type = 0x13;
             
-            // 执行出生脚本
+            
             if (!string.IsNullOrEmpty(desc.BornScript))
             {
                 ExecuteScript(desc.BornScript);
             }
             
-            Console.WriteLine($"怪物 {Name} 在 ({x},{y}) 创建");
+            
             return true;
         }
 
-        /// <summary>
-        /// 清理怪物
-        /// </summary>
+        
+        
+        
+        
         public new void Clean()
         {
-            // 从地图移除
+            
             if (CurrentMap != null)
             {
                 CurrentMap.RemoveObject(this);
             }
             
-            // 清理生成器引用
+            
             ClearGen();
             
-            // 清理脚本引用
+            
             _desc = null;
             
             Console.WriteLine($"怪物 {Name} 被清理");
         }
 
-        /// <summary>
-        /// 清理生成器引用
-        /// </summary>
+        
+        
+        
+        
         public void ClearGen()
         {
             if (_gen != null)
@@ -137,57 +185,61 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 设置删除计时器
-        /// </summary>
+        
+        
+        
+        
         public void SetDelTimer()
         {
             _delTimer = DateTime.Now;
         }
 
-        /// <summary>
-        /// 检查删除计时器是否超时
-        /// </summary>
+        
+        
+        
+        
         public bool IsDelTimerTimeOut(int timeout)
         {
             return (DateTime.Now - _delTimer).TotalMilliseconds >= timeout;
         }
 
-        /// <summary>
-        /// 获取更新键
-        /// </summary>
+        
+        
+        
+        
         public uint GetUpdateKey()
         {
             return _updateKey;
         }
 
-        /// <summary>
-        /// 设置ID
-        /// </summary>
+        
+        
+        
         public void SetId(uint id)
         {
             ObjectId = id;
         }
 
-        /// <summary>
-        /// 获取地图
-        /// </summary>
+        
+        
+        
         public LogicMap? GetMap()
         {
             return CurrentMap;
         }
 
-        /// <summary>
-        /// 检查是否死亡
-        /// </summary>
+        
+        
+        
         public bool IsDeath()
         {
             return IsDead;
         }
 
-        /// <summary>
-        /// 更新怪物
-        /// </summary>
+        
+        
+        
+        
         public override void Update()
         {
             base.Update();
@@ -195,45 +247,56 @@ namespace GameServer
             if (IsDead)
                 return;
             
-            // 更新AI
+            
             if ((DateTime.Now - _lastAITime).TotalMilliseconds >= _desc?.Prop.AIDelay)
             {
                 UpdateAI();
                 _lastAITime = DateTime.Now;
             }
             
-            // 更新恢复
+            
             UpdateRecover();
             
-            // 更新更新键
+            
             _updateKey = (uint)Environment.TickCount;
         }
 
-        /// <summary>
-        /// 更新AI
-        /// </summary>
+        
+        
+        
         private void UpdateAI()
         {
             if (_desc == null || CurrentMap == null)
                 return;
+
             
-            // 根据AI设置更新怪物行为
+            AcquireTarget();
+             
+            
             switch (_desc.AISet.MoveStyle)
             {
-                case 0: // 站立不动
+                case 0: 
+                    AiStatic();
                     break;
-                case 1: // 随机移动
-                    RandomMove();
+                case 1: 
+                    AiFollow();
                     break;
-                case 2: // 追击目标
-                    ChaseTarget();
+                case 2: 
+                    AiEscape();
                     break;
-                case 3: // 逃跑
-                    Escape();
+                case 3: 
+                    AiKeepDistance();
+                    break;
+                case 4: 
+                    AiKeepLine();
+                    break;
+                case 5: 
+                default:
+                    AiStupidMove();
                     break;
             }
             
-            // 检查攻击
+            
             if ((DateTime.Now - _lastAttackTime).TotalMilliseconds >= _desc.AttackDesc.Delay)
             {
                 CheckAttack();
@@ -241,9 +304,203 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 随机移动
-        /// </summary>
+        private void AcquireTarget()
+        {
+            if (_desc == null || CurrentMap == null)
+                return;
+
+            var target = GetTarget();
+            if (target != null)
+            {
+                if (target.IsDead || target.CurrentMap != CurrentMap)
+                {
+                    SetTarget(null);
+                    target = null;
+                }
+            }
+
+            if (target != null)
+                return;
+
+            
+            if ((_desc.SProp.PFlag & 1u) == 0)
+                return;
+
+            int view = _desc.AISet.ViewDistance;
+            if (view <= 0) view = 10;
+
+            HumanPlayer? best = null;
+            int bestDist = int.MaxValue;
+
+            foreach (var player in CurrentMap.GetPlayersInRange(X, Y, view))
+            {
+                if (player == null || player.IsDead)
+                    continue;
+
+                if (!IsTargetSelectable(player))
+                    continue;
+
+                int dist = TileDistance(X, Y, player.X, player.Y);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    best = player;
+                }
+            }
+
+            if (best != null)
+            {
+                SetTarget(best);
+
+                
+                if (!string.IsNullOrEmpty(_desc.GotTargetScript))
+                {
+                    ExecuteScript(_desc.GotTargetScript);
+                }
+            }
+        }
+
+        
+        
+        
+        private bool IsTargetSelectable(AliveObject target)
+        {
+            if (_desc == null || target == null)
+                return false;
+
+            byte targetFlag = _desc.AISet.TargetFlag;
+            if (targetFlag == 0)
+                return false;
+
+            if (target is HumanPlayer hp)
+            {
+                
+                uint redPoint = (uint)Math.Max(0, GameWorld.Instance.GetGameVar(GameVarConstants.RedPkPoint));
+
+                
+                uint pk = 0;
+                try { pk = hp.PKSystem?.GetPkValue() ?? 0; } catch { pk = 0; }
+                if (pk == 0 && hp.PkValue != 0) pk = hp.PkValue;
+
+                if (pk >= redPoint)
+                    return (targetFlag & ATF_CRIMER) != 0;
+
+                return (targetFlag & ATF_HUMAN) != 0;
+            }
+
+            
+            return false;
+        }
+
+        private void AiStatic()
+        {
+            
+        }
+
+        private void AiFollow()
+        {
+            var target = GetTarget();
+            if (target == null || target.IsDead || target.CurrentMap != CurrentMap)
+            {
+                AiStupidMove();
+                return;
+            }
+
+            ChaseTarget();
+        }
+
+        private void AiEscape()
+        {
+            var target = GetTarget();
+            if (target == null || target.IsDead || target.CurrentMap != CurrentMap)
+            {
+                AiStupidMove();
+                return;
+            }
+
+            Escape();
+        }
+
+        private void AiKeepDistance()
+        {
+            var target = GetTarget();
+            if (target == null || target.IsDead || target.CurrentMap != CurrentMap)
+            {
+                AiStupidMove();
+                return;
+            }
+
+            int dist = TileDistance(X, Y, target.X, target.Y);
+            int atkDist = _desc.AttackDesc.AttackDistance;
+            int escDist = _desc.AISet.EscapeDistance;
+
+            if (dist > atkDist)
+            {
+                ChaseTarget();
+                return;
+            }
+
+            if (escDist > 0 && dist <= escDist)
+            {
+                Escape();
+            }
+        }
+
+        private void AiKeepLine()
+        {
+            var target = GetTarget();
+            if (target == null || target.IsDead || target.CurrentMap != CurrentMap)
+            {
+                AiStupidMove();
+                return;
+            }
+
+            int dist = TileDistance(X, Y, target.X, target.Y);
+            int atkDist = _desc.AttackDesc.AttackDistance;
+            if (dist > atkDist)
+            {
+                ChaseTarget();
+                return;
+            }
+
+            int dx = X - target.X;
+            int dy = Y - target.Y;
+            bool onLine = dx == 0 || dy == 0 || Math.Abs(dx) == Math.Abs(dy);
+            if (onLine)
+                return;
+
+            
+            if (CurrentAction == ActionType.Stand)
+            {
+                var dir = GetDirection(X, Y, target.X, target.Y);
+                Walk(dir);
+            }
+        }
+
+        private void AiStupidMove()
+        {
+            
+            if (CurrentMap == null)
+                return;
+
+            if (CurrentAction != ActionType.Stand)
+                return;
+
+            if (Random.Shared.Next(150) != 0)
+                return;
+
+            var start = Random.Shared.Next(8);
+            for (int i = 0; i < 8; i++)
+            {
+                var dir = (Direction)((i + start) % 8);
+                if (Walk(dir))
+                    break;
+            }
+        }
+
+        
+        
+        
         private void RandomMove()
         {
             if (CurrentAction != ActionType.Stand)
@@ -253,24 +510,24 @@ namespace GameServer
             Walk(dir);
         }
 
-        /// <summary>
-        /// 追击目标
-        /// </summary>
+        
+        
+        
         private void ChaseTarget()
         {
             var target = GetTarget();
             if (target == null || target.IsDead || target.CurrentMap != CurrentMap)
                 return;
                 
-            int distance = Math.Abs(X - target.X) + Math.Abs(Y - target.Y);
+            int distance = TileDistance(X, Y, target.X, target.Y);
             
             if (distance <= _desc.AttackDesc.AttackDistance)
             {
-                // 在攻击范围内，停止移动
+                
                 return;
             }
             
-            // 追击目标
+            
             if (CurrentAction == ActionType.Stand)
             {
                 var dir = GetDirection(X, Y, target.X, target.Y);
@@ -278,24 +535,24 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 逃跑
-        /// </summary>
+        
+        
+        
         private void Escape()
         {
             var target = GetTarget();
             if (target == null || target.IsDead || target.CurrentMap != CurrentMap)
                 return;
                 
-            int distance = Math.Abs(X - target.X) + Math.Abs(Y - target.Y);
+            int distance = TileDistance(X, Y, target.X, target.Y);
             
             if (distance > _desc.AISet.EscapeDistance)
             {
-                // 超出逃跑距离，停止逃跑
+                
                 return;
             }
             
-            // 逃跑（远离目标）
+            
             if (CurrentAction == ActionType.Stand)
             {
                 var dir = GetDirection(target.X, target.Y, X, Y);
@@ -303,81 +560,99 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 检查攻击
-        /// </summary>
+        
+        
+        
         private void CheckAttack()
         {
             var target = GetTarget();
             if (target == null || target.IsDead || target.CurrentMap != CurrentMap)
                 return;
                 
-            int distance = Math.Abs(X - target.X) + Math.Abs(Y - target.Y);
+            int distance = TileDistance(X, Y, target.X, target.Y);
             
             if (distance <= _desc.AttackDesc.AttackDistance)
             {
-                // 执行攻击
+                
                 AttackTarget(target);
             }
         }
 
-        /// <summary>
-        /// 攻击目标
-        /// </summary>
+        
+        
+        
         private void AttackTarget(AliveObject target)
         {
             if (target == null || target.IsDead)
                 return;
+
+            
+            if (CurrentMap != null)
+            {
+                var dir = GetDirection(X, Y, target.X, target.Y);
+                CurrentDirection = dir;
+
+                byte[] attackPayload = new byte[8];
+                Buffer.BlockCopy(BitConverter.GetBytes(GetFeather()), 0, attackPayload, 0, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(GetStatus()), 0, attackPayload, 4, 4);
+
+                var attackMsg = new MirCommon.MirMsgOrign
+                {
+                    dwFlag = ObjectId,
+                    wCmd = MirCommon.ProtocolCmd.SM_ATTACK,
+                    wParam = new ushort[3] { X, Y, (ushort)((int)dir & 0xFF) },
+                };
+
+                byte[] encodedAttack = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(attackMsg, attackPayload);
+                if (encodedAttack.Length > 0)
+                {
+                    CurrentMap.SendToNearbyPlayers(X, Y, 18, encodedAttack);
+                }
+            }
                 
-            // 计算伤害
+            
             int damage = Random.Shared.Next(Stats.MinDC, Stats.MaxDC + 1);
             
-            // 应用攻击效果
+            
             target.BeAttack(this, damage, DamageType.Physics);
+             
             
-            // 执行攻击脚本
-            if (!string.IsNullOrEmpty(_desc.GotTargetScript))
-            {
-                ExecuteScript(_desc.GotTargetScript);
-            }
-            
-            // 检查是否击杀目标
             if (target.IsDead && !string.IsNullOrEmpty(_desc.KillTargetScript))
             {
                 ExecuteScript(_desc.KillTargetScript);
             }
         }
 
-        /// <summary>
-        /// 更新恢复
-        /// </summary>
+        
+        
+        
         private void UpdateRecover()
         {
             if (_desc == null)
                 return;
                 
-            // 恢复生命值
+            
             if (CurrentHP < MaxHP && _desc.Prop.RecoverHP > 0)
             {
                 CurrentHP = Math.Min(MaxHP, CurrentHP + _desc.Prop.RecoverHP);
             }
             
-            // 恢复魔法值
+            
             if (CurrentMP < MaxMP && _desc.Prop.RecoverMP > 0)
             {
                 CurrentMP = Math.Min(MaxMP, CurrentMP + _desc.Prop.RecoverMP);
             }
         }
 
-        /// <summary>
-        /// 执行脚本
-        /// </summary>
+        
+        
+        
         private void ExecuteScript(string scriptName)
         {
             if (string.IsNullOrEmpty(scriptName))
                 return;
             
-            // 获取脚本对象
+            
             var scriptObject = ScriptObjectMgr.Instance.GetScriptObject(scriptName);
             if (scriptObject == null)
             {
@@ -385,16 +660,16 @@ namespace GameServer
                 return;
             }
             
-            // 执行脚本
+            
             Console.WriteLine($"怪物 {Name} 执行脚本: {scriptName}");
             
-            // 解析并执行脚本内容
+            
             ExecuteScriptContent(scriptObject);
         }
         
-        /// <summary>
-        /// 执行脚本内容
-        /// </summary>
+        
+        
+        
         private void ExecuteScriptContent(ScriptObject scriptObject)
         {
             if (scriptObject == null)
@@ -406,17 +681,17 @@ namespace GameServer
                 if (string.IsNullOrEmpty(trimmedLine) || trimmedLine.StartsWith("//"))
                     continue;
                     
-                // 解析脚本命令
+                
                 ParseAndExecuteCommand(trimmedLine);
             }
         }
         
-        /// <summary>
-        /// 解析并执行命令
-        /// </summary>
+        
+        
+        
         private void ParseAndExecuteCommand(string command)
         {
-            // 简单的命令解析
+            
             var parts = command.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0)
                 return;
@@ -486,15 +761,15 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 移动到指定位置
-        /// </summary>
+        
+        
+        
         private void MoveTo(ushort x, ushort y)
         {
             if (CurrentMap == null)
                 return;
                 
-            // 设置目标点
+            
             _gotoPoint = true;
             _gotoX = x;
             _gotoY = y;
@@ -502,15 +777,15 @@ namespace GameServer
             Console.WriteLine($"怪物 {Name} 移动到 ({x},{y})");
         }
         
-        /// <summary>
-        /// 按名称攻击目标
-        /// </summary>
+        
+        
+        
         private void AttackTargetByName(string targetName)
         {
             if (CurrentMap == null)
                 return;
                 
-            var players = CurrentMap.GetPlayersInRange(X, Y, 10); // 使用默认视野范围
+            var players = CurrentMap.GetPlayersInRange(X, Y, 10); 
             var target = players.FirstOrDefault(p => p.Name.Equals(targetName, StringComparison.OrdinalIgnoreCase));
             
             if (target != null)
@@ -520,9 +795,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 刷怪
-        /// </summary>
+        
+        
+        
         private void SpawnMonster(int monsterId, ushort x, ushort y)
         {
             if (CurrentMap == null)
@@ -537,9 +812,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 传送
-        /// </summary>
+        
+        
+        
         private void Teleport(ushort x, ushort y)
         {
             if (CurrentMap == null)
@@ -549,126 +824,166 @@ namespace GameServer
             Console.WriteLine($"怪物 {Name} 传送到 ({x},{y})");
         }
         
-        /// <summary>
-        /// 设置变量
-        /// </summary>
+        
+        
+        
         private void SetVariable(string varName, string varValue)
         {
-            // TODO: 实现变量存储
+            
             Console.WriteLine($"怪物 {Name} 设置变量 {varName} = {varValue}");
         }
 
-        /// <summary>
-        /// 获取怪物类描述
-        /// </summary>
+        
+        
+        
         public MonsterClass? GetDesc()
         {
             return _desc;
         }
 
-        /// <summary>
-        /// 获取生成器
-        /// </summary>
+        
+        
+        
         public MonsterGen? GetGen()
         {
             return _gen;
         }
 
-        /// <summary>
-        /// 设置生成器
-        /// </summary>
+        
+        
+        
         public void SetGen(MonsterGen? gen)
         {
             _gen = gen;
         }
 
-        /// <summary>
-        /// 获取怪物类型
-        /// </summary>
+        
+        
+        
         public byte GetSType()
         {
             return _type;
         }
 
-        /// <summary>
-        /// 设置怪物类型
-        /// </summary>
+        
+        
+        
         public void SetSType(byte type)
         {
             _type = type;
         }
 
-        /// <summary>
-        /// 获取对象类型
-        /// </summary>
+        
+        
+        
         public override ObjectType GetObjectType()
         {
             return ObjectType.Monster;
         }
 
-        /// <summary>
-        /// 受到攻击
-        /// </summary>
+        
+        
+        
         protected override void OnDamaged(AliveObject attacker, int damage, DamageType damageType)
         {
             base.OnDamaged(attacker, damage, damageType);
+
             
-            // 执行受伤脚本
+            if (attacker != null && attacker != this && !attacker.IsDead && attacker.CurrentMap == CurrentMap)
+            {
+                SetTarget(attacker);
+                SetHitter(attacker);
+            }
+            
+            
             if (_desc != null && !string.IsNullOrEmpty(_desc.HurtScript))
             {
                 ExecuteScript(_desc.HurtScript);
             }
         }
 
-        /// <summary>
-        /// 死亡
-        /// </summary>
+        
+        
+        
         protected override void OnDeath(AliveObject killer)
         {
             base.OnDeath(killer);
             
-            // 执行死亡脚本
+            
             if (_desc != null && !string.IsNullOrEmpty(_desc.DeathScript))
             {
                 ExecuteScript(_desc.DeathScript);
+            }
+
+            
+            try
+            {
+                var map = CurrentMap;
+                if (map != null && _desc != null)
+                {
+                    
+                    var monItems = MonItemsMgr.Instance.GetMonItems(_desc.Base.ViewName)
+                                  ?? MonItemsMgr.Instance.GetMonItems(_desc.Base.ClassName)
+                                  ?? MonItemsMgr.Instance.GetMonItems(Name);
+
+                    if (monItems?.Items != null)
+                    {
+                        Point[] pts = new Point[64];
+                        int dropCount = map.GetDropItemPoint(X, Y, pts, pts.Length);
+
+                        if (dropCount > 0)
+                        {
+                            uint ownerId = 0;
+                            if (killer is HumanPlayer hp)
+                                ownerId = hp.GetDBId();
+
+                            int dropIndex = 0;
+                            var downItem = monItems.Items;
+                            while (downItem != null)
+                            {
+                                if (MonItemsMgr.Instance.UpdateDownItemCycle(downItem) &&
+                                    MonItemsMgr.Instance.CreateDownItem(downItem, out var dropItem))
+                                {
+                                    var p = pts[dropIndex];
+                                    DownItemMgr.Instance.DropItem(map, dropItem, (ushort)p.X, (ushort)p.Y, ownerId);
+
+                                    dropIndex++;
+                                    if (dropIndex >= dropCount)
+                                        dropIndex = 0;
+                                }
+
+                                downItem = downItem.Next;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"怪物死亡掉落处理异常: {Name}", exception: ex);
+            }
+
+            
+            try
+            {
+                MonsterManagerEx.Instance.DeleteMonsterDelayed(this);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"怪物死亡入删除队列失败: {Name}", exception: ex);
             }
             
             Console.WriteLine($"怪物 {Name} 被 {killer?.Name ?? "未知"} 击杀");
         }
 
-        /// <summary>
-        /// 获取怪物显示消息
-        /// </summary>
+        
+        
+        
         public override bool GetViewMsg(out byte[] msg, MapObject? viewer = null)
         {
-            // 构建怪物显示消息
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(ProtocolCmd.SM_APPEAR);
-            builder.WriteUInt16((ushort)X);
-            builder.WriteUInt16((ushort)Y);
-            builder.WriteUInt16((ushort)CurrentDirection); // 方向
             
-            // 怪物特征数据
-            byte[] featureData = new byte[12];
-            if (_desc != null)
-            {
-                BitConverter.GetBytes(_desc.Base.MonsterId).CopyTo(featureData, 0); // 怪物ID
-            }
-            else
-            {
-                BitConverter.GetBytes(0).CopyTo(featureData, 0); // 默认怪物ID
-            }
-            BitConverter.GetBytes((ushort)Level).CopyTo(featureData, 4); // 等级
-            BitConverter.GetBytes((ushort)CurrentHP).CopyTo(featureData, 6); // 当前HP
-            BitConverter.GetBytes((ushort)MaxHP).CopyTo(featureData, 8); // 最大HP
-            BitConverter.GetBytes((ushort)(IsDead ? 1 : 0)).CopyTo(featureData, 10); // 状态
             
-            builder.WriteBytes(featureData);
-            builder.WriteString(Name);
-            
-            msg = builder.Build();
-            return true;
+            return base.GetViewMsg(out msg, viewer);
         }
     }
 }

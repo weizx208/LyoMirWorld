@@ -5,9 +5,9 @@ using System.Text.Json;
 
 namespace MirCommon.Utils
 {
-    /// <summary>
-    /// 配置管理器
-    /// </summary>
+    
+    
+    
     public class ConfigManager
     {
         private readonly Dictionary<string, object> _config = new();
@@ -19,9 +19,9 @@ namespace MirCommon.Utils
             _configFile = configFile;
         }
 
-        /// <summary>
-        /// 加载配置文件
-        /// </summary>
+        
+        
+        
         public bool Load()
         {
             lock (_lock)
@@ -30,7 +30,7 @@ namespace MirCommon.Utils
                 {
                     if (!File.Exists(_configFile))
                     {
-                        // 创建默认配置
+                        
                         CreateDefaultConfig();
                         return true;
                     }
@@ -57,9 +57,9 @@ namespace MirCommon.Utils
             }
         }
 
-        /// <summary>
-        /// 保存配置文件
-        /// </summary>
+        
+        
+        
         public bool Save()
         {
             lock (_lock)
@@ -84,9 +84,9 @@ namespace MirCommon.Utils
             }
         }
 
-        /// <summary>
-        /// 获取字符串值
-        /// </summary>
+        
+        
+        
         public string GetString(string key, string defaultValue = "")
         {
             lock (_lock)
@@ -103,9 +103,9 @@ namespace MirCommon.Utils
             }
         }
 
-        /// <summary>
-        /// 获取整数值
-        /// </summary>
+        
+        
+        
         public int GetInt(string key, int defaultValue = 0)
         {
             lock (_lock)
@@ -125,9 +125,9 @@ namespace MirCommon.Utils
             }
         }
 
-        /// <summary>
-        /// 获取布尔值
-        /// </summary>
+        
+        
+        
         public bool GetBool(string key, bool defaultValue = false)
         {
             lock (_lock)
@@ -148,9 +148,9 @@ namespace MirCommon.Utils
             }
         }
 
-        /// <summary>
-        /// 设置值
-        /// </summary>
+        
+        
+        
         public void SetValue(string key, object value)
         {
             lock (_lock)
@@ -159,25 +159,25 @@ namespace MirCommon.Utils
             }
         }
 
-        /// <summary>
-        /// 创建默认配置
-        /// </summary>
+        
+        
+        
         private void CreateDefaultConfig()
         {
             _config.Clear();
 
-            // 数据库配置
+            
             _config["Database.Server"] = "(local)";
             _config["Database.Name"] = "MirWorldDB";
             _config["Database.User"] = "sa";
             _config["Database.Password"] = "dragon";
 
-            // 服务器配置
+            
             _config["Server.Port"] = 5100;
             _config["Server.MaxConnections"] = 100;
             _config["Server.Name"] = "DBServer";
 
-            // 日志配置
+            
             _config["Log.Directory"] = "logs";
             _config["Log.WriteToConsole"] = true;
             _config["Log.WriteToFile"] = true;
@@ -185,9 +185,9 @@ namespace MirCommon.Utils
             Save();
         }
 
-        /// <summary>
-        /// 检查键是否存在
-        /// </summary>
+        
+        
+        
         public bool HasKey(string key)
         {
             lock (_lock)
@@ -196,9 +196,9 @@ namespace MirCommon.Utils
             }
         }
 
-        /// <summary>
-        /// 获取所有键
-        /// </summary>
+        
+        
+        
         public string[] GetAllKeys()
         {
             lock (_lock)
@@ -208,14 +208,14 @@ namespace MirCommon.Utils
         }
     }
 
-    /// <summary>
-    /// 服务器配置帮助类
-    /// </summary>
+    
+    
+    
     public static class ServerConfigHelper
     {
-        /// <summary>
-        /// 从配置管理器加载日志配置
-        /// </summary>
+        
+        
+        
         public static (string server, string database, string user, string password, int port, 
             int maxConnections, string name, string directory, bool writeToConsole, 
             bool writeToFile) LoadLogConfig(ConfigManager config)

@@ -6,22 +6,22 @@ using MirCommon.Utils;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 排行榜类型
-    /// </summary>
+    
+    
+    
     public enum TopListType
     {
-        Level = 0,      // 等级排行榜
-        Power = 1,      // 战斗力排行榜
-        Wealth = 2,     // 财富排行榜
-        Pk = 3,         // PK排行榜
-        Guild = 4,      // 行会排行榜
-        Achievement = 5 // 成就排行榜
+        Level = 0,      
+        Power = 1,      
+        Wealth = 2,     
+        Pk = 3,         
+        Guild = 4,      
+        Achievement = 5 
     }
 
-    /// <summary>
-    /// 排行榜条目
-    /// </summary>
+    
+    
+    
     public class TopListEntry
     {
         public int Rank { get; set; }
@@ -32,9 +32,9 @@ namespace GameServer
         public object? ExtraData { get; set; }
     }
 
-    /// <summary>
-    /// 排行榜NPC位置
-    /// </summary>
+    
+    
+    
     public class TopNpcLocation
     {
         public string NpcName { get; set; } = string.Empty;
@@ -44,9 +44,9 @@ namespace GameServer
         public TopListType ListType { get; set; }
     }
 
-    /// <summary>
-    /// 排行榜管理器
-    /// </summary>
+    
+    
+    
     public class TopManager
     {
         private static TopManager? _instance;
@@ -58,16 +58,16 @@ namespace GameServer
 
         private TopManager()
         {
-            // 初始化所有排行榜类型
+            
             foreach (TopListType type in Enum.GetValues(typeof(TopListType)))
             {
                 _topLists[type] = new List<TopListEntry>();
             }
         }
 
-        /// <summary>
-        /// 加载排行榜NPC配置
-        /// </summary>
+        
+        
+        
         public bool LoadTopNpcs(string filePath)
         {
             if (!File.Exists(filePath))
@@ -107,7 +107,7 @@ namespace GameServer
                                     Y = y
                                 };
 
-                                // 尝试从NPC名称推断排行榜类型
+                                
                                 if (npcName.Contains("等级"))
                                     location.ListType = TopListType.Level;
                                 else if (npcName.Contains("战斗力"))
@@ -138,9 +138,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载排行榜数据配置
-        /// </summary>
+        
+        
+        
         public bool LoadTopListConfig(string filePath)
         {
             if (!File.Exists(filePath))
@@ -183,9 +183,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载排行榜数据
-        /// </summary>
+        
+        
+        
         public bool LoadTopListData(TopListType listType, string filePath)
         {
             if (!File.Exists(filePath))
@@ -220,7 +220,7 @@ namespace GameServer
                                 UpdateTime = DateTime.Now
                             };
 
-                            // 如果有额外数据
+                            
                             if (parts.Length > 3)
                             {
                                 entry.ExtraData = parts[3].Trim();
@@ -242,19 +242,19 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 更新排行榜条目
-        /// </summary>
+        
+        
+        
         public void UpdateTopListEntry(TopListType listType, uint playerId, string playerName, int value, object? extraData = null)
         {
             var list = _topLists[listType];
             
-            // 查找现有条目
+            
             var existingEntry = list.Find(e => e.PlayerId == playerId);
             
             if (existingEntry != null)
             {
-                // 更新现有条目
+                
                 existingEntry.PlayerName = playerName;
                 existingEntry.Value = value;
                 existingEntry.ExtraData = extraData;
@@ -262,7 +262,7 @@ namespace GameServer
             }
             else
             {
-                // 添加新条目
+                
                 var newEntry = new TopListEntry
                 {
                     PlayerId = playerId,
@@ -274,22 +274,22 @@ namespace GameServer
                 list.Add(newEntry);
             }
 
-            // 重新排序
+            
             SortTopList(listType);
         }
 
-        /// <summary>
-        /// 获取排行榜
-        /// </summary>
+        
+        
+        
         public List<TopListEntry> GetTopList(TopListType listType, int maxCount = 100)
         {
             var list = _topLists[listType];
             return list.Count > maxCount ? list.GetRange(0, maxCount) : list;
         }
 
-        /// <summary>
-        /// 获取玩家排名
-        /// </summary>
+        
+        
+        
         public int GetPlayerRank(TopListType listType, uint playerId)
         {
             var list = _topLists[listType];
@@ -297,33 +297,33 @@ namespace GameServer
             return entry?.Rank ?? -1;
         }
 
-        /// <summary>
-        /// 获取排行榜NPC位置
-        /// </summary>
+        
+        
+        
         public TopNpcLocation? GetTopNpcLocation(string npcName)
         {
             return _topNpcs.TryGetValue(npcName, out var location) ? location : null;
         }
 
-        /// <summary>
-        /// 获取所有排行榜NPC
-        /// </summary>
+        
+        
+        
         public IEnumerable<TopNpcLocation> GetAllTopNpcs()
         {
             return _topNpcs.Values;
         }
 
-        /// <summary>
-        /// 获取排行榜数据文件
-        /// </summary>
+        
+        
+        
         public string? GetListDataFile(TopListType listType)
         {
             return _listDataFiles.TryGetValue(listType, out var file) ? file : null;
         }
 
-        /// <summary>
-        /// 保存排行榜数据到文件
-        /// </summary>
+        
+        
+        
         public bool SaveTopListData(TopListType listType, string filePath)
         {
             try
@@ -352,50 +352,51 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 更新所有排行榜
-        /// </summary>
+        
+        
+        
         public void UpdateAllTopLists()
         {
-            // 这里应该从游戏数据中更新所有排行榜
+            
+            
             LogManager.Default.Debug("更新所有排行榜");
             
             foreach (TopListType type in Enum.GetValues(typeof(TopListType)))
             {
-                // 重新排序
+                
                 SortTopList(type);
             }
         }
 
-        /// <summary>
-        /// 更新排行榜管理器（供GameWorld调用）
-        /// </summary>
+        
+        
+        
         public void Update()
         {
             UpdateAllTopLists();
         }
 
-        /// <summary>
-        /// 排序排行榜
-        /// </summary>
+        
+        
+        
         private void SortTopList(TopListType listType)
         {
             var list = _topLists[listType];
             
-            // 根据排行榜类型使用不同的排序规则
+            
             switch (listType)
             {
                 case TopListType.Pk:
-                    // PK排行榜：值越大排名越靠前
+                    
                     list.Sort((a, b) => b.Value.CompareTo(a.Value));
                     break;
                 default:
-                    // 其他排行榜：值越大排名越靠前
+                    
                     list.Sort((a, b) => b.Value.CompareTo(a.Value));
                     break;
             }
 
-            // 更新排名
+            
             for (int i = 0; i < list.Count; i++)
             {
                 list[i].Rank = i + 1;

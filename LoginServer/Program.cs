@@ -13,9 +13,9 @@ using static MirCommon.Utils.GameEncoding;
 
 namespace LoginServer
 {
-    /// <summary>
-    /// 登录服务器主程序
-    /// </summary>
+    
+    
+    
     class Program
     {
         private static LoginServer? _server;
@@ -31,16 +31,16 @@ namespace LoginServer
 
             try
             {
-                //// 加载配置
-                //var configManager = new ConfigManager("loginserver_config.json");
-                //configManager.Load();
+                
+                
+                
 
-                //// 配置日志
-                //var logConfig = ServerConfigHelper.LoadLogConfig(configManager);
-                //var logger = new Logger(logConfig.directory, logConfig.writeToConsole, logConfig.writeToFile);
-                //LogManager.SetDefaultLogger(logger);
+                
+                
+                
+                
 
-                // 使用INI配置文件
+                
                 var iniReader = new IniFileReader("config.ini");
                 if (!iniReader.Open())
                 {
@@ -48,7 +48,7 @@ namespace LoginServer
                     return;
                 }
 
-                // 创建服务器
+                
                 _server = new LoginServer(iniReader);
 
                 if (await _server.Initialize())
@@ -57,10 +57,10 @@ namespace LoginServer
                     
                     await _server.Start();
                     
-                    // 控制台命令循环
+                    
                     _ = Task.Run(() => CommandLoop());
                     
-                    // 保持运行
+                    
                     while (_isRunning)
                     {
                         await Task.Delay(1000);
@@ -162,28 +162,28 @@ namespace LoginServer
         }
     }
 
-    /// <summary>
-    /// 登录服务器配置
-    /// </summary>
-    //public class LoginServerConfig
-    //{
-    //    public int Port { get; set; } = 7000;
-    //    public int MaxConnections { get; set; } = 500;
-    //    public bool AllowRegister { get; set; } = true;
-    //    public string ServerTips { get; set; } = "欢迎来到传世服务器";
-    //    public string LoginOkTips { get; set; } = "登录成功！";
-    //    public string RegisterTips { get; set; } = "注册成功！";
-    //    public string DBServerAddress { get; set; } = "127.0.0.1";
-    //    public int DBServerPort { get; set; } = 5100;
-    //}
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
-    /// <summary>
-    /// 登录服务器类
-    /// </summary>
+    
+    
+    
     public class LoginServer
     {
         private readonly IniFileReader _config;
-        //private readonly ConfigManager _config;
+        
         private TcpListener? _listener;
         private readonly List<LoginClient> _clients = new();
         private readonly object _clientLock = new();
@@ -191,8 +191,8 @@ namespace LoginServer
         private long _loginSuccessCount = 0;
         private long _registerCount = 0;
         private bool _isRunning = false;
-        //private LoginServerConfig _serverConfig = new();
-        // private MirCommon.Database.DatabaseManager? _databaseManager;
+        
+        
 
         private string _addr = "127.0.0.1";
         private int _port = 7000;
@@ -202,11 +202,11 @@ namespace LoginServer
         private string _dbServerAddress = "127.0.0.1";
         private int _dbServerPort = 8000;
         
-        // ServerCenter连接信息
+        
         private string _serverCenterAddress = "127.0.0.1";
         private int _serverCenterPort = 6000;
         private MirCommon.Network.ServerCenterClient? _serverCenterClient;
-        private byte _serverCenterIndex = 0; // 在ServerCenter中的索引
+        private byte _serverCenterIndex = 0; 
 
         private string ServerTips = "欢迎来到传世服务器";
         private string LoginOkTips = "登录成功！";
@@ -221,7 +221,7 @@ namespace LoginServer
         {
             try
             {
-                // 从INI文件的[登陆服务器]节读取配置
+                
                 string sectionName = "登陆服务器";
                 _addr = _config.GetString(sectionName, "addr", "127.0.0.1");
                 _port = _config.GetInteger(sectionName, "port", 7000);
@@ -229,21 +229,21 @@ namespace LoginServer
                 _maxconnection = _config.GetInteger(sectionName, "maxconnection", 1024);
                 _disableregister = _config.GetInteger(sectionName, "disableregister", 1);
                 
-                // 从INI文件的[数据库服务器]节读取DBServer配置
+                
                 string dbSectionName = "数据库服务器";
                 _dbServerAddress = _config.GetString(dbSectionName, "addr", "127.0.0.1");
                 _dbServerPort = _config.GetInteger(dbSectionName, "port", 8000);
                 
-                // 从INI文件的[服务器中心]节读取ServerCenter配置
+                
                 string scSectionName = "服务器中心";
                 string serverCenterAddress = _config.GetString(scSectionName, "addr", "127.0.0.1");
                 int serverCenterPort = _config.GetInteger(scSectionName, "port", 6000);
 
-                // 初始化DBServer连接
+                
                 LogManager.Default.Info("正在初始化DBServer连接...");
                 LogManager.Default.Info($"DBServer地址: {_dbServerAddress}:{_dbServerPort}");
                 
-                // 测试DBServer连接
+                
                 using var dbClient = new MirCommon.Database.DBServerClient(_dbServerAddress, _dbServerPort);
                 if (!await dbClient.ConnectAsync())
                 {
@@ -253,7 +253,7 @@ namespace LoginServer
                 
                 LogManager.Default.Info("DBServer连接测试成功");
                 
-                // 向ServerCenter注册
+                
                 LogManager.Default.Info("正在向ServerCenter注册...");
                 _serverCenterAddress = serverCenterAddress;
                 _serverCenterPort = serverCenterPort;
@@ -265,8 +265,9 @@ namespace LoginServer
                     if (registered)
                     {
                         LogManager.Default.Info("ServerCenter注册成功");
-                        // 保存服务器索引（从注册响应中获取）
-                        // 注意：ServerCenterClient应该保存注册时返回的服务器索引
+                        
+                        
+                        
                     }
                     else
                     {
@@ -356,7 +357,7 @@ namespace LoginServer
             string? remoteEp = tcpClient.Client.RemoteEndPoint?.ToString();
             LogManager.Default.Info($"新连接: {remoteEp}");
 
-            // 发送欢迎消息
+            
             client.SendTipMessage(ServerTips);
 
             try
@@ -398,18 +399,18 @@ namespace LoginServer
         public long GetLoginSuccessCount() => Interlocked.Read(ref _loginSuccessCount);
         public long GetRegisterCount() => Interlocked.Read(ref _registerCount);
         
-        /// <summary>
-        /// 获取ServerCenter客户端连接
-        /// </summary>
+        
+        
+        
         public MirCommon.Network.ServerCenterClient? GetServerCenterClient()
         {
             return _serverCenterClient;
         }
     }
 
-    /// <summary>
-    /// 登录客户端连接类
-    /// </summary>
+    
+    
+    
     public class LoginClient
     {
         private readonly TcpClient _client;
@@ -446,14 +447,14 @@ namespace LoginServer
             {
                 try
                 {
-                    // 超时检查
+                    
                     if ((DateTime.Now - _lastActivity).TotalMinutes > 5)
                     {
                         LogManager.Default.Info("连接超时");
                         break;
                     }
 
-                    // 失败次数检查
+                    
                     if (_failCount >= 16)
                     {
                         LogManager.Default.Warning("失败次数过多，断开连接");
@@ -466,7 +467,7 @@ namespace LoginServer
 
                     _lastActivity = DateTime.Now;
 
-                    // 处理接收到的数据
+                    
                     await ProcessMessage(buffer, bytesRead);
                 }
                 catch (Exception ex)
@@ -481,6 +482,7 @@ namespace LoginServer
         {
             try
             {
+                
                 int parsedSize = 0;
                 int msgPtr = 0;
                 
@@ -501,9 +503,9 @@ namespace LoginServer
             await Task.CompletedTask;
         }
 
-        /// <summary>
-        /// 解析单个消息
-        /// </summary>
+        
+        
+        
         private int ParseSingleMessage(byte[] data, int startIndex, int length)
         {
             char startChar = '#';
@@ -518,27 +520,27 @@ namespace LoginServer
                 
                 if (currentChar == '*')
                 {
-                    // 心跳包响应
+                    
                     parsedSize = i + 1;
                 }
                 else if (currentChar == startChar)
                 {
-                    messageStart = currentIndex + 1; // '#'后面的位置
+                    messageStart = currentIndex + 1; 
                 }
                 else if (currentChar == endChar)
                 {
                     if (messageStart != -1)
                     {
-                        // 处理从messageStart到currentIndex之间的消息
+                        
                         int encodedLength = currentIndex - messageStart;
                         byte[] encodedData = new byte[encodedLength];
                         Array.Copy(data, messageStart, encodedData, 0, encodedLength);
                         
-                        // 调试：打印原始编码数据
+                        
                         string encodedHex = BitConverter.ToString(encodedData).Replace("-", " ");
                         LogManager.Default.Debug($"原始编码数据({encodedLength}字节): {encodedHex}");
                         
-                        // 检查第一个字符是否是数字（'0'-'9'），如果是则跳过
+                        
                         int decodeStart = 0;
                         if (encodedLength > 0 && encodedData[0] >= '0' && encodedData[0] <= '9')
                         {
@@ -546,17 +548,17 @@ namespace LoginServer
                             LogManager.Default.Debug($"跳过数字字符: {(char)encodedData[0]}");
                         }
                         
-                        // 解码游戏消息
+                        
                         byte[] decoded = new byte[(encodedLength - decodeStart) * 3 / 4 + 4];
                         byte[] dataToDecode = new byte[encodedLength - decodeStart];
                         Array.Copy(encodedData, decodeStart, dataToDecode, 0, dataToDecode.Length);
                         int decodedSize = GameCodec.UnGameCode(dataToDecode, decoded);
                         
-                        // 调试：打印解码后数据
+                        
                         string decodedHex = BitConverter.ToString(decoded, 0, Math.Min(decodedSize, 64)).Replace("-", " ");
                         LogManager.Default.Debug($"解码后数据({decodedSize}字节): {decodedHex}");
                         
-                        if (decodedSize >= 12) // 消息头至少12字节
+                        if (decodedSize >= 12) 
                         {
                             var reader = new PacketReader(decoded);
                             uint dwFlag = reader.ReadUInt32();
@@ -566,11 +568,11 @@ namespace LoginServer
                             ushort w3 = reader.ReadUInt16();
                             
                             byte[] payload = reader.ReadBytes(decodedSize - 12);
-                            string dataStr = GetString(payload);  // 使用GBK解码
+                            string dataStr = GetString(payload);  
 
                             LogManager.Default.Debug($"收到消息: Cmd={wCmd:X4}, Data={dataStr}");
 
-                            // 异步处理消息，但不等待
+                            
                             _ = Task.Run(async () =>
                             {
                                 try
@@ -597,9 +599,9 @@ namespace LoginServer
             return parsedSize;
         }
 
-        /// <summary>
-        /// 处理解码后的消息
-        /// </summary>
+        
+        
+        
         private async Task ProcessDecodedMessage(ushort wCmd, string dataStr, byte[] payload)
         {
             switch (wCmd)
@@ -625,7 +627,7 @@ namespace LoginServer
                     await HandleSelectServer(dataStr);
                     break;
 
-                case 0x1D8E: // 7566 - 检查角色名是否可用
+                case 0x1D8E: 
                     await HandleCheckCharName(dataStr);
                     break;
 
@@ -640,7 +642,7 @@ namespace LoginServer
         {
             try
             {
-                // 解析 "account/password"
+                
                 string[] parts = data.Split('/', StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length < 2)
                 {
@@ -653,7 +655,7 @@ namespace LoginServer
 
                 LogManager.Default.Info($"登录请求: 账号={_account}");
 
-                // 连接DBServer验证账号密码
+                
                 using var dbClient = new MirCommon.Database.DBServerClient(_dbServerAddress, _dbServerPort);
                 if (!await dbClient.ConnectAsync())
                 {
@@ -670,7 +672,7 @@ namespace LoginServer
                     return;
                 }
 
-                // 验证成功，生成loginId
+                
                 _loginId = (uint)Random.Shared.Next(1000000, 9999999);
                 
                 SendLoginSuccess(_loginId);
@@ -701,7 +703,7 @@ namespace LoginServer
 
                 LogManager.Default.Info("注册请求");
 
-                // 检查数据大小是否正确（RegisterAccount结构应该是311字节）
+                
                 if (data.Length < 311)
                 {
                     SendMessage(0, ProtocolCmd.SM_REGISTERACCOUNTFAIL, 0, 0, 0, null);
@@ -709,75 +711,75 @@ namespace LoginServer
                     return;
                 }
 
-                // 解析RegisterAccount结构
+                
                 int offset = 0;
                 
-                // 账号
+                
                 byte accountLength = data[offset++];
                 string account = System.Text.Encoding.GetEncoding("GBK").GetString(data, offset, Math.Min((int)accountLength, 10)).TrimEnd('\0');
                 offset += 10;
                 
-                // 密码
+                
                 byte passwordLength = data[offset++];
                 string password = System.Text.Encoding.GetEncoding("GBK").GetString(data, offset, Math.Min((int)passwordLength, 10)).TrimEnd('\0');
                 offset += 10;
                 
-                // 姓名
+                
                 byte nameLength = data[offset++];
                 string name = System.Text.Encoding.GetEncoding("GBK").GetString(data, offset, Math.Min((int)nameLength, 20)).TrimEnd('\0');
                 offset += 20;
                 
-                // 身份证
+                
                 byte idCardLength = data[offset++];
                 string idCard = System.Text.Encoding.GetEncoding("GBK").GetString(data, offset, Math.Min((int)idCardLength, 19)).TrimEnd('\0');
                 offset += 19;
                 
-                // 电话号码
+                
                 byte phoneNumberLength = data[offset++];
                 string phoneNumber = System.Text.Encoding.GetEncoding("GBK").GetString(data, offset, Math.Min((int)phoneNumberLength, 14)).TrimEnd('\0');
                 offset += 14;
                 
-                // 问题1
+                
                 byte q1Length = data[offset++];
                 string q1 = System.Text.Encoding.GetEncoding("GBK").GetString(data, offset, Math.Min((int)q1Length, 20)).TrimEnd('\0');
                 offset += 20;
                 
-                // 答案1
+                
                 byte a1Length = data[offset++];
                 string a1 = System.Text.Encoding.GetEncoding("GBK").GetString(data, offset, Math.Min((int)a1Length, 20)).TrimEnd('\0');
                 offset += 20;
                 
-                // 邮箱
+                
                 byte emailLength = data[offset++];
                 string email = System.Text.Encoding.GetEncoding("GBK").GetString(data, offset, Math.Min((int)emailLength, 40)).TrimEnd('\0');
                 offset += 40;
                 
-                // 问题2
+                
                 byte q2Length = data[offset++];
                 string q2 = System.Text.Encoding.GetEncoding("GBK").GetString(data, offset, Math.Min((int)q2Length, 20)).TrimEnd('\0');
                 offset += 20;
                 
-                // 答案2
+                
                 byte a2Length = data[offset++];
                 string a2 = System.Text.Encoding.GetEncoding("GBK").GetString(data, offset, Math.Min((int)a2Length, 20)).TrimEnd('\0');
                 offset += 20;
                 
-                // 生日
+                
                 byte birthdayLength = data[offset++];
                 string birthday = System.Text.Encoding.GetEncoding("GBK").GetString(data, offset, Math.Min((int)birthdayLength, 10)).TrimEnd('\0');
                 offset += 10;
                 
-                // 手机号码
+                
                 byte mobileNumberLength = data[offset++];
                 string mobilePhoneNumber = System.Text.Encoding.GetEncoding("GBK").GetString(data, offset, Math.Min((int)mobileNumberLength, 11)).TrimEnd('\0');
                 offset += 11;
                 
-                // 跳过未知字段（85字节）
+                
                 offset += 85;
 
                 LogManager.Default.Debug($"注册信息: 账号={account}, 姓名={name}, 邮箱={email}");
 
-                // 连接DBServer创建账号
+                
                 using var dbClient = new MirCommon.Database.DBServerClient(_dbServerAddress, _dbServerPort);
                 if (!await dbClient.ConnectAsync())
                 {
@@ -787,7 +789,7 @@ namespace LoginServer
                     return;
                 }
 
-                // 检查账号是否已存在
+                
                 bool exists = await dbClient.CheckAccountExistAsync(account);
                 if (exists)
                 {
@@ -796,7 +798,7 @@ namespace LoginServer
                     return;
                 }
 
-                // 创建账号
+                
                 bool success = await dbClient.CreateAccountAsync(account, password, name, birthday, q1, a1, q2, a2, email, phoneNumber, mobilePhoneNumber, idCard);
                 if (!success)
                 {
@@ -827,7 +829,7 @@ namespace LoginServer
                 string account = data.Trim();
                 LogManager.Default.Debug($"检查账号: {account}");
                 
-                // 连接DBServer检查账号是否存在
+                
                 using var dbClient = new MirCommon.Database.DBServerClient(_dbServerAddress, _dbServerPort);
                 if (!await dbClient.ConnectAsync())
                 {
@@ -852,7 +854,7 @@ namespace LoginServer
         {
             try
             {
-                // 解析 "account/oldpassword/newpassword"
+                
                 string[] parts = data.Split('/', StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length < 3)
                 {
@@ -866,7 +868,7 @@ namespace LoginServer
 
                 LogManager.Default.Info($"修改密码请求: {account}");
 
-                // 连接DBServer修改密码
+                
                 using var dbClient = new MirCommon.Database.DBServerClient(_dbServerAddress, _dbServerPort);
                 if (!await dbClient.ConnectAsync())
                 {
@@ -902,15 +904,15 @@ namespace LoginServer
                 string charName = data.Trim();
                 LogManager.Default.Debug($"检查角色名: {charName}");
                 
-                // 角色名检查逻辑
-                // 1. 检查角色名长度
+                
+                
                 if (string.IsNullOrEmpty(charName) || charName.Length < 2 || charName.Length > 14)
                 {
                     SendCheckCharNameResult(false, "角色名长度必须在2-14个字符之间");
                     return;
                 }
                 
-                // 2. 检查角色名是否包含非法字符
+                
                 foreach (char c in charName)
                 {
                     if (c < 32 || c > 126)
@@ -920,7 +922,7 @@ namespace LoginServer
                     }
                 }
                 
-                // 3. 检查角色名是否已存在（需要连接DBServer查询）
+                
                 using var dbClient = new MirCommon.Database.DBServerClient(_dbServerAddress, _dbServerPort);
                 if (!await dbClient.ConnectAsync())
                 {
@@ -929,8 +931,8 @@ namespace LoginServer
                     return;
                 }
                 
-                // 从配置读取服务器名称
-                string serverName = "淡抹夕阳"; // 默认服务器名称
+                
+                string serverName = "淡抹夕阳"; 
                 bool exists = await dbClient.CheckCharacterNameExistsAsync(serverName, charName);
                 
                 if (exists)
@@ -963,7 +965,7 @@ namespace LoginServer
                 string serverName = data.Trim();
                 LogManager.Default.Info($"选择服务器: {serverName}, 账号: {_account}, LoginId: {_loginId}");
 
-                // 从配置读取SelectCharServer地址
+                
                 var iniReader = new IniFileReader("config.ini");
                 if (!iniReader.Open())
                 {
@@ -974,36 +976,36 @@ namespace LoginServer
                 string selectCharServerAddr = "";
                 int selectCharServerPort = 0;
                 
-                // 方案1: 尝试从ServerCenter查找
+                
                 string scSectionName = "服务器中心";
                 string serverCenterAddress = iniReader.GetString(scSectionName, "addr", "127.0.0.1");
                 int serverCenterPort = iniReader.GetInteger(scSectionName, "port", 6000);
                 
                 bool foundFromServerCenter = false;
-                byte selectCharServerIndex = 0; // 保存SelectCharServer的索引
+                byte selectCharServerIndex = 0; 
                 try
                 {
                     LogManager.Default.Debug($"开始连接ServerCenter: {serverCenterAddress}:{serverCenterPort}");
                     
-                    // 使用LoginServer保存的ServerCenter连接
+                    
                     var serverCenterClient = _server.GetServerCenterClient();
                     if (serverCenterClient != null && serverCenterClient.IsConnected())
                     {
                         LogManager.Default.Debug($"已连接到ServerCenter（使用现有连接）");
-                        // 向ServerCenter查找SelectCharServer
+                        
                         LogManager.Default.Debug($"开始查找SelectCharServer - 服务器类型: SelectCharServer, 服务器名: {serverName}");
                         FindServerResult? selectCharServerInfo = await serverCenterClient.FindServerAsync("SelectCharServer", serverName);
                         if (selectCharServerInfo!=null)
                         {
-                            // 正确解析地址字节数组
+                            
                             byte[] addrBytes = selectCharServerInfo.Value.addr.addr;
-                            // 找到第一个null字符的位置
+                            
                             int nullIndex = Array.IndexOf(addrBytes, (byte)0);
                             if (nullIndex < 0) nullIndex = addrBytes.Length;
-                            // 截取有效部分并转换为字符串
+                            
                             selectCharServerAddr = Encoding.GetEncoding("GBK").GetString(addrBytes, 0, nullIndex).Trim();
                             selectCharServerPort = (int)selectCharServerInfo.Value.addr.nPort;
-                            selectCharServerIndex = selectCharServerInfo.Value.Id.bIndex; // 获取SelectCharServer的索引
+                            selectCharServerIndex = selectCharServerInfo.Value.Id.bIndex; 
                             foundFromServerCenter = true;
                             LogManager.Default.Info($"从ServerCenter找到SelectCharServer: {selectCharServerAddr}:{selectCharServerPort}, 索引: {selectCharServerIndex}");
                             LogManager.Default.Debug($"FindServer成功 - 地址: {selectCharServerAddr}:{selectCharServerPort}, 目标索引: {selectCharServerIndex}");
@@ -1016,7 +1018,7 @@ namespace LoginServer
                     else
                     {
                         LogManager.Default.Warning($"ServerCenter连接不可用，尝试创建新连接");
-                        // 回退：创建新的ServerCenter连接
+                        
                         using var scClient = new MirCommon.Network.ServerCenterClient(serverCenterAddress, serverCenterPort);
                         if (await scClient.ConnectAsync())
                         {
@@ -1045,14 +1047,14 @@ namespace LoginServer
                     LogManager.Default.Warning($"ServerCenter查询失败: {ex.Message}，将使用配置文件回退方案");
                 }
                 
-                // 方案2: 如果ServerCenter查找失败，从config.ini读取
+                
                 if (!foundFromServerCenter)
                 {
                     LogManager.Default.Info("从config.ini读取SelectCharServer配置");
                     string selCharSectionName = "选人服务器";
                     string configServerName = iniReader.GetString(selCharSectionName, "name", "");
                     
-                    // 检查服务器名称是否匹配
+                    
                     if (configServerName != serverName)
                     {
                         LogManager.Default.Warning($"配置的服务器名称({configServerName})与请求的服务器名称({serverName})不匹配");
@@ -1065,7 +1067,7 @@ namespace LoginServer
                     LogManager.Default.Info($"从配置文件读取SelectCharServer: {selectCharServerAddr}:{selectCharServerPort}");
                 }
                 
-                // 验证地址和端口
+                
                 if (string.IsNullOrEmpty(selectCharServerAddr) || selectCharServerPort == 0)
                 {
                     LogManager.Default.Error("无法获取SelectCharServer地址");
@@ -1073,26 +1075,34 @@ namespace LoginServer
                     return;
                 }
                 
-                // 生成selectId 
+                
                 uint selectId = (uint)Random.Shared.Next(10000000, 99999999);
                 
-                // 如果从ServerCenter找到服务器，发送登录信息通知SelectCharServer
+                
                 if (foundFromServerCenter)
                 {
                     try
                     {
-                        // 创建EnterSelCharServer结构体
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
                         var enterSelCharServer = new MirCommon.EnterSelCharServer
                         {
-                            nClientId = 0, // 客户端还没有连接到SelectCharServer
+                            nClientId = 0, 
                             nLoginId = _loginId
                         };
                         enterSelCharServer.SetAccount(_account);
-                        // 将SelectId放入保留字段
+                        
+                        
                         byte[] selectIdBytes = BitConverter.GetBytes(selectId);
                         Array.Copy(selectIdBytes, 0, enterSelCharServer.reserved, 0, 4);
                         
-                        // 序列化结构体为字节数组
+                        
                         int structSize = Marshal.SizeOf<MirCommon.EnterSelCharServer>();
                         byte[] structData = new byte[structSize];
                         IntPtr ptr = Marshal.AllocHGlobal(structSize);
@@ -1113,23 +1123,27 @@ namespace LoginServer
                         LogManager.Default.Debug($"  - 数据: EnterSelCharServer结构体 (大小: {structSize}字节)");
                         LogManager.Default.Debug($"  - 账号: {_account}, LoginId: {_loginId}");
                         
-                        // 使用LoginServer保存的ServerCenter连接发送消息
+                        
                         var serverCenterClient = _server.GetServerCenterClient();
                         if (serverCenterClient != null && serverCenterClient.IsConnected())
                         {
                             LogManager.Default.Debug($"使用现有ServerCenter连接发送跨服务器消息");
                             
-                            byte senderServerType = 2; // ST_LOGINSERVER
-                            byte senderServerIndex = 1; // LoginServer的索引
                             
-                            // 使用SendMsgAcrossServerAsync发送消息，设置发送者信息
-                            // 注意：ServerCenterClient的SendMsgAcrossServerAsync方法会将w1设置为cmd，w2设置为sendType，w3设置为targetIndex
-                            // 但ServerCenter在转发时会正确设置发送者信息
+                            
+                            
+                            
+                            byte senderServerType = 2; 
+                            byte senderServerIndex = 1; 
+                            
+                            
+                            
+                            
                             bool sent = await serverCenterClient.SendMsgAcrossServerAsync(
-                                0, // clientId
-                                ProtocolCmd.MAS_ENTERSELCHARSERVER, // cmd
-                                0, // sendType = MST_SINGLE
-                                selectCharServerIndex, // targetIndex - SelectCharServer的实际索引
+                                0, 
+                                ProtocolCmd.MAS_ENTERSELCHARSERVER, 
+                                0, 
+                                selectCharServerIndex, 
                                 structData
                             );
                             
@@ -1156,14 +1170,15 @@ namespace LoginServer
                 }
                 else
                 {
-                    // 使用配置文件回退方案时，记录登录信息但不通过ServerCenter转发
+                    
                     string loginInfo = $"{_loginId}/{selectId}/{_account}";
                     LogManager.Default.Info($"使用配置文件回退方案，SelectId={selectId}, Account={_account}");
                 }
                 
-                // 格式: "ip/port/selectId"
+                
+                
                 string serverInfo = $"{selectCharServerAddr}/{selectCharServerPort}/{selectId}";
-                byte[] serverData = GetBytes(serverInfo);  // 使用GBK编码
+                byte[] serverData = GetBytes(serverInfo);  
                 SendMessage(0, ProtocolCmd.SM_SELECTSERVEROK, 0, 0, 0, serverData);
                 
                 LogManager.Default.Info($"选择服务器成功: 账号={_account}, 服务器={serverName}, SelectId={selectId}");
@@ -1185,21 +1200,21 @@ namespace LoginServer
         private void SendLoginSuccess(uint loginId)
         {
             string data = $"*{loginId}";
-            byte[] buffer = GetBytes(data);  // 使用GBK编码
+            byte[] buffer = GetBytes(data);  
             SendMessage(0, ProtocolCmd.SM_LOGINOK, 0, 0, 0, buffer);
         }
 
         public void SendTipMessage(string message)
         {
-            byte[] buffer = GetBytes(message);  // 使用GBK编码
+            byte[] buffer = GetBytes(message);  
             SendMessage(0, ProtocolCmd.SM_TIPWINDOW, 0, 0, 0, buffer);
         }
 
         private void SendCheckCharNameResult(bool available, string message)
         {
-            // 7566消息的响应格式：1表示可用，0表示不可用
+            
             uint result = available ? 1u : 0u;
-            byte[] buffer = GetBytes(message);  // 使用GBK编码
+            byte[] buffer = GetBytes(message);  
             SendMessage(result, 0x1D8E, 0, 0, 0, buffer);
         }
 
@@ -1207,7 +1222,7 @@ namespace LoginServer
         {
             try
             {
-                // 使用游戏编码发送消息
+                
                 byte[] encoded = new byte[8192];
                 int encodedSize = GameCodec.EncodeMsg(encoded, dwFlag, wCmd, w1, w2, w3, data, data?.Length ?? 0);
                 

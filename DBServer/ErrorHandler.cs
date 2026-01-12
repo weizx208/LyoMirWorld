@@ -11,9 +11,6 @@ using System.Threading.Tasks;
 
 namespace DBServer
 {
-    /// <summary>
-    /// 错误处理器，提供自动重连和错误恢复机制
-    /// </summary>
     public class ErrorHandler
     {
         private readonly string _connectionString;
@@ -41,9 +38,6 @@ namespace DBServer
             _lastErrorTime = DateTime.MinValue;
         }
 
-        /// <summary>
-        /// 执行数据库操作，支持自动重试
-        /// </summary>
         public async Task<MirCommon.SERVER_ERROR> ExecuteWithRetryAsync(Func<Task<MirCommon.SERVER_ERROR>> operation, string operationName = "")
         {
             MirCommon.SERVER_ERROR lastError = MirCommon.SERVER_ERROR.SE_FAIL;
@@ -56,7 +50,6 @@ namespace DBServer
                     
                     if (result == MirCommon.SERVER_ERROR.SE_OK)
                     {
-                        // 操作成功，重置重试计数
                         lock (_lock)
                         {
                             _currentRetryCount = 0;
@@ -64,7 +57,6 @@ namespace DBServer
                         return result;
                     }
                     
-                    // 如果是业务逻辑错误，不重试
                     if (IsBusinessError(result))
                     {
                         return result;
@@ -78,7 +70,6 @@ namespace DBServer
                     lastError = MapSqlExceptionToServerError(sqlEx);
                     LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] {operationName} SQL异常 (尝试 {attempt}/{_maxRetryCount}): {sqlEx.Message}");
                     
-                    // 如果是连接相关错误，尝试重连
                     if (IsConnectionError(sqlEx))
                     {
                         LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] 检测到连接错误，将在 {_retryDelay.TotalSeconds} 秒后重试...");
@@ -89,7 +80,6 @@ namespace DBServer
                     lastError = MapMySqlExceptionToServerError(mySqlEx);
                     LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] {operationName} MySQL异常 (尝试 {attempt}/{_maxRetryCount}): {mySqlEx.Message}");
                     
-                    // 如果是连接相关错误，尝试重连
                     if (IsMySqlConnectionError(mySqlEx))
                     {
                         LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] 检测到连接错误，将在 {_retryDelay.TotalSeconds} 秒后重试...");
@@ -100,7 +90,6 @@ namespace DBServer
                     lastError = MapSqliteExceptionToServerError(sqliteEx);
                     LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] {operationName} SQLite异常 (尝试 {attempt}/{_maxRetryCount}): {sqliteEx.Message}");
                     
-                    // 如果是连接相关错误，尝试重连
                     if (IsSqliteConnectionError(sqliteEx))
                     {
                         LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] 检测到连接错误，将在 {_retryDelay.TotalSeconds} 秒后重试...");
@@ -112,14 +101,12 @@ namespace DBServer
                     LogManager.Default.Warning($"[{DateTime.Now:HH:mm:ss}] {operationName} 异常 (尝试 {attempt}/{_maxRetryCount}): {ex.Message}");
                 }
 
-                // 如果不是最后一次尝试，等待后重试
                 if (attempt < _maxRetryCount)
                 {
                     await Task.Delay(_retryDelay);
                 }
             }
 
-            // 所有重试都失败
             lock (_lock)
             {
                 _currentRetryCount++;
@@ -130,17 +117,11 @@ namespace DBServer
             return lastError;
         }
 
-        /// <summary>
-        /// 同步执行数据库操作，支持自动重试
-        /// </summary>
         public MirCommon.SERVER_ERROR ExecuteWithRetry(Func<MirCommon.SERVER_ERROR> operation, string operationName = "")
         {
             return ExecuteWithRetryAsync(() => Task.FromResult(operation()), operationName).GetAwaiter().GetResult();
         }
 
-        /// <summary>
-        /// 检查连接是否健康
-        /// </summary>
         public async Task<bool> CheckConnectionHealthAsync()
         {
             try
@@ -185,9 +166,6 @@ namespace DBServer
             }
         }
 
-        /// <summary>
-        /// 获取错误统计信息
-        /// </summary>
         public ErrorStatistics GetErrorStatistics()
         {
             lock (_lock)
@@ -202,9 +180,6 @@ namespace DBServer
             }
         }
 
-        /// <summary>
-        /// 重置错误统计
-        /// </summary>
         public void ResetErrorStatistics()
         {
             lock (_lock)
@@ -214,9 +189,6 @@ namespace DBServer
             }
         }
 
-        /// <summary>
-        /// 判断是否为业务逻辑错误（不需要重试）
-        /// </summary>
         private bool IsBusinessError(MirCommon.SERVER_ERROR error)
         {
             switch (error)
@@ -243,123 +215,92 @@ namespace DBServer
             }
         }
 
-        /// <summary>
-        /// 判断是否为连接错误
-        /// </summary>
         private bool IsConnectionError(SqlException ex)
         {
-            // SQL Server 错误代码
-            // -2: 超时
-            // 20: 实例不可用
-            // 53: 找不到服务器
-            // 121: 信号量超时
-            // 233: 客户端无法建立连接
-            // 4060: 无法打开数据库
-            // 18456: 登录失败
             int[] connectionErrorCodes = { -2, 20, 53, 121, 233, 4060, 18456 };
             
             return Array.Exists(connectionErrorCodes, code => code == ex.Number);
         }
 
-        /// <summary>
-        /// 将SQL异常映射到SERVER_ERROR
-        /// </summary>
         private MirCommon.SERVER_ERROR MapSqlExceptionToServerError(SqlException ex)
         {
             switch (ex.Number)
             {
-                case 18456: // 登录失败
+                case 18456: 
                     return MirCommon.SERVER_ERROR.SE_LOGIN_PASSWORDERROR;
-                case 4060: // 无法打开数据库
+                case 4060: 
                     return MirCommon.SERVER_ERROR.SE_DB_NOTINITED;
-                case -2: // 超时
-                case 121: // 信号量超时
+                case -2: 
+                case 121: 
                     return MirCommon.SERVER_ERROR.SE_ODBC_SQLEXECDIRECTFAIL;
-                case 53: // 找不到服务器
-                case 233: // 客户端无法建立连接
+                case 53: 
+                case 233: 
                     return MirCommon.SERVER_ERROR.SE_ODBC_SQLCONNECTFAIL;
                 default:
                     return MirCommon.SERVER_ERROR.SE_FAIL;
             }
         }
 
-        /// <summary>
-        /// 判断是否为MySQL连接错误
-        /// </summary>
         private bool IsMySqlConnectionError(MySqlException ex)
         {
-            // MySQL 错误代码
-            // 1042: 无法连接到服务器
-            // 1043: 错误的握手
-            // 1044: 拒绝访问数据库
-            // 1045: 拒绝访问（错误的用户名或密码）
-            // 2002: 无法通过套接字连接到本地MySQL服务器
-            // 2003: 无法连接到MySQL服务器
-            // 2006: MySQL服务器已断开连接
-            // 2013: 查询期间丢失与MySQL服务器的连接
+            
+            
+            
+            
+            
+            
+            
+            
             uint[] connectionErrorCodes = { 1042, 1043, 1044, 1045, 2002, 2003, 2006, 2013 };
             
             return Array.Exists(connectionErrorCodes, code => code == ex.Number);
         }
 
-        /// <summary>
-        /// 将MySQL异常映射到SERVER_ERROR
-        /// </summary>
         private MirCommon.SERVER_ERROR MapMySqlExceptionToServerError(MySqlException ex)
         {
             switch (ex.Number)
             {
-                case 1045: // 拒绝访问（错误的用户名或密码）
+                case 1045: 
                     return MirCommon.SERVER_ERROR.SE_LOGIN_PASSWORDERROR;
-                case 1044: // 拒绝访问数据库
-                case 1049: // 未知数据库
+                case 1044: 
+                case 1049: 
                     return MirCommon.SERVER_ERROR.SE_DB_NOTINITED;
-                case 2002: // 无法通过套接字连接到本地MySQL服务器
-                case 2003: // 无法连接到MySQL服务器
+                case 2002: 
+                case 2003: 
                     return MirCommon.SERVER_ERROR.SE_ODBC_SQLCONNECTFAIL;
-                case 2006: // MySQL服务器已断开连接
-                case 2013: // 查询期间丢失与MySQL服务器的连接
+                case 2006: 
+                case 2013: 
                     return MirCommon.SERVER_ERROR.SE_ODBC_SQLEXECDIRECTFAIL;
                 default:
                     return MirCommon.SERVER_ERROR.SE_FAIL;
             }
         }
 
-        /// <summary>
-        /// 判断是否为SQLite连接错误
-        /// </summary>
         private bool IsSqliteConnectionError(SqliteException ex)
         {
-            // SQLite 错误代码
-            // 1: SQL错误或丢失数据库
-            // 14: 无法打开数据库文件
-            // 21: 数据库磁盘映像格式错误
-            // 26: 数据库文件被锁定
+            
+            
+            
+            
             int[] connectionErrorCodes = { 1, 14, 21, 26 };
             
             return Array.Exists(connectionErrorCodes, code => code == ex.SqliteErrorCode);
         }
 
-        /// <summary>
-        /// 将SQLite异常映射到SERVER_ERROR
-        /// </summary>
         private MirCommon.SERVER_ERROR MapSqliteExceptionToServerError(SqliteException ex)
         {
             switch (ex.SqliteErrorCode)
             {
-                case 1: // SQL错误或丢失数据库
-                case 14: // 无法打开数据库文件
+                case 1: 
+                case 14: 
                     return MirCommon.SERVER_ERROR.SE_DB_NOTINITED;
-                case 26: // 数据库文件被锁定
+                case 26: 
                     return MirCommon.SERVER_ERROR.SE_ODBC_SQLEXECDIRECTFAIL;
                 default:
                     return MirCommon.SERVER_ERROR.SE_FAIL;
             }
         }
 
-        /// <summary>
-        /// 获取错误描述
-        /// </summary>
         private string GetErrorDescription(MirCommon.SERVER_ERROR error)
         {
             return error switch
@@ -392,9 +333,6 @@ namespace DBServer
         }
     }
 
-    /// <summary>
-    /// 错误统计信息
-    /// </summary>
     public class ErrorStatistics
     {
         public int CurrentRetryCount { get; set; }
@@ -402,7 +340,6 @@ namespace DBServer
         public int MaxRetryCount { get; set; }
         public bool IsHealthy { get; set; }
         
-        // 添加Program.cs中使用的属性
         public int TotalErrors { get; set; }
         public int ConnectionErrors { get; set; }
         public int QueryErrors { get; set; }
@@ -421,9 +358,6 @@ namespace DBServer
         }
     }
 
-    /// <summary>
-    /// 连接健康检查器
-    /// </summary>
     public class ConnectionHealthChecker
     {
         private readonly ErrorHandler _errorHandler;
@@ -441,9 +375,6 @@ namespace DBServer
             _isRunning = false;
         }
 
-        /// <summary>
-        /// 启动健康检查
-        /// </summary>
         public void Start()
         {
             if (_isRunning) return;
@@ -455,9 +386,6 @@ namespace DBServer
             LogManager.Default.Info($"[{DateTime.Now:HH:mm:ss}] 连接健康检查已启动，检查间隔: {_checkInterval.TotalSeconds}秒");
         }
 
-        /// <summary>
-        /// 停止健康检查
-        /// </summary>
         public void Stop()
         {
             if (!_isRunning) return;
@@ -523,9 +451,6 @@ namespace DBServer
         }
     }
 
-    /// <summary>
-    /// 连接健康变化事件参数
-    /// </summary>
     public class ConnectionHealthChangedEventArgs : EventArgs
     {
         public bool IsHealthy { get; }

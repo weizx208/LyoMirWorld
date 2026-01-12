@@ -4,9 +4,9 @@ using System.Text;
 
 namespace MirCommon.Database
 {
-    /// <summary>
-    /// 创建角色描述结构
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
     public struct CREATECHARDESC
     {
@@ -39,14 +39,14 @@ namespace MirCommon.Database
         }
     }
 
-    /// <summary>
-    /// 查询角色列表结果
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct tQueryCharList_Result
     {
         public int count;
-        public IntPtr pData; // 指向SelectCharList数组的指针
+        public IntPtr pData; 
         
         public SelectCharList[] GetCharacters()
         {
@@ -66,9 +66,9 @@ namespace MirCommon.Database
         }
     }
 
-    /// <summary>
-    /// 查询地图位置结果
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
     public struct tQueryMapPosition_Result
     {
@@ -79,108 +79,109 @@ namespace MirCommon.Database
         public short y;
     }
 
-    /// <summary>
-    /// 角色数据库信息结构
-    /// typedef struct tagCHARDBINFO
-    /// {
-    ///     DWORD   dwClientKey;    // 第一个字段！
-    ///     char    szName[20];
-    ///     DWORD   dwDBId;
-    ///     DWORD   mapid;
-    ///     WORD    x;
-    ///     WORD    y;
-    ///     DWORD   dwGold;
-    ///     DWORD   dwYuanbao;
-    ///     DWORD   dwCurExp;
-    ///     WORD    wLevel;
-    ///     BYTE    btClass;
-    ///     BYTE    btHair;
-    ///     BYTE    btSex;
-    ///     BYTE    flag;
-    ///     WORD    hp;
-    ///     WORD    mp;
-    ///     WORD    maxhp;
-    ///     WORD    maxmp;
-    ///     BYTE    mindc;
-    ///     BYTE    maxdc;
-    ///     BYTE    minmc;
-    ///     BYTE    maxmc;
-    ///     BYTE    minsc;
-    ///     BYTE    maxsc;
-    ///     BYTE    minac;
-    ///     BYTE    maxac;
-    ///     BYTE    minmac;
-    ///     BYTE    maxmac;
-    ///     WORD    weight;
-    ///     BYTE    handweight;
-    ///     BYTE    bodyweight;
-    ///     DWORD   dwForgePoint;
-    ///     DWORD   dwProp[8];
-    ///     DWORD   dwFlag[4];
-    ///     char    szStartPoint[40];
-    ///     char    szGuildName[32];
-    /// }CHARDBINFO;
-    /// </summary>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
     public struct CHARDBINFO
     {
-        public uint dwClientKey;         // 客户端Key
+        public uint dwClientKey;         
         
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 20)]
-        public string szName;            // 角色名
+        public string szName;            
         
-        public uint dwDBId;              // 数据库ID
-        public uint mapid;               // 地图ID
-        public ushort x;                 // X坐标
-        public ushort y;                 // Y坐标
-        public uint dwGold;              // 金币
-        public uint dwYuanbao;           // 元宝
-        public uint dwCurExp;            // 当前经验
-        public ushort wLevel;            // 等级
-        public byte btClass;             // 职业
-        public byte btHair;              // 发型
-        public byte btSex;               // 性别
-        public byte flag;                // 标志
+        public uint dwDBId;              
+        public uint mapid;               
+        public ushort x;                 
+        public ushort y;                 
+        public uint dwGold;              
+        public uint dwYuanbao;           
+        public uint dwCurExp;            
+        public ushort wLevel;            
+        public byte btClass;             
+        public byte btHair;              
+        public byte btSex;               
+        public byte flag;                
         
-        public ushort hp;                // 当前HP
-        public ushort mp;                // 当前MP
-        public ushort maxhp;             // 最大HP
-        public ushort maxmp;             // 最大MP
+        public ushort hp;                
+        public ushort mp;                
+        public ushort maxhp;             
+        public ushort maxmp;             
         
-        public byte mindc;               // 最小物理攻击
-        public byte maxdc;               // 最大物理攻击
-        public byte minmc;               // 最小魔法攻击
-        public byte maxmc;               // 最大魔法攻击
-        public byte minsc;               // 最小道术攻击
-        public byte maxsc;               // 最大道术攻击
-        public byte minac;               // 最小物理防御
-        public byte maxac;               // 最大物理防御
-        public byte minmac;              // 最小魔法防御
-        public byte maxmac;              // 最大魔法防御
+        public byte mindc;               
+        public byte maxdc;               
+        public byte minmc;               
+        public byte maxmc;               
+        public byte minsc;               
+        public byte maxsc;               
+        public byte minac;               
+        public byte maxac;               
+        public byte minmac;              
+        public byte maxmac;              
         
-        public ushort weight;            // 背包负重
-        public byte handweight;          // 手腕负重
-        public byte bodyweight;          // 身体负重
+        public ushort weight;            
+        public byte handweight;          
+        public byte bodyweight;          
         
-        public uint dwForgePoint;        // 锻造点
+        public uint dwForgePoint;        
         
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
-        public uint[] dwProp;            // 属性数组（8个）
+        public uint[] dwProp;            
         
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-        public uint[] dwFlag;            // 标志数组（4个）
+        public uint[] dwFlag;            
         
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 40)]
-        public string szStartPoint;      // 起始点
+        public string szStartPoint;      
         
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-        public string szGuildName;       // 行会名称
+        public string szGuildName;       
         
         public static int Size => Marshal.SizeOf<CHARDBINFO>();
         
-        /// <summary>
-        /// 构造函数，初始化数组字段
-        /// </summary>
+        
+        
+        
         public CHARDBINFO()
         {
             dwProp = new uint[8];
@@ -190,9 +191,9 @@ namespace MirCommon.Database
             szGuildName = "";
         }
         
-        /// <summary>
-        /// 序列化为字节数组
-        /// </summary>
+        
+        
+        
         public byte[] ToBytes()
         {
             byte[] buffer = new byte[Size];
@@ -211,9 +212,9 @@ namespace MirCommon.Database
             return buffer;
         }
         
-        /// <summary>
-        /// 从字节数组反序列化
-        /// </summary>
+        
+        
+        
         public static CHARDBINFO FromBytes(byte[] data)
         {
             if (data.Length < Size)
@@ -233,23 +234,27 @@ namespace MirCommon.Database
         }
     }
 
-    /// <summary>
-    /// 物品数据库结构
-    /// </summary>
+    
+    
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct DBITEM
     {
-        public Item item;                // 物品
-        public ushort wPos;              // 位置
-        public byte btFlag;              // 标志（背包、装备等）
+        public Item item;                
+        public ushort wPos;              
+        public byte btFlag;              
         
         public static int Size => Marshal.SizeOf<DBITEM>();
         
-        /// <summary>
-        /// 从游戏物品结构转换
-        /// </summary>
+        
+        
+        
         public static DBITEM FromItem(Item item, uint ownerId, byte flag, ushort pos, uint findKey = 0)
         {
+            
+            
             return new DBITEM
             {
                 item = item,
@@ -258,17 +263,17 @@ namespace MirCommon.Database
             };
         }
         
-        /// <summary>
-        /// 转换为游戏物品结构
-        /// </summary>
+        
+        
+        
         public Item ToItem()
         {
             return item;
         }
         
-        /// <summary>
-        /// 序列化为字节数组
-        /// </summary>
+        
+        
+        
         public byte[] ToBytes()
         {
             byte[] buffer = new byte[Size];
@@ -287,9 +292,9 @@ namespace MirCommon.Database
             return buffer;
         }
         
-        /// <summary>
-        /// 从字节数组反序列化
-        /// </summary>
+        
+        
+        
         public static DBITEM FromBytes(byte[] data)
         {
             if (data.Length < Size)
@@ -309,22 +314,22 @@ namespace MirCommon.Database
         }
     }
 
-    /// <summary>
-    /// 技能数据库结构
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct MAGICDB
     {
-        public byte btUserKey;           // 用户键
-        public byte btCurLevel;          // 当前等级
-        public ushort wMagicId;          // 技能ID
-        public uint dwCurTrain;          // 当前训练值
+        public byte btUserKey;           
+        public byte btCurLevel;          
+        public ushort wMagicId;          
+        public uint dwCurTrain;          
         
         public static int Size => Marshal.SizeOf<MAGICDB>();
         
-        /// <summary>
-        /// 序列化为字节数组
-        /// </summary>
+        
+        
+        
         public byte[] ToBytes()
         {
             byte[] buffer = new byte[Size];
@@ -343,9 +348,9 @@ namespace MirCommon.Database
             return buffer;
         }
         
-        /// <summary>
-        /// 从字节数组反序列化
-        /// </summary>
+        
+        
+        
         public static MAGICDB FromBytes(byte[] data)
         {
             if (data.Length < Size)
@@ -365,51 +370,51 @@ namespace MirCommon.Database
         }
     }
 
-    /// <summary>
-    /// 物品位置结构
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct BAGITEMPOS
     {
-        public uint dwItemIndex;         // 物品索引
-        public byte btFlag;              // 标志
-        public ushort wPos;              // 位置
+        public uint dwItemIndex;         
+        public byte btFlag;              
+        public ushort wPos;              
         
         public static int Size => Marshal.SizeOf<BAGITEMPOS>();
     }
 
-    /// <summary>
-    /// 执行SQL记录定义
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ExecSqlRecord
     {
-        public int fieldCount;           // 字段数量
-        public IntPtr fieldTypes;        // 字段类型指针
-        public IntPtr fieldNames;        // 字段名称指针
+        public int fieldCount;           
+        public IntPtr fieldTypes;        
+        public IntPtr fieldNames;        
         
         public static int Size => Marshal.SizeOf<ExecSqlRecord>();
     }
 
-    /// <summary>
-    /// 任务信息结构
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct TaskInfo
     {
-        public uint dwOwner;             // 所有者ID
-        public uint dwTaskId;            // 任务ID
-        public uint dwState;             // 任务状态
-        public uint dwParam1;            // 参数1
-        public uint dwParam2;            // 参数2
-        public uint dwParam3;            // 参数3
-        public uint dwParam4;            // 参数4
+        public uint dwOwner;             
+        public uint dwTaskId;            
+        public uint dwState;             
+        public uint dwParam1;            
+        public uint dwParam2;            
+        public uint dwParam3;            
+        public uint dwParam4;            
         
         public static int Size => Marshal.SizeOf<TaskInfo>();
         
-        /// <summary>
-        /// 序列化为字节数组
-        /// </summary>
+        
+        
+        
         public byte[] ToBytes()
         {
             byte[] buffer = new byte[Size];
@@ -428,9 +433,9 @@ namespace MirCommon.Database
             return buffer;
         }
         
-        /// <summary>
-        /// 从字节数组反序列化
-        /// </summary>
+        
+        
+        
         public static TaskInfo FromBytes(byte[] data)
         {
             if (data.Length < Size)
@@ -450,14 +455,14 @@ namespace MirCommon.Database
         }
     }
 
-    /// <summary>
-    /// 数据库结构序列化工具
-    /// </summary>
+    
+    
+    
     public static class DatabaseSerializer
     {
-        /// <summary>
-        /// 序列化CHARDBINFO数组
-        /// </summary>
+        
+        
+        
         public static byte[] SerializeCharDbInfos(CHARDBINFO[] infos)
         {
             if (infos == null || infos.Length == 0)
@@ -475,9 +480,9 @@ namespace MirCommon.Database
             return buffer;
         }
         
-        /// <summary>
-        /// 反序列化CHARDBINFO数组
-        /// </summary>
+        
+        
+        
         public static CHARDBINFO[] DeserializeCharDbInfos(byte[] data)
         {
             if (data == null || data.Length == 0)
@@ -500,9 +505,9 @@ namespace MirCommon.Database
             return result;
         }
         
-        /// <summary>
-        /// 序列化DBITEM数组
-        /// </summary>
+        
+        
+        
         public static byte[] SerializeDbItems(DBITEM[] items)
         {
             if (items == null || items.Length == 0)
@@ -520,9 +525,9 @@ namespace MirCommon.Database
             return buffer;
         }
         
-        /// <summary>
-        /// 反序列化DBITEM数组
-        /// </summary>
+        
+        
+        
         public static DBITEM[] DeserializeDbItems(byte[] data)
         {
             if (data == null || data.Length == 0)
@@ -545,9 +550,9 @@ namespace MirCommon.Database
             return result;
         }
         
-        /// <summary>
-        /// 序列化MAGICDB数组
-        /// </summary>
+        
+        
+        
         public static byte[] SerializeMagicDbs(MAGICDB[] magics)
         {
             if (magics == null || magics.Length == 0)
@@ -565,9 +570,9 @@ namespace MirCommon.Database
             return buffer;
         }
         
-        /// <summary>
-        /// 反序列化MAGICDB数组
-        /// </summary>
+        
+        
+        
         public static MAGICDB[] DeserializeMagicDbs(byte[] data)
         {
             if (data == null || data.Length == 0)
@@ -590,9 +595,9 @@ namespace MirCommon.Database
             return result;
         }
         
-        /// <summary>
-        /// 序列化TaskInfo数组
-        /// </summary>
+        
+        
+        
         public static byte[] SerializeTaskInfos(TaskInfo[] tasks)
         {
             if (tasks == null || tasks.Length == 0)
@@ -610,9 +615,9 @@ namespace MirCommon.Database
             return buffer;
         }
         
-        /// <summary>
-        /// 反序列化TaskInfo数组
-        /// </summary>
+        
+        
+        
         public static TaskInfo[] DeserializeTaskInfos(byte[] data)
         {
             if (data == null || data.Length == 0)

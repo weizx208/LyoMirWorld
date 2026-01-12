@@ -6,20 +6,22 @@ using MirCommon.Utils;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 逻辑地图管理器
-    /// </summary>
+    
+    
+    
+    
     public class LogicMapMgr
     {
         private static LogicMapMgr? _instance;
         private readonly Dictionary<uint, LogicMap> _mapsById = new();
         private readonly Dictionary<string, LogicMap> _mapsByName = new(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> _missingPhysicsMapsLogged = new(StringComparer.OrdinalIgnoreCase);
         private readonly object _lock = new();
         private const int MAX_LOGIC_MAP = 10240;
 
-        /// <summary>
-        /// 获取单例实例
-        /// </summary>
+        
+        
+        
         public static LogicMapMgr Instance
         {
             get
@@ -32,17 +34,18 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 私有构造函数
-        /// </summary>
+        
+        
+        
         private LogicMapMgr()
         {
         }
 
-        /// <summary>
-        /// 从指定路径加载所有逻辑地图配置文件
-        /// </summary>
-        /// <param name="path">配置文件路径</param>
+        
+        
+        
+        
+        
         public void Load(string path)
         {
             lock (_lock)
@@ -57,7 +60,7 @@ namespace GameServer
                         return;
                     }
 
-                    // 查找所有.ini文件
+                    
                     var iniFiles = Directory.GetFiles(path, "*.ini", SearchOption.AllDirectories);
                     int loadedCount = 0;
 
@@ -68,12 +71,12 @@ namespace GameServer
                             var map = LoadMapFromIni(iniFile);
                             if (map != null)
                             {
-                                // 添加到字典
+                                
                                 _mapsById[map.MapId] = map;
                                 _mapsByName[map.MapName] = map;
                                 loadedCount++;
 
-                                LogManager.Default.Debug($"加载逻辑地图: {map.MapName} (ID: {map.MapId})");
+                                
                             }
                         }
                         catch (Exception ex)
@@ -82,7 +85,7 @@ namespace GameServer
                         }
                     }
 
-                    // 初始化地图链接
+                    
                     InitMapLinks();
 
                     LogManager.Default.Info($"成功加载 {loadedCount} 个逻辑地图配置");
@@ -94,17 +97,28 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 从INI文件加载单个地图配置
-        /// </summary>
+        private static string NormalizeMissingPhysicsMapKey(string upperBlockmap)
+        {
+            
+            if (upperBlockmap.StartsWith("RTG", StringComparison.OrdinalIgnoreCase))
+                return "RTG*";
+
+            return upperBlockmap;
+        }
+
+        
+        
+        
+        
+        
         private LogicMap? LoadMapFromIni(string iniFile)
         {
             try
             {
-                // 使用IniFile类读取INI文件
+                
                 var ini = new IniFile(iniFile);
                 
-                // 读取物理地图名称
+                
                 string blockmap = ini.GetString("define", "blockmap", "");
                 if (string.IsNullOrEmpty(blockmap))
                 {
@@ -112,7 +126,7 @@ namespace GameServer
                     return null;
                 }
 
-                // 读取地图名称
+                
                 string mapName = ini.GetString("define", "name", "");
                 if (string.IsNullOrEmpty(mapName))
                 {
@@ -120,10 +134,10 @@ namespace GameServer
                     return null;
                 }
 
-                // 读取小地图ID
+                
                 int miniMap = ini.GetInt("define", "minimap", 0);
 
-                // 读取地图ID
+                
                 uint mapId = (uint)ini.GetInt("define", "mapid", 0);
                 if (mapId == 0)
                 {
@@ -131,66 +145,112 @@ namespace GameServer
                     return null;
                 }
 
-                // 读取链接数量
+                
                 int linkcount = ini.GetInt("define", "linkcount", 0);
 
-                // 读取经验倍率
+                
                 int expfactor = ini.GetInt("define", "expfactor", 100);
                 float expFactor = expfactor / 100.0f;
 
-                // 读取地图标志字符串
+                
                 string flagStr = ini.GetString("define", "flag", "");
 
-                // 将物理地图名称转换为大写
+                
                 string upperBlockmap = blockmap.ToUpper();
 
-                // 通过PhysicsMapMgr获取物理地图
+                
                 var physicsMap = PhysicsMapMgr.Instance.GetPhysicsMapByName(upperBlockmap);
                 if (physicsMap == null)
                 {
-                    LogManager.Default.Error($"无法加载物理地图: {upperBlockmap}，地图 {mapName} 加载失败");
+                    
+                    
+                    string missingKey = NormalizeMissingPhysicsMapKey(upperBlockmap);
+                    if (_missingPhysicsMapsLogged.Add(missingKey))
+                    {
+                        LogManager.Default.Warning(
+                            $"物理地图资源缺失: {upperBlockmap}，将跳过加载逻辑地图 {mapName}(ID:{mapId}). " +
+                            $"请补齐 ./data/maps/pm_cache/{upperBlockmap}.PMC 或 ./data/maps/physics/{upperBlockmap}.nmp"
+                        );
+                    }
                     return null;
                 }
 
-                // 从物理地图获取实际尺寸，而不是从INI读取
+                
                 int width = physicsMap.Width;
                 int height = physicsMap.Height;
 
-                // 创建地图实例
-                var map = new LogicMap(mapId, mapName, width, height);
+                
+                var map = new LogicMap(mapId, mapName, width, height)
+                {
+                    
+                    MapFile = blockmap
+                };
 
-                // 设置物理地图关联
+                
                 map.SetPhysicsMap(physicsMap);
 
-                // 设置小地图ID
+                
                 map.SetMiniMap(miniMap);
 
-                // 设置经验倍率
+                
                 map.ExpFactor = expFactor;
 
-                // 解析并设置地图标志
+                
                 if (!string.IsNullOrEmpty(flagStr))
                 {
-                    // 使用'|'分割标志字符串
+                    
                     string[] flags = flagStr.Split('|', StringSplitOptions.RemoveEmptyEntries);
                     foreach (string flag in flags)
                     {
                         string trimmedFlag = flag.Trim();
                         if (!string.IsNullOrEmpty(trimmedFlag))
                         {
-                            // 直接调用LogicMap的SetFlag(string)方法，支持带参数的标志
+                            
+                            
                             map.SetFlag(trimmedFlag);
                         }
                     }
                 }
 
-                // 设置链接数量，稍后在InitLinks中处理
+                
                 map.SetLinkCount(linkcount);
 
-                // 初始化地图单元格
+                
                 map.InitMapCells();
 
-                LogManager.Default.Debug($"加载逻辑地图: {mapName} (ID: {mapId}, 尺寸: {width}x{height}, 物理地图: {upperBlockmap})");
+                
+                if (linkcount > 0)
+                {
+                    for (int i = 1; i <= linkcount; i++)
+                    {
+                        string key = $"linkpoint{i}";
+                        string value = ini.GetString("linkpoint", key, "");
+                        if (string.IsNullOrWhiteSpace(value))
+                            continue;
+
+                        if (!TryParseLinkPoint(value, out int sx, out int sy, out uint targetMapId, out int tx, out int ty))
+                        {
+                            LogManager.Default.Warning($"地图链接点解析失败: mapId={mapId}, key={key}, value='{value}'");
+                            continue;
+                        }
+
+                        
+                        try
+                        {
+                            var ev = new ChangeMapEvent(targetMapId, (ushort)tx, (ushort)ty);
+                            if (!map.AddObject(ev, sx, sy))
+                            {
+                                LogManager.Default.Warning($"无法添加地图链接事件: mapId={mapId}, pos=({sx},{sy}), to=[{targetMapId}]({tx},{ty})");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Default.Warning($"创建地图链接事件失败: mapId={mapId}, pos=({sx},{sy}), to=[{targetMapId}]({tx},{ty}) - {ex.Message}");
+                        }
+                    }
+                }
+
+                
                 return map;
             }
             catch (Exception ex)
@@ -200,10 +260,57 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 初始化地图链接
-        /// 在所有地图加载完成后调用每个地图的InitLinks方法
-        /// </summary>
+        private static bool TryParseLinkPoint(string value, out int sx, out int sy, out uint targetMapId, out int tx, out int ty)
+        {
+            sx = sy = tx = ty = 0;
+            targetMapId = 0;
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            
+            string s = value.Trim();
+
+            int p1 = s.IndexOf('(');
+            int p2 = s.IndexOf(')');
+            if (p1 < 0 || p2 <= p1)
+                return false;
+
+            string src = s.Substring(p1 + 1, p2 - p1 - 1);
+            var srcParts = src.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (srcParts.Length != 2)
+                return false;
+            if (!int.TryParse(srcParts[0], out sx) || !int.TryParse(srcParts[1], out sy))
+                return false;
+
+            int b1 = s.IndexOf('[', p2 + 1);
+            int b2 = s.IndexOf(']', b1 + 1);
+            if (b1 < 0 || b2 <= b1)
+                return false;
+
+            string mapPart = s.Substring(b1 + 1, b2 - b1 - 1).Trim();
+            if (!uint.TryParse(mapPart, out targetMapId))
+                return false;
+
+            int p3 = s.IndexOf('(', b2 + 1);
+            int p4 = s.IndexOf(')', p3 + 1);
+            if (p3 < 0 || p4 <= p3)
+                return false;
+
+            string dst = s.Substring(p3 + 1, p4 - p3 - 1);
+            var dstParts = dst.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (dstParts.Length != 2)
+                return false;
+            if (!int.TryParse(dstParts[0], out tx) || !int.TryParse(dstParts[1], out ty))
+                return false;
+
+            return true;
+        }
+
+        
+        
+        
+        
+        
         private void InitMapLinks()
         {
             int linkCount = 0;
@@ -224,12 +331,13 @@ namespace GameServer
             LogManager.Default.Info($"地图链接初始化完成，共处理 {linkCount} 个链接");
         }
 
-        /// <summary>
-        /// 通过地图ID获取逻辑地图
-        /// </summary>
+        
+        
+        
+        
         public LogicMap? GetLogicMapById(uint mapId)
         {
-            LogManager.Default.Debug($"当前LogicMap已有{_mapsById.Count}个地图");
+            
             lock (_lock)
             {
                 if (mapId == 0 || mapId > MAX_LOGIC_MAP)
@@ -239,9 +347,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 通过地图名称获取逻辑地图
-        /// </summary>
+        
+        
+        
+        
         public LogicMap? GetLogicMapByName(string mapName)
         {
             lock (_lock)
@@ -250,9 +359,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取已加载的地图数量
-        /// </summary>
+        
+        
+        
+        
         public int GetMapCount()
         {
             lock (_lock)
@@ -261,9 +371,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取所有已加载的地图
-        /// </summary>
+        
+        
+        
         public List<LogicMap> GetAllMaps()
         {
             lock (_lock)
@@ -272,9 +382,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 检查地图是否存在
-        /// </summary>
+        
+        
+        
         public bool HasMap(uint mapId)
         {
             lock (_lock)
@@ -283,9 +393,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 检查地图是否存在（通过名称）
-        /// </summary>
+        
+        
+        
         public bool HasMap(string mapName)
         {
             lock (_lock)
@@ -294,9 +404,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 添加地图（手动添加，用于测试或动态创建）
-        /// </summary>
+        
+        
+        
         public void AddMap(LogicMap map)
         {
             lock (_lock)
@@ -309,9 +419,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 移除地图
-        /// </summary>
+        
+        
+        
         public bool RemoveMap(uint mapId)
         {
             lock (_lock)
@@ -325,9 +435,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 清除所有地图
-        /// </summary>
+        
+        
+        
         public void ClearAllMaps()
         {
             lock (_lock)
@@ -337,9 +447,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 重新加载地图配置
-        /// </summary>
+        
+        
+        
         public void Reload(string path)
         {
             lock (_lock)
@@ -349,141 +459,145 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取地图名称（通过ID）
-        /// </summary>
+        
+        
+        
         public string GetMapName(uint mapId)
         {
             var map = GetLogicMapById(mapId);
             return map?.MapName ?? "未知地图";
         }
 
-        /// <summary>
-        /// 获取地图ID（通过名称）
-        /// </summary>
+        
+        
+        
         public uint GetMapId(string mapName)
         {
             var map = GetLogicMapByName(mapName);
             return map?.MapId ?? 0;
         }
 
-        /// <summary>
-        /// 检查是否可以传送到指定地图
-        /// </summary>
+        
+        
+        
         public bool CanTeleportTo(uint mapId)
         {
             var map = GetLogicMapById(mapId);
             return map?.AllowTeleport ?? false;
         }
 
-        /// <summary>
-        /// 检查是否可以回城到指定地图
-        /// </summary>
+        
+        
+        
         public bool CanRecallTo(uint mapId)
         {
             var map = GetLogicMapById(mapId);
             return map?.AllowRecall ?? false;
         }
 
-        /// <summary>
-        /// 检查地图是否安全区
-        /// </summary>
+        
+        
+        
         public bool IsSafeZone(uint mapId)
         {
             var map = GetLogicMapById(mapId);
             return map?.IsSafeZone ?? false;
         }
 
-        /// <summary>
-        /// 检查地图是否允许PK
-        /// </summary>
+        
+        
+        
         public bool AllowPK(uint mapId)
         {
             var map = GetLogicMapById(mapId);
             return map?.AllowPK ?? false;
         }
 
-        /// <summary>
-        /// 检查地图是否允许宠物
-        /// </summary>
+        
+        
+        
         public bool AllowPets(uint mapId)
         {
             var map = GetLogicMapById(mapId);
             return map?.AllowPets ?? false;
         }
 
-        /// <summary>
-        /// 检查地图是否允许坐骑
-        /// </summary>
+        
+        
+        
         public bool AllowMounts(uint mapId)
         {
             var map = GetLogicMapById(mapId);
             return map?.AllowMounts ?? false;
         }
 
-        /// <summary>
-        /// 获取地图经验倍率
-        /// </summary>
+        
+        
+        
         public float GetExpFactor(uint mapId)
         {
             var map = GetLogicMapById(mapId);
             return map?.ExpFactor ?? 1.0f;
         }
 
-        /// <summary>
-        /// 获取地图掉落倍率
-        /// </summary>
+        
+        
+        
         public float GetDropFactor(uint mapId)
         {
             var map = GetLogicMapById(mapId);
             return map?.DropFactor ?? 1.0f;
         }
 
-        /// <summary>
-        /// 将字符串标志转换为MapFlag枚举
-        /// </summary>
+        
+        
+        
+        
+        
+        
         private MapFlag GetMapFlagFromString(string flagStr)
         {
-            // 检查是否带参数
+            
             int paramStart = flagStr.IndexOf('(');
             if (paramStart > 0)
             {
-                // 提取标志名称（不带参数部分）
+                
                 string flagName = flagStr.Substring(0, paramStart).Trim().ToUpper();
                 return GetMapFlagFromName(flagName);
             }
             else
             {
-                // 不带参数的标志
+                
                 return GetMapFlagFromName(flagStr.ToUpper());
             }
         }
         
-        /// <summary>
-        /// 根据标志名称获取MapFlag枚举（内部方法）
-        /// </summary>
+        
+        
+        
         private MapFlag GetMapFlagFromName(string flagName)
         {
+            
             switch (flagName)
             {
                 case "SABUKPALACE":
-                    return MapFlag.MF_NONE; // 沙巴克皇宫特殊处理
+                    return MapFlag.MF_NONE; 
                 case "FIGHTMAP":
                     return MapFlag.MF_FIGHT;
                 case "NORANDOMMOVE":
                     return MapFlag.MF_NORUN;
                 case "NORECONNECT":
-                    return MapFlag.MF_NONE; // 禁止重连，需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "RIDEHORSE":
                     return MapFlag.MF_NOMOUNT;
                 case "LEVELABOVE":
                 case "LEVELBELOW":
-                    return MapFlag.MF_NONE; // 等级限制，需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "LIMITJOB":
-                    return MapFlag.MF_NONE; // 职业限制，需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "PKPOINTABOVE":
                 case "PKPOINTBELOW":
-                    return MapFlag.MF_NONE; // PK值限制，需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "NOESCAPE":
                     return MapFlag.MF_NOTELEPORT;
                 case "NOHOME":
@@ -493,11 +607,11 @@ namespace GameServer
                 case "WEATHER":
                 case "DAY":
                 case "NIGHT":
-                    return MapFlag.MF_NONE; // 需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "NOGROUPMOVE":
-                    return MapFlag.MF_NONE; // 禁止组队移动，需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "SANDCITYHOME":
-                    return MapFlag.MF_NONE; // 沙城回城点，需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "NODMOVE":
                     return MapFlag.MF_NOWALK;
                 case "NOFLASHMOVE":
@@ -506,7 +620,7 @@ namespace GameServer
                 case "USERDEFINE2":
                 case "USERDEFINE3":
                 case "USERDEFINE4":
-                    return MapFlag.MF_NONE; // 用户自定义标志
+                    return MapFlag.MF_NONE; 
                 case "SAFE":
                     return MapFlag.MF_SAFE;
                 case "NOPK":

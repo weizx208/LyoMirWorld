@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace MirCommon.Database
 {
-    /// <summary>
-    /// 数据库管理器
-    /// </summary>
+    
+    
+    
     public class DatabaseManager : IDisposable
     {
         private readonly DatabaseConfig _config;
@@ -23,14 +23,14 @@ namespace MirCommon.Database
             _config = config ?? throw new ArgumentNullException(nameof(config));
         }
 
-        /// <summary>
-        /// 初始化数据库管理器
-        /// </summary>
+        
+        
+        
         public async Task<bool> InitializeAsync()
         {
             try
             {
-                // 创建初始连接池
+                
                 for (int i = 0; i < Math.Min(10, _config.MaxConnections); i++)
                 {
                     var connection = CreateConnection();
@@ -50,9 +50,9 @@ namespace MirCommon.Database
             }
         }
 
-        /// <summary>
-        /// 获取数据库连接
-        /// </summary>
+        
+        
+        
         public SqlConnection? GetConnection()
         {
             if (_disposed)
@@ -60,14 +60,14 @@ namespace MirCommon.Database
 
             lock (_poolLock)
             {
-                // 尝试从连接池获取
+                
                 if (_connectionPool.TryTake(out var connection))
                 {
                     _activeConnections++;
                     return connection;
                 }
 
-                // 创建新连接
+                
                 if (_activeConnections < _config.MaxConnections)
                 {
                     var newConnection = CreateConnection();
@@ -82,9 +82,9 @@ namespace MirCommon.Database
             }
         }
 
-        /// <summary>
-        /// 释放数据库连接
-        /// </summary>
+        
+        
+        
         public void ReleaseConnection(SqlConnection connection)
         {
             if (connection == null)
@@ -98,7 +98,7 @@ namespace MirCommon.Database
                     return;
                 }
 
-                // 如果连接状态正常，放回连接池
+                
                 if (connection.State == ConnectionState.Open && _connectionPool.Count < _config.MaxConnections)
                 {
                     _connectionPool.Add(connection);
@@ -112,9 +112,9 @@ namespace MirCommon.Database
             }
         }
 
-        /// <summary>
-        /// 执行查询并返回DataTable
-        /// </summary>
+        
+        
+        
         public async Task<DataTable?> ExecuteQueryAsync(string sql, params SqlParameter[] parameters)
         {
             var connection = GetConnection();
@@ -143,9 +143,9 @@ namespace MirCommon.Database
             }
         }
 
-        /// <summary>
-        /// 执行非查询命令
-        /// </summary>
+        
+        
+        
         public async Task<int> ExecuteNonQueryAsync(string sql, params SqlParameter[] parameters)
         {
             var connection = GetConnection();
@@ -171,9 +171,9 @@ namespace MirCommon.Database
             }
         }
 
-        /// <summary>
-        /// 执行标量查询
-        /// </summary>
+        
+        
+        
         public async Task<object?> ExecuteScalarAsync(string sql, params SqlParameter[] parameters)
         {
             var connection = GetConnection();
@@ -199,9 +199,9 @@ namespace MirCommon.Database
             }
         }
 
-        /// <summary>
-        /// 执行存储过程
-        /// </summary>
+        
+        
+        
         public async Task<DataTable?> ExecuteStoredProcedureAsync(string procedureName, params SqlParameter[] parameters)
         {
             var connection = GetConnection();
@@ -231,9 +231,9 @@ namespace MirCommon.Database
             }
         }
 
-        /// <summary>
-        /// 批量插入数据
-        /// </summary>
+        
+        
+        
         public async Task<bool> BulkInsertAsync(string tableName, DataTable data)
         {
             var connection = GetConnection();
@@ -263,9 +263,9 @@ namespace MirCommon.Database
             }
         }
 
-        /// <summary>
-        /// 开始事务
-        /// </summary>
+        
+        
+        
         public SqlTransaction? BeginTransaction()
         {
             var connection = GetConnection();
@@ -284,9 +284,9 @@ namespace MirCommon.Database
             }
         }
 
-        /// <summary>
-        /// 提交事务
-        /// </summary>
+        
+        
+        
         public void CommitTransaction(SqlTransaction transaction)
         {
             if (transaction == null)
@@ -307,9 +307,9 @@ namespace MirCommon.Database
             }
         }
 
-        /// <summary>
-        /// 回滚事务
-        /// </summary>
+        
+        
+        
         public void RollbackTransaction(SqlTransaction transaction)
         {
             if (transaction == null)
@@ -330,9 +330,9 @@ namespace MirCommon.Database
             }
         }
 
-        /// <summary>
-        /// 获取连接池状态
-        /// </summary>
+        
+        
+        
         public (int total, int active, int available) GetConnectionPoolStatus()
         {
             lock (_poolLock)
@@ -341,9 +341,9 @@ namespace MirCommon.Database
             }
         }
 
-        /// <summary>
-        /// 创建新连接
-        /// </summary>
+        
+        
+        
         private SqlConnection? CreateConnection()
         {
             try

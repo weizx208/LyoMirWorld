@@ -13,55 +13,55 @@ namespace GameServer
 {
     #region 基础类型定义
 
-    /// <summary>
-    /// NPC类型
-    /// </summary>
+    
+    
+    
     public enum NPCType
     {
-        Normal = 0,         // 普通NPC
-        Shop = 1,           // 商店
-        Storage = 2,        // 仓库
-        Mission = 3,        // 任务NPC
-        Teleport = 4,       // 传送NPC
-        Guild = 5,          // 公会NPC
-        Blacksmith = 6,     // 铁匠（修理/强化）
-        Appraisal = 7,      // 鉴定师
-        Trainer = 8,        // 技能训练师
-        Guard = 9,          // 守卫
-        Banker = 10         // 银行
+        Normal = 0,         
+        Shop = 1,           
+        Storage = 2,        
+        Mission = 3,        
+        Teleport = 4,       
+        Guild = 5,          
+        Blacksmith = 6,     
+        Appraisal = 7,      
+        Trainer = 8,        
+        Guard = 9,          
+        Banker = 10         
     }
 
-    /// <summary>
-    /// NPC功能标志
-    /// </summary>
+    
+    
+    
     [Flags]
     public enum NPCFunction
     {
         None = 0,
-        Talk = 1 << 0,          // 对话
-        Shop = 1 << 1,          // 商店
-        Repair = 1 << 2,        // 修理
-        Enhance = 1 << 3,       // 强化
-        Storage = 1 << 4,       // 仓库
-        Mission = 1 << 5,       // 任务
-        Teleport = 1 << 6,      // 传送
-        Skill = 1 << 7,         // 学习技能
-        Guild = 1 << 8,         // 公会
-        Identify = 1 << 9,      // 鉴定
-        Bank = 1 << 10          // 银行
+        Talk = 1 << 0,          
+        Shop = 1 << 1,          
+        Repair = 1 << 2,        
+        Enhance = 1 << 3,       
+        Storage = 1 << 4,       
+        Mission = 1 << 5,       
+        Teleport = 1 << 6,      
+        Skill = 1 << 7,         
+        Guild = 1 << 8,         
+        Identify = 1 << 9,      
+        Bank = 1 << 10          
     }
 
-    /// <summary>
-    /// 传送目的地
-    /// </summary>
+    
+    
+    
     public class TeleportDestination
     {
         public string Name { get; set; } = string.Empty;
         public int MapId { get; set; }
         public int X { get; set; }
         public int Y { get; set; }
-        public uint Cost { get; set; }          // 传送费用
-        public int RequireLevel { get; set; }   // 等级需求
+        public uint Cost { get; set; }          
+        public int RequireLevel { get; set; }   
 
         public TeleportDestination(string name, int mapId, int x, int y, uint cost = 0)
         {
@@ -77,9 +77,9 @@ namespace GameServer
 
     #region NPC定义和实例
 
-    /// <summary>
-    /// NPC定义（模板）
-    /// </summary>
+    
+    
+    
     public class NPCDefinition
     {
         public int NPCId { get; set; }
@@ -91,12 +91,12 @@ namespace GameServer
         public string ScriptFile { get; set; } = string.Empty;
         public string Greeting { get; set; } = string.Empty;
 
-        // 商店相关
+        
         public List<int> ShopItems { get; set; } = new();
-        public float BuyRate { get; set; } = 1.0f;      // 收购倍率
-        public float SellRate { get; set; } = 1.0f;     // 出售倍率
+        public float BuyRate { get; set; } = 1.0f;      
+        public float SellRate { get; set; } = 1.0f;     
 
-        // 传送相关
+        
         public List<TeleportDestination> Destinations { get; set; } = new();
 
         public NPCDefinition(int npcId, string name, NPCType type)
@@ -112,16 +112,16 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// NPC实例（地图上的具体NPC）
-    /// </summary>
+    
+    
+    
     public class NPCInstance : Npc
     {
         public uint InstanceId { get; set; }
         public NPCDefinition Definition { get; set; }
         public bool IsActive { get; set; } = true;
         
-        // 对话脚本
+        
         private NPCScript? _script;
 
         public NPCInstance(NPCDefinition definition, uint instanceId, int mapId, int x, int y)
@@ -129,19 +129,21 @@ namespace GameServer
         {
             Definition = definition;
             InstanceId = instanceId;
+            ObjectId = instanceId;
             MapId = mapId;
             X = (ushort)x;
             Y = (ushort)y;
 
-            // 设置Npc属性
+            
             this.Name = definition.Name;
             this.CanTalk = definition.HasFunction(NPCFunction.Talk);
             this.CanTrade = definition.HasFunction(NPCFunction.Shop);
             this.CanRepair = definition.HasFunction(NPCFunction.Repair);
             this.CanStore = definition.HasFunction(NPCFunction.Storage);
             this.ScriptFile = definition.ScriptFile;
+            this.ImageIndex = definition.ModelId; 
 
-            // 加载脚本
+            
             if (!string.IsNullOrEmpty(definition.ScriptFile))
             {
                 _script = NPCScriptManager.Instance.LoadScript(definition.ScriptFile);
@@ -169,9 +171,9 @@ namespace GameServer
 
         public NPCScript? GetScript() => _script;
 
-        /// <summary>
-        /// 玩家与NPC交互
-        /// </summary>
+        
+        
+        
         public void OnInteract(HumanPlayer player)
         {
             if (!IsActive)
@@ -179,56 +181,53 @@ namespace GameServer
 
             LogManager.Default.Info($"{player.Name} 与 {Definition.Name} 交互");
 
-            // 开始交互会话
+            
             var session = NPCInteractionManager.Instance.StartInteraction(player, InstanceId);
             if (session == null)
                 return;
 
-            // 发送问候
+            
             SendGreeting(player);
         }
 
-        /// <summary>
-        /// 发送问候消息
-        /// </summary>
+        
+        
+        
         private void SendGreeting(HumanPlayer player)
         {
             var greeting = GetGreeting();
+
             
-            // 构建问候消息
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(InstanceId);
-            builder.WriteUInt16(ProtocolCmd.SM_NPCTALK);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteString(greeting);
-            
-            byte[] packet = builder.Build();
-            player.SendMessage(packet);
+            player.SendMsg(InstanceId, ProtocolCmd.SM_NPCTALK, 0, 0, 0, greeting);
         }
 
         public override bool GetViewMsg(out byte[] msg, MapObject? viewer = null)
         {
-            // 构建NPC显示消息
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(InstanceId);
-            builder.WriteUInt16(ProtocolCmd.SM_APPEAR);
-            builder.WriteUInt16((ushort)X);
-            builder.WriteUInt16((ushort)Y);
-            builder.WriteUInt16(0); // 方向，NPC默认朝下
+            msg = Array.Empty<byte>();
+
             
-            // NPC特征数据
-            byte[] featureData = new byte[12];
-            BitConverter.GetBytes(Definition.ModelId).CopyTo(featureData, 0);
-            BitConverter.GetBytes(0).CopyTo(featureData, 4); // 状态
-            BitConverter.GetBytes(0).CopyTo(featureData, 8); // 健康
-            
-            builder.WriteBytes(featureData);
-            builder.WriteString($"{Definition.Name}/{Definition.Title}");
-            
-            msg = builder.Build();
-            return true;
+            uint feather = GetFeather();
+            uint status = 0;
+            uint health = GetHealth();
+
+            string tail = $"{Definition.Name}/255";
+            byte[] tailBytes = System.Text.Encoding.GetEncoding("GBK").GetBytes(tail);
+
+            byte[] data = new byte[12 + tailBytes.Length];
+            Buffer.BlockCopy(BitConverter.GetBytes(feather), 0, data, 0, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes(status), 0, data, 4, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes(health), 0, data, 8, 4);
+            Buffer.BlockCopy(tailBytes, 0, data, 12, tailBytes.Length);
+
+            var outMsg = new MirCommon.MirMsgOrign
+            {
+                dwFlag = InstanceId,
+                wCmd = ProtocolCmd.SM_APPEAR,
+                wParam = new ushort[3] { X, Y, 0 },
+            };
+
+            msg = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(outMsg, data);
+            return msg.Length > 0;
         }
     }
 
@@ -236,9 +235,9 @@ namespace GameServer
 
     #region 对话系统
 
-    /// <summary>
-    /// NPC对话选项
-    /// </summary>
+    
+    
+    
     public class DialogOption
     {
         public int Id { get; set; }
@@ -254,9 +253,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// NPC对话
-    /// </summary>
+    
+    
+    
     public class NPCDialog
     {
         public int DialogId { get; set; }
@@ -275,9 +274,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// NPC脚本
-    /// </summary>
+    
+    
+    
     public class NPCScript
     {
         public string ScriptName { get; set; } = string.Empty;
@@ -311,9 +310,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// JSON脚本数据类
-    /// </summary>
+    
+    
+    
     public class ScriptData
     {
         public string ScriptName { get; set; } = string.Empty;
@@ -336,16 +335,17 @@ namespace GameServer
         public string Condition { get; set; } = string.Empty;
     }
 
-    /// <summary>
-    /// NPC脚本管理器
-    /// </summary>
+    
+    
+    
     public class NPCScriptManager
     {
         private static NPCScriptManager? _instance;
         public static NPCScriptManager Instance => _instance ??= new NPCScriptManager();
 
         private readonly ConcurrentDictionary<string, NPCScript> _scripts = new();
-        private readonly string _scriptsDirectory = "NPCScripts";
+        
+        private readonly string _scriptsDirectory = Path.Combine(".", "data", "NPCScripts");
 
         private NPCScriptManager()
         {
@@ -354,10 +354,13 @@ namespace GameServer
 
         public NPCScript? LoadScript(string scriptFile)
         {
+            if (string.IsNullOrEmpty(scriptFile))
+                return null;
+
             if (_scripts.TryGetValue(scriptFile, out var script))
                 return script;
 
-            // 尝试从文件加载脚本
+            
             var loadedScript = LoadScriptFromFile(scriptFile);
             if (loadedScript != null)
             {
@@ -365,7 +368,7 @@ namespace GameServer
                 return loadedScript;
             }
 
-            // 文件加载失败，返回默认脚本
+            
             return CreateDefaultScript(scriptFile);
         }
 
@@ -373,15 +376,26 @@ namespace GameServer
         {
             try
             {
-                string filePath = Path.Combine(_scriptsDirectory, $"{scriptFile}.json");
-                
+                string filePath = Path.Combine(_scriptsDirectory, scriptFile + ".json");
+
                 if (!File.Exists(filePath))
                 {
                     LogManager.Default.Warning($"NPC脚本文件不存在: {filePath}");
                     return null;
                 }
 
-                string jsonContent = SmartReader.ReadTextFile(filePath);
+                string jsonContent;
+                try
+                {
+                    
+                    jsonContent = SmartReader.ReadTextFile(filePath);
+                }
+                catch (Exception ex)
+                {
+                    LogManager.Default.Error($"读取NPC脚本文件失败（编码问题可能） {filePath}: {ex.Message}");
+                    return null;
+                }
+
                 var scriptData = JsonSerializer.Deserialize<ScriptData>(jsonContent, new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true
@@ -399,7 +413,7 @@ namespace GameServer
                 foreach (var dialogData in scriptData.Dialogs)
                 {
                     var dialog = new NPCDialog(dialogData.DialogId, dialogData.Text);
-                    
+
                     foreach (var optionData in dialogData.Options)
                     {
                         var option = new DialogOption(optionData.Id, optionData.Text, optionData.Action)
@@ -408,7 +422,7 @@ namespace GameServer
                         };
                         dialog.AddOption(option);
                     }
-                    
+
                     script.AddDialog(dialog);
                 }
 
@@ -487,10 +501,10 @@ namespace GameServer
 
         private void InitializeDefaultScripts()
         {
-            // 尝试从文件加载所有脚本
+            
             LoadAllScriptsFromDirectory();
             
-            // 如果没有加载到任何脚本，创建默认脚本
+            
             if (_scripts.Count == 0)
             {
                 RegisterScript(CreateWeaponShopScript());
@@ -540,9 +554,9 @@ namespace GameServer
 
     #region NPC管理器
 
-    /// <summary>
-    /// NPC管理器
-    /// </summary>
+    
+    
+    
     public class NPCManager
     {
         private static NPCManager? _instance;
@@ -560,7 +574,7 @@ namespace GameServer
 
         private void InitializeDefaultNPCs()
         {
-            // 武器商人
+            
             var weaponShop = new NPCDefinition(1001, "武器商人", NPCType.Shop)
             {
                 Title = "精良武器店",
@@ -570,10 +584,10 @@ namespace GameServer
                 BuyRate = 0.5f,
                 SellRate = 1.2f
             };
-            weaponShop.ShopItems.AddRange(new[] { 1001, 1002, 1003 }); // 木剑、铁剑、钢剑
+            weaponShop.ShopItems.AddRange(new[] { 1001, 1002, 1003 }); 
             AddDefinition(weaponShop);
 
-            // 防具商人
+            
             var armorShop = new NPCDefinition(1002, "防具商人", NPCType.Shop)
             {
                 Title = "坚固防具店",
@@ -583,10 +597,10 @@ namespace GameServer
                 BuyRate = 0.5f,
                 SellRate = 1.2f
             };
-            armorShop.ShopItems.AddRange(new[] { 2001, 2002 }); // 布衣、皮甲
+            armorShop.ShopItems.AddRange(new[] { 2001, 2002 }); 
             AddDefinition(armorShop);
 
-            // 药店商人
+            
             var potionShop = new NPCDefinition(1003, "药店老板", NPCType.Shop)
             {
                 Title = "万能药铺",
@@ -596,10 +610,10 @@ namespace GameServer
                 BuyRate = 0.3f,
                 SellRate = 1.0f
             };
-            potionShop.ShopItems.AddRange(new[] { 3001, 3002, 3003 }); // 各种药水
+            potionShop.ShopItems.AddRange(new[] { 3001, 3002, 3003 }); 
             AddDefinition(potionShop);
 
-            // 仓库管理员
+            
             var storage = new NPCDefinition(1004, "仓库管理员", NPCType.Storage)
             {
                 Title = "安全仓库",
@@ -608,7 +622,7 @@ namespace GameServer
             };
             AddDefinition(storage);
 
-            // 传送员
+            
             var teleporter = new NPCDefinition(1005, "传送员", NPCType.Teleport)
             {
                 Title = "城市传送",
@@ -620,7 +634,7 @@ namespace GameServer
             teleporter.Destinations.Add(new TeleportDestination("毒蛇山谷", 2, 200, 200, 200));
             AddDefinition(teleporter);
 
-            // 铁匠
+            
             var blacksmith = new NPCDefinition(1006, "铁匠", NPCType.Blacksmith)
             {
                 Title = "大师铁匠",
@@ -629,7 +643,7 @@ namespace GameServer
             };
             AddDefinition(blacksmith);
 
-            // 技能训练师
+            
             var trainer = new NPCDefinition(1007, "技能大师", NPCType.Trainer)
             {
                 Title = "武技训练",
@@ -658,17 +672,27 @@ namespace GameServer
             if (definition == null)
                 return null;
 
-            uint instanceId = System.Threading.Interlocked.Increment(ref _nextInstanceId);
-            var npc = new NPCInstance(definition, instanceId, mapId, x, y);
             
+            uint seq = System.Threading.Interlocked.Increment(ref _nextInstanceId);
+            uint instanceId = ObjectIdUtil.MakeObjectId(MirObjectType.NPC, seq);
+
+            var npc = new NPCInstance(definition, instanceId, mapId, x, y);
+
             _instances[instanceId] = npc;
 
-            // 添加到地图NPC列表
+            
             if (!_mapNPCs.ContainsKey(mapId))
             {
                 _mapNPCs[mapId] = new List<uint>();
             }
             _mapNPCs[mapId].Add(instanceId);
+
+            
+            var map = LogicMapMgr.Instance.GetLogicMapById((uint)mapId);
+            if (map != null)
+            {
+                map.AddObject(npc, x, y);
+            }
 
             LogManager.Default.Debug($"创建NPC: {definition.Name} 于地图{mapId} ({x},{y})");
             return npc;
@@ -712,16 +736,48 @@ namespace GameServer
 
         public void InitializeMapNPCs()
         {
-            // 在比奇城创建NPC
-            CreateNPC(1001, 0, 300, 300); // 武器商人
-            CreateNPC(1002, 0, 310, 300); // 防具商人
-            CreateNPC(1003, 0, 320, 300); // 药店老板
-            CreateNPC(1004, 0, 300, 310); // 仓库管理员
-            CreateNPC(1005, 0, 250, 250); // 传送员
-            CreateNPC(1006, 0, 330, 300); // 铁匠
-            CreateNPC(1007, 0, 300, 320); // 技能训练师
+            
+            
+            
+            int cityMapId = ResolveDefaultCityMapId();
+            if (cityMapId <= 0)
+            {
+                LogManager.Default.Warning("NPCSystem: 未找到可用主城地图(MapFile=0)，跳过默认NPC刷出");
+                return;
+            }
+
+            LogManager.Default.Info($"NPCSystem: 默认NPC刷出地图ID={cityMapId} (MapFile=0)");
+
+            
+            CreateNPC(1001, cityMapId, 300, 300); 
+            CreateNPC(1002, cityMapId, 310, 300); 
+            CreateNPC(1003, cityMapId, 320, 300); 
+            CreateNPC(1004, cityMapId, 300, 310); 
+            CreateNPC(1005, cityMapId, 250, 250); 
+            CreateNPC(1006, cityMapId, 330, 300); 
+            CreateNPC(1007, cityMapId, 300, 320); 
 
             LogManager.Default.Info($"已在地图上创建 {_instances.Count} 个NPC");
+        }
+
+        private static int ResolveDefaultCityMapId()
+        {
+            try
+            {
+                
+                var maps = LogicMapMgr.Instance.GetAllMaps();
+                var map0 = maps.FirstOrDefault(m => string.Equals(m.MapFile, "0", StringComparison.OrdinalIgnoreCase));
+                if (map0 != null)
+                    return (int)map0.MapId;
+
+                
+                var first = maps.OrderBy(m => m.MapId).FirstOrDefault();
+                return first != null ? (int)first.MapId : 0;
+            }
+            catch
+            {
+                return 0;
+            }
         }
     }
 
@@ -729,9 +785,9 @@ namespace GameServer
 
     #region NPC交互管理器
 
-    /// <summary>
-    /// 玩家NPC交互会话
-    /// </summary>
+    
+    
+    
     public class NPCSession
     {
         public HumanPlayer Player { get; set; }
@@ -758,9 +814,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// NPC交互管理器
-    /// </summary>
+    
+    
+    
     public class NPCInteractionManager
     {
         private static NPCInteractionManager? _instance;
@@ -809,9 +865,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 处理玩家选择
-        /// </summary>
+        
+        
+        
         public void HandlePlayerChoice(HumanPlayer player, int optionId)
         {
             var session = GetSession(player.ObjectId);
@@ -828,7 +884,7 @@ namespace GameServer
             var option = currentDialog.Options.FirstOrDefault(o => o.Id == optionId);
             if (option == null) return;
 
-            // 处理动作
+            
             HandleAction(player, session.NPC, option.Action);
         }
 
@@ -869,7 +925,7 @@ namespace GameServer
         {
             LogManager.Default.Info($"{player.Name} 打开 {npc.Definition.Name} 的商店");
             
-            // 构建商店界面消息
+            
             var builder = new PacketBuilder();
             builder.WriteUInt32(npc.InstanceId);
             builder.WriteUInt16(ProtocolCmd.SM_OPENSHOP);
@@ -877,7 +933,7 @@ namespace GameServer
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             
-            // 发送商店物品列表
+            
             byte[] packet = builder.Build();
             player.SendMessage(packet);
         }
@@ -931,29 +987,29 @@ namespace GameServer
         {
             LogManager.Default.Info($"{player.Name} 传送到地图 {mapId}");
             
-            // 获取传送目的地
+            
             var npc = NPCManager.Instance.GetNPC(GetSession(player.ObjectId)?.NPC.InstanceId ?? 0);
             if (npc == null) return;
             
             var destination = npc.Definition.Destinations.FirstOrDefault(d => d.MapId == mapId);
             if (destination == null) return;
             
-            // 检查费用
+            
             if (player.Gold < destination.Cost)
             {
                 player.Say($"传送需要 {destination.Cost} 金币");
                 return;
             }
             
-            // 扣除金币
+            
             if (!player.TakeGold(destination.Cost))
                 return;
             
-            // 传送玩家
+            
             var map = MapManager.Instance.GetMap((uint)destination.MapId);
             if (map != null)
             {
-                // 使用Npc类的TeleportPlayer方法
+                
                 var npcInstance = NPCManager.Instance.GetNPC(GetSession(player.ObjectId)?.NPC.InstanceId ?? 0);
                 if (npcInstance != null)
                 {
@@ -967,34 +1023,34 @@ namespace GameServer
 
     #region 游戏服务器集成
 
-    /// <summary>
-    /// NPC系统初始化
-    /// </summary>
+    
+    
+    
     public static class NPCSystemInitializer
     {
         public static void Initialize()
         {
-            // 初始化NPC管理器
+            
             NPCManager.Instance.InitializeMapNPCs();
             
-            // 初始化脚本管理器
+            
             _ = NPCScriptManager.Instance;
             
-            // 初始化交互管理器
+            
             _ = NPCInteractionManager.Instance;
             
             LogManager.Default.Info("NPC系统初始化完成");
         }
     }
 
-    /// <summary>
-    /// NPC消息处理器
-    /// </summary>
+    
+    
+    
     public static class NPCMessageHandler
     {
-        /// <summary>
-        /// 处理玩家与NPC交互消息
-        /// </summary>
+        
+        
+        
         public static void HandleNPCInteract(HumanPlayer player, uint npcInstanceId)
         {
             var npc = NPCManager.Instance.GetNPC(npcInstanceId);
@@ -1007,43 +1063,43 @@ namespace GameServer
             npc.OnInteract(player);
         }
 
-        /// <summary>
-        /// 处理玩家对话选择
-        /// </summary>
+        
+        
+        
         public static void HandleDialogChoice(HumanPlayer player, int optionId)
         {
             NPCInteractionManager.Instance.HandlePlayerChoice(player, optionId);
         }
 
-        /// <summary>
-        /// 处理商店购买
-        /// </summary>
+        
+        
+        
         public static void HandleShopBuy(HumanPlayer player, uint npcInstanceId, int itemIndex)
         {
             var npc = NPCManager.Instance.GetNPC(npcInstanceId);
             if (npc == null || !npc.Definition.HasFunction(NPCFunction.Shop))
                 return;
             
-            // TODO: 实现购买逻辑
+            
             LogManager.Default.Info($"{player.Name} 从 {npc.Definition.Name} 购买物品 {itemIndex}");
         }
 
-        /// <summary>
-        /// 处理商店出售
-        /// </summary>
+        
+        
+        
         public static void HandleShopSell(HumanPlayer player, uint npcInstanceId, int bagSlot)
         {
             var npc = NPCManager.Instance.GetNPC(npcInstanceId);
             if (npc == null || !npc.Definition.HasFunction(NPCFunction.Shop))
                 return;
             
-            // TODO: 实现出售逻辑
+            
             LogManager.Default.Info($"{player.Name} 向 {npc.Definition.Name} 出售物品 {bagSlot}");
         }
 
-        /// <summary>
-        /// 处理链接选择
-        /// </summary>
+        
+        
+        
         public static void HandleSelectLink(HumanPlayer player, uint npcInstanceId, string link)
         {
             var npc = NPCManager.Instance.GetNPC(npcInstanceId);
@@ -1052,31 +1108,31 @@ namespace GameServer
             
             LogManager.Default.Info($"{player.Name} 选择链接: {link} (NPC: {npc.Definition.Name})");
             
-            // 处理链接选择
+            
             var session = NPCInteractionManager.Instance.GetSession(player.ObjectId);
             if (session != null)
             {
-                // 解析链接动作
+                
                 if (link.StartsWith("dialog:"))
                 {
                     if (int.TryParse(link.Substring(7), out int dialogId))
                     {
                         session.CurrentDialogId = dialogId;
-                        // 发送新的对话框
+                        
                         SendDialog(player, npc, dialogId);
                     }
                 }
                 else if (link.StartsWith("action:"))
                 {
                     string action = link.Substring(7);
-                    NPCInteractionManager.Instance.HandlePlayerChoice(player, 0); // 使用0作为选项ID，因为动作已经指定
+                    NPCInteractionManager.Instance.HandlePlayerChoice(player, 0); 
                 }
             }
         }
 
-        /// <summary>
-        /// 发送对话框
-        /// </summary>
+        
+        
+        
         private static void SendDialog(HumanPlayer player, NPCInstance npc, int dialogId)
         {
             var script = npc.GetScript();
@@ -1087,7 +1143,7 @@ namespace GameServer
             if (dialog == null)
                 return;
             
-            // 构建对话框消息
+            
             var builder = new PacketBuilder();
             builder.WriteUInt32(npc.InstanceId);
             builder.WriteUInt16(ProtocolCmd.SM_DIALOG);
@@ -1096,7 +1152,7 @@ namespace GameServer
             builder.WriteUInt16(0);
             builder.WriteString(dialog.Text);
             
-            // 添加选项
+            
             builder.WriteByte((byte)dialog.Options.Count);
             foreach (var option in dialog.Options)
             {

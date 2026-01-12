@@ -8,70 +8,74 @@ using MirCommon.Utils;
 
 namespace GameServer
 {
-    public partial class HumanPlayer : AliveObject
+    public partial class HumanPlayer : AliveObject, ScriptTarget
     {
 
         #region 经验和升级
 
-        /// <summary>
-        /// 增加经验
-        /// </summary>
+        
+        
+        
         public void AddExp(uint exp, bool noBonus = false, uint killerId = 0)
         {
-            // 1. 组队经验分配
-            // 2. 经验倍率计算（地图倍率、全局倍率、技能倍率）
-            // 3. 双倍经验活动
-            // 4. 宠物经验分配
+            
+            
+            
+            
+            
 
             uint finalExp = exp;
 
             if (!noBonus)
             {
-                // 经验倍率计算
-                float expFactor = 1.0f; // 基础倍率
+                
+                float expFactor = 1.0f; 
 
-                // 全局经验倍率（从服务器配置读取）
-                // 注意：这里使用Program.cs中的GameWorld类
-                float globalExpFactor = 1.0f; 
+                
+                
+                float globalExpFactor = GameWorld.Instance.GetGameVar(GameVarConstants.ExpFactor);
+                if (globalExpFactor <= 0.0f) globalExpFactor = 1.0f;
                 expFactor += globalExpFactor - 1.0f;
 
-                // 地图经验倍率
+                
                 if (CurrentMap != null && CurrentMap is LogicMap logicMap)
                 {
                     float mapExpFactor = logicMap.GetExpFactor();
                     expFactor += mapExpFactor - 1.0f;
                 }
 
-                // 技能经验倍率（如经验加成技能）
+                
                 if (_expMagic != null)
                 {
-                    // 检查技能是否生效
-                    // 注意：SkillSystem.cs中的PlayerSkill没有nAddPower属性
-                    uint addExp = exp; // 额外经验
-                    // 发送技能特效消息
+                    
+                    
+                    
+                    
+                    uint addExp = exp; 
+                    
                     SaySystem("经验加成技能生效");
                     TrainMagic(_expMagic);
                 }
 
-                // 双倍经验活动
+                
                 if (killerId > 0 && IsGodBlessEffective(GodBlessType.DoubleExp))
                 {
                     expFactor += 1.0f;
-                    // 添加特效过程 - 使用现有的ProcessType枚举值
-                    // 注意：需要先定义ProcessType.GodBless
-                    // AddProcess(ProcessType.GodBless, killerId, 8);
+                    
+                    
+                    
                 }
 
-                // 应用经验倍率
+                
                 finalExp = (uint)Math.Round(expFactor * exp);
 
-                // 个人经验倍率（如VIP等）
+                
                 finalExp = (uint)Math.Round(GetExpFactor() * finalExp);
             }
 
             Exp += finalExp;
 
-            // 检查升级
+            
             uint requiredExp = GetRequiredExp();
             while (Exp >= requiredExp && Level < 255)
             {
@@ -80,70 +84,65 @@ namespace GameServer
                 requiredExp = GetRequiredExp();
             }
 
-            // 检查并更新称号
+            
             CheckAndUpgradeTitle();
 
-            // 通知客户端
+            
             SendExpChanged(finalExp);
 
-            // 宠物经验分配
+            
             uint petExp = finalExp / 10;
             if (petExp == 0) petExp = 1;
-            // PetSystem.DistributePetExp(petExp);
+            
         }
 
-        /// <summary>
-        /// 获取个人经验倍率
-        /// </summary>
-        private float GetExpFactor()
-        {
-            // 这里应该从玩家状态、VIP等获取经验倍率
-            return 1.0f;
-        }
+        
 
-        /// <summary>
-        /// 检查是否双倍经验生效
-        /// </summary>
+        
+        
+        
         private bool IsGodBlessEffective(GodBlessType type)
         {
-            // 这里应该检查玩家是否有对应的神佑状态
+            
             return false;
         }
 
-        /// <summary>
-        /// 检查并更新称号
-        /// </summary>
+        
+        
+        
         private void CheckAndUpgradeTitle()
         {
-            // 根据经验、等级等条件更新称号
-            // 这里需要实现称号系统
+            
+            
+            
 
-            // 检查是否需要更新称号
+            
             int newTitleIndex = GetTitleIndexByExp(Exp);
             if (newTitleIndex != _currentTitleIndex)
             {
                 _currentTitleIndex = newTitleIndex;
                 _currentTitle = GetTitleByIndex(newTitleIndex);
-                // 发送称号更新消息
+                
                 SendTitleChanged();
             }
         }
 
-        /// <summary>
-        /// 根据经验获取称号索引
-        /// </summary>
+        
+        
+        
         private int GetTitleIndexByExp(uint exp)
         {
-            // 这里应该从配置读取称号经验要求
+            
+            
             return (int)(exp / 1000000);
         }
 
-        /// <summary>
-        /// 根据索引获取称号
-        /// </summary>
+        
+        
+        
         private string GetTitleByIndex(int index)
         {
-            // 这里应该从配置读取称号名称
+            
             string[] titles = {
                 "新手", "学徒", "见习", "初级", "中级",
                 "高级", "精英", "大师", "宗师", "传奇"
@@ -154,36 +153,53 @@ namespace GameServer
             return titles[index];
         }
 
-        /// <summary>
-        /// 训练技能
-        /// </summary>
+        
+        
+        
         private void TrainMagic(PlayerSkill skill)
         {
-            if (skill == null) return;
+            if (skill == null)
+                return;
 
-            skill.UseCount++;
+            
+            if (skill.Level >= 3)
+                return;
 
-            // 每使用一定次数增加技能经验
-            if (skill.UseCount % 10 == 0)
+            if (MagicManager.Instance.GetMagicCount() == 0)
             {
-                // 检查技能升级
-                if (skill.CanLevelUp())
-                {
-                    skill.LevelUp();
-                    // 发送技能升级消息
-                    SendSkillUpgraded(skill);
-                }
+                MagicManager.Instance.LoadAll();
+            }
+
+            int oldLevel = skill.Level;
+
+            
+            int exp = Random.Shared.Next(1, 4);
+            skill.AddExp(exp);
+
+            
+            uint train = (uint)Math.Max(0, skill.UseCount);
+            SendMsg((uint)skill.SkillId,
+                MirCommon.ProtocolCmd.SM_SKILLEXPCHANGED,
+                (ushort)Math.Clamp(skill.Level, 0, ushort.MaxValue),
+                (ushort)(train & 0xffff),
+                (ushort)((train & 0xffff0000) >> 16));
+
+            if (skill.Level != oldLevel)
+            {
+                
+                RecalcHitSpeed();
+                UpdateSubProp();
             }
         }
 
-        /// <summary>
-        /// 发送称号变化消息
-        /// </summary>
+        
+        
+        
         private void SendTitleChanged()
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x283); // SM_TITLECHANGED
+            builder.WriteUInt16(0x283); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -192,14 +208,14 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送技能升级消息
-        /// </summary>
+        
+        
+        
         private void SendSkillUpgraded(PlayerSkill skill)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x284); // SM_SKILLUPGRADED
+            builder.WriteUInt16(0x284); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -209,57 +225,166 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 升级
-        /// </summary>
+        
+        
+        
         private void LevelUp()
         {
-            Level++;
+            if (Level >= 255)
+                return;
 
-            // 根据职业增加属性
-            switch (Job)
+            int newLevel = Math.Min(255, (int)Level + 1);
+
+            
+            if (!_dbBaseStatsLoaded)
             {
-                case 0: // 战士
-                    MaxHP += 30;
-                    MaxMP += 5;
-                    Stats.MinDC += 2;
-                    Stats.MaxDC += 3;
-                    Stats.MinAC += 1;
-                    Stats.MaxAC += 2;
-                    break;
-                case 1: // 法师
-                    MaxHP += 15;
-                    MaxMP += 20;
-                    Stats.MinMC += 2;
-                    Stats.MaxMC += 3;
-                    break;
-                case 2: // 道士
-                    MaxHP += 20;
-                    MaxMP += 15;
-                    Stats.MinSC += 2;
-                    Stats.MaxSC += 3;
-                    Stats.MinAC += 1;
-                    Stats.MaxAC += 1;
-                    break;
+                
+                _dbBaseStats.MinDC = Stats.MinDC;
+                _dbBaseStats.MaxDC = Stats.MaxDC;
+                _dbBaseStats.MinMC = Stats.MinMC;
+                _dbBaseStats.MaxMC = Stats.MaxMC;
+                _dbBaseStats.MinSC = Stats.MinSC;
+                _dbBaseStats.MaxSC = Stats.MaxSC;
+                _dbBaseStats.MinAC = Stats.MinAC;
+                _dbBaseStats.MaxAC = Stats.MaxAC;
+                _dbBaseStats.MinMAC = Stats.MinMAC;
+                _dbBaseStats.MaxMAC = Stats.MaxMAC;
+                _dbBaseStats.Accuracy = Stats.Accuracy;
+                _dbBaseStats.Agility = Stats.Agility;
+                _dbBaseStats.Lucky = Stats.Lucky;
+                _dbBaseMaxHP = MaxHP;
+                _dbBaseMaxMP = MaxMP;
+                _dbBaseStatsLoaded = true;
             }
 
-            // 回满血蓝
+            
+            var desc = GameWorld.Instance.GetHumanDataDesc(Job, newLevel);
+            if (desc != null)
+            {
+                _dbBaseMaxHP = desc.Hp;
+                _dbBaseMaxMP = desc.Mp;
+
+                _curBagWeight = desc.BagWeight;
+                _curBodyWeight = (byte)Math.Clamp((int)desc.BodyWeight, 0, 255);
+                _curHandWeight = (byte)Math.Clamp((int)desc.HandWeight, 0, 255);
+
+                _dbBaseStats.MinAC = desc.MinAc;
+                _dbBaseStats.MaxAC = desc.MaxAc;
+                _dbBaseStats.MinMAC = desc.MinMac;
+                _dbBaseStats.MaxMAC = desc.MaxMac;
+                _dbBaseStats.MinDC = desc.MinDc;
+                _dbBaseStats.MaxDC = desc.MaxDc;
+                _dbBaseStats.MinMC = desc.MinMc;
+                _dbBaseStats.MaxMC = desc.MaxMc;
+                _dbBaseStats.MinSC = desc.MinSc;
+                _dbBaseStats.MaxSC = desc.MaxSc;
+            }
+            else
+            {
+                
+                switch (Job)
+                {
+                    case 0: 
+                        _dbBaseMaxHP += 30;
+                        _dbBaseMaxMP += 5;
+                        _dbBaseStats.MinDC += 2;
+                        _dbBaseStats.MaxDC += 3;
+                        _dbBaseStats.MinAC += 1;
+                        _dbBaseStats.MaxAC += 2;
+                        break;
+                    case 1: 
+                        _dbBaseMaxHP += 15;
+                        _dbBaseMaxMP += 20;
+                        _dbBaseStats.MinMC += 2;
+                        _dbBaseStats.MaxMC += 3;
+                        break;
+                    case 2: 
+                        _dbBaseMaxHP += 20;
+                        _dbBaseMaxMP += 15;
+                        _dbBaseStats.MinSC += 2;
+                        _dbBaseStats.MaxSC += 3;
+                        _dbBaseStats.MinAC += 1;
+                        _dbBaseStats.MaxAC += 1;
+                        break;
+                }
+            }
+
+            Level = (byte)newLevel;
+
+            
+            CombatStats equip = Equipment?.GetTotalStats() ?? new CombatStats();
+
+            Stats.MinDC = _dbBaseStats.MinDC + equip.MinDC;
+            Stats.MaxDC = _dbBaseStats.MaxDC + equip.MaxDC;
+            Stats.MinMC = _dbBaseStats.MinMC + equip.MinMC;
+            Stats.MaxMC = _dbBaseStats.MaxMC + equip.MaxMC;
+            Stats.MinSC = _dbBaseStats.MinSC + equip.MinSC;
+            Stats.MaxSC = _dbBaseStats.MaxSC + equip.MaxSC;
+            Stats.MinAC = _dbBaseStats.MinAC + equip.MinAC;
+            Stats.MaxAC = _dbBaseStats.MaxAC + equip.MaxAC;
+            Stats.MinMAC = _dbBaseStats.MinMAC + equip.MinMAC;
+            Stats.MaxMAC = _dbBaseStats.MaxMAC + equip.MaxMAC;
+            Stats.Accuracy = _dbBaseStats.Accuracy + equip.Accuracy;
+            Stats.Agility = _dbBaseStats.Agility + equip.Agility;
+            Stats.Lucky = _dbBaseStats.Lucky + equip.Lucky;
+
+            MaxHP = _dbBaseMaxHP + equip.MaxHP;
+            MaxMP = _dbBaseMaxMP + equip.MaxMP;
+            MaxHP = Math.Max(1, MaxHP);
+            MaxMP = Math.Max(1, MaxMP);
+
             CurrentHP = MaxHP;
             CurrentMP = MaxMP;
+            Stats.MaxHP = MaxHP;
+            Stats.HP = CurrentHP;
+            Stats.MaxMP = MaxMP;
+            Stats.MP = CurrentMP;
 
-            // 通知升级
-            Say($"恭喜！你升到了 {Level} 级！");
+            
+            _equipStatsCache.MaxHP = equip.MaxHP;
+            _equipStatsCache.MaxMP = equip.MaxMP;
+            _equipStatsCache.MinDC = equip.MinDC;
+            _equipStatsCache.MaxDC = equip.MaxDC;
+            _equipStatsCache.MinMC = equip.MinMC;
+            _equipStatsCache.MaxMC = equip.MaxMC;
+            _equipStatsCache.MinSC = equip.MinSC;
+            _equipStatsCache.MaxSC = equip.MaxSC;
+            _equipStatsCache.MinAC = equip.MinAC;
+            _equipStatsCache.MaxAC = equip.MaxAC;
+            _equipStatsCache.MinMAC = equip.MinMAC;
+            _equipStatsCache.MaxMAC = equip.MaxMAC;
+            _equipStatsCache.Accuracy = equip.Accuracy;
+            _equipStatsCache.Agility = equip.Agility;
+            _equipStatsCache.Lucky = equip.Lucky;
+
+            
             SendLevelUp();
+            UpdateProp();
+            UpdateSubProp();
+            
+            SendHpMpChanged();
+            SendWeightChanged();
 
+            Say($"恭喜！你升到了 {Level} 级！");
             LogManager.Default.Info($"{Name} 升级到 {Level} 级");
         }
 
-        /// <summary>
-        /// 获取升级所需经验
-        /// </summary>
+        
+        
+        
         private uint GetRequiredExp()
         {
-            // 实际应该从HumanDataDesc配置中读取
+            
+            
+            
+            if (Level >= 255)
+                return uint.MaxValue;
+
+            var desc = GameWorld.Instance.GetHumanDataDesc(Job, Level);
+            if (desc != null && desc.LevelupExp > 0)
+                return desc.LevelupExp;
+
+            
             if (Level <= 1) return 100;
             if (Level <= 10) return (uint)(Level * 100);
             if (Level <= 20) return (uint)(Level * 200);
@@ -275,170 +400,148 @@ namespace GameServer
 
         private void SendExpChanged(uint gainedExp)
         {
-            // 发送经验变化消息
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x280); // SM_EXPCHANGED
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt32(Exp);
-            builder.WriteUInt32(gainedExp);
-
-            SendMessage(builder.Build());
+            
+            
+            ushort w1 = (ushort)(gainedExp & 0xFFFF);
+            ushort w2 = (ushort)((gainedExp >> 16) & 0xFFFF);
+            SendMsg(Exp, 0x2c, w1, w2, 0);
         }
 
         private void SendLevelUp()
         {
-            // 发送升级消息
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x281); // SM_LEVELUP
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16((ushort)Level);
+            
+            
+            ushort level = (ushort)Level;
+            ushort idLow = (ushort)(ObjectId & 0xFFFF);
+            ushort idHigh = (ushort)((ObjectId >> 16) & 0xFFFF);
 
-            SendMessage(builder.Build());
+            SendMsg(Exp, 0x2d, level, idLow, idHigh);
+
+            if (CurrentMap != null)
+            {
+                var msg = new MirCommon.MirMsgOrign
+                {
+                    dwFlag = Exp,
+                    wCmd = 0x2d,
+                    wParam = new ushort[3] { level, idLow, idHigh }
+                };
+                byte[] encoded = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(msg, null);
+                if (encoded.Length > 0)
+                {
+                    CurrentMap.SendToNearbyPlayers(X, Y, 18, encoded, ObjectId);
+                }
+            }
         }
 
         #endregion
 
         #region 金钱管理
 
-        /// <summary>
-        /// 增加金币
-        /// </summary>
+        
+        
+        
         public bool AddGold(uint amount)
         {
             if (amount > uint.MaxValue - Gold)
                 return false;
 
             Gold += amount;
-            SendGoldChanged();
+            SendMoneyChanged(MoneyType.Gold);
             return true;
         }
 
-        /// <summary>
-        /// 扣除金币
-        /// </summary>
+        
+        
+        
         public bool TakeGold(uint amount)
         {
             if (Gold < amount)
                 return false;
 
             Gold -= amount;
-            SendGoldChanged();
+            SendMoneyChanged(MoneyType.Gold);
             return true;
         }
 
-        /// <summary>
-        /// 检查是否可以增加金币
-        /// </summary>
+        
+        
+        
         public bool CanAddGold(uint amount)
         {
             return amount <= uint.MaxValue - Gold;
         }
 
-        /// <summary>
-        /// 增加元宝
-        /// </summary>
+        
+        
+        
         public bool AddYuanbao(uint amount)
         {
             if (amount > uint.MaxValue - Yuanbao)
                 return false;
 
             Yuanbao += amount;
-            SendYuanbaoChanged();
+            SendMoneyChanged(MoneyType.Yuanbao);
             return true;
         }
 
-        /// <summary>
-        /// 扣除元宝
-        /// </summary>
+        
+        
+        
         public bool TakeYuanbao(uint amount)
         {
             if (Yuanbao < amount)
                 return false;
 
             Yuanbao -= amount;
-            SendYuanbaoChanged();
+            SendMoneyChanged(MoneyType.Yuanbao);
             return true;
         }
 
-        /// <summary>
-        /// 检查是否可以增加元宝
-        /// </summary>
+        
+        
+        
         public bool CanAddYuanbao(uint amount)
         {
             return amount <= uint.MaxValue - Yuanbao;
         }
 
-        /// <summary>
-        /// 检查是否可以扣除元宝
-        /// </summary>
+        
+        
+        
         public bool CanTakeYuanbao(uint amount)
         {
             return Yuanbao >= amount;
         }
 
-        private void SendGoldChanged()
-        {
-            // 发送金币变化消息
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x282); // SM_GOLDCHANGED
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt32(Gold);
-
-            SendMessage(builder.Build());
-        }
-
-        /// <summary>
-        /// 发送元宝变化消息
-        /// </summary>
-        private void SendYuanbaoChanged()
-        {
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x283); // SM_YUANBAOCHANGED
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt32(Yuanbao);
-
-            SendMessage(builder.Build());
-        }
+        
 
         #endregion
 
         #region 物品管理
 
-        /// <summary>
-        /// 拾取物品
-        /// </summary>
+        
+        
+        
         public bool PickupItem(MapItem mapItem)
         {
             if (mapItem == null || mapItem.CurrentMap != CurrentMap)
                 return false;
 
-            // 检查拾取权限
+            
             if (!mapItem.CanPickup(ObjectId))
             {
                 Say("这个物品还不能拾取");
                 return false;
             }
 
-            // 添加到背包
+            
             if (!Inventory.AddItem(mapItem.Item))
             {
                 Say("背包已满");
                 return false;
             }
 
-            // 从地图移除
+            
             CurrentMap?.RemoveObject(mapItem);
 
             Say($"你获得了 {mapItem.Item.Definition.Name}");
@@ -446,9 +549,9 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 丢弃物品
-        /// </summary>
+        
+        
+        
         public bool DropItem(int slot)
         {
             var item = Inventory.GetItem(slot);
@@ -461,26 +564,26 @@ namespace GameServer
                 return false;
             }
 
-            // 从背包移除
+            
             if (!Inventory.RemoveItem(slot, 1))
                 return false;
 
-            // 创建地图物品
+            
             var mapItem = new MapItem(item)
             {
                 OwnerPlayerId = ObjectId
             };
 
-            // 放置在玩家脚下
+            
             CurrentMap.AddObject(mapItem, X, Y);
 
             OnDropItem(item);
             return true;
         }
 
-        /// <summary>
-        /// 使用物品
-        /// </summary>
+        
+        
+        
         public bool UseItem(int slot)
         {
             var item = Inventory.GetItem(slot);
@@ -499,9 +602,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 使用药水
-        /// </summary>
+        
+        
+        
         private bool UsePotion(ItemInstance item)
         {
             if (item.Definition.HP > 0)
@@ -514,7 +617,7 @@ namespace GameServer
                 RestoreMP(item.Definition.MP);
             }
 
-            // 消耗物品
+            
             var slot = Inventory.GetAllItems().FirstOrDefault(kvp => kvp.Value == item).Key;
             if (slot >= 0)
             {
@@ -524,21 +627,21 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 学习技能
-        /// </summary>
+        
+        
+        
         private bool LearnSkill(ItemInstance item)
         {
-            // 检查物品是否为技能书
+            
             if (item.Definition.Type != ItemType.Book)
             {
                 Say("这不是技能书");
                 return false;
             }
 
-            // 从物品中获取技能ID
-            // 注意：ItemDefinition可能没有SkillId属性
-            // 这里需要根据实际ItemDefinition类来调整
+            
+            
+            
             int skillId = 0; 
             if (skillId == 0)
             {
@@ -546,18 +649,18 @@ namespace GameServer
                 return false;
             }
 
-            // 检查是否已学习该技能
+            
             if (SkillBook.HasSkill(skillId))
             {
                 Say("你已经学会了这个技能");
                 return false;
             }
 
-            // 学习技能
+            
             bool success = SkillExecutor.Instance.LearnSkill(this, skillId);
             if (success)
             {
-                // 消耗技能书
+                
                 var slot = Inventory.GetAllItems().FirstOrDefault(kvp => kvp.Value == item).Key;
                 if (slot >= 0)
                 {
@@ -573,30 +676,30 @@ namespace GameServer
             return success;
         }
 
-        /// <summary>
-        /// 拾取物品后的处理
-        /// </summary>
+        
+        
+        
         private void OnPickupItem(ItemInstance item)
         {
-            // 可以在这里添加拾取物品后的额外处理
-            // 如任务更新、成就等
+            
+            
         }
 
-        /// <summary>
-        /// 丢弃物品后的处理
-        /// </summary>
+        
+        
+        
         private void OnDropItem(ItemInstance item)
         {
-            // 可以在这里添加丢弃物品后的额外处理
+            
         }
 
         #endregion
 
         #region 技能系统
 
-        /// <summary>
-        /// 学习新技能
-        /// </summary>
+        
+        
+        
         public bool LearnNewSkill(uint skillId)
         {
             var definition = SkillManager.Instance.GetDefinition((int)skillId);
@@ -606,9 +709,9 @@ namespace GameServer
             return SkillBook.LearnSkill(definition);
         }
 
-        /// <summary>
-        /// 使用技能
-        /// </summary>
+        
+        
+        
         public bool UseSkill(uint skillId, uint targetId = 0)
         {
             var skill = SkillBook.GetSkill((int)skillId);
@@ -618,7 +721,7 @@ namespace GameServer
                 return false;
             }
 
-            // 获取目标
+            
             ICombatEntity? target = null;
             if (targetId > 0)
             {
@@ -630,7 +733,7 @@ namespace GameServer
                 }
             }
 
-            // 使用技能
+            
             var result = SkillExecutor.Instance.UseSkill(this, (int)skillId, target);
             if (!result.Success)
             {
@@ -645,9 +748,9 @@ namespace GameServer
 
         #region 交易系统
 
-        /// <summary>
-        /// 发起交易
-        /// </summary>
+        
+        
+        
         public bool StartTrade(uint targetPlayerId)
         {
             if (_tradingWithPlayerId != 0)
@@ -656,7 +759,7 @@ namespace GameServer
                 return false;
             }
 
-            // 通过玩家管理器获取目标玩家
+            
             var targetPlayer = HumanPlayerMgr.Instance.FindById(targetPlayerId);
             if (targetPlayer == null)
             {
@@ -669,9 +772,9 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 添加交易物品
-        /// </summary>
+        
+        
+        
         public bool AddTradeItem(int slot, uint count)
         {
             if (CurrentTrade == null)
@@ -681,15 +784,15 @@ namespace GameServer
             if (item == null)
                 return false;
 
-            // 创建Item对象（需要根据实际Item结构）
+            
             var tradeItem = new ItemInstance(new ItemDefinition(0, "", ItemType.Other), 0);
-            // TODO: 填充tradeItem的属性
+            
             return CurrentTrade.PutItem(this, tradeItem);
         }
 
-        /// <summary>
-        /// 设置交易金币
-        /// </summary>
+        
+        
+        
         public bool SetTradeGold(uint amount)
         {
             if (CurrentTrade == null || Gold < amount)
@@ -698,9 +801,9 @@ namespace GameServer
             return CurrentTrade.PutMoney(this, MoneyType.Gold, amount);
         }
 
-        /// <summary>
-        /// 确认交易
-        /// </summary>
+        
+        
+        
         public bool ConfirmTrade()
         {
             if (CurrentTrade == null)
@@ -709,9 +812,9 @@ namespace GameServer
             return CurrentTrade.End(this, TradeEndType.Confirm);
         }
 
-        /// <summary>
-        /// 取消交易
-        /// </summary>
+        
+        
+        
         public void CancelTrade()
         {
             if (CurrentTrade != null)
@@ -726,131 +829,134 @@ namespace GameServer
 
         #region 挖矿/挖肉系统
 
-        // 挖矿计时器和计数器
+        
         private DateTime _lastMineTime = DateTime.MinValue;
         private uint _mineCounter = 0;
 
-        // 挖肉计时器
+        
         private DateTime _lastGetMeatTime = DateTime.MinValue;
 
-        /// <summary>
-        /// 挖矿
-        /// </summary>
+        
+        
+        
         public bool Mine(MineSpot mineSpot)
         {
             if (mineSpot == null || mineSpot.CurrentMap != CurrentMap)
                 return false;
 
-            // 检查距离
+            
             if (!IsInRange(mineSpot, 1))
             {
                 Say("距离太远");
                 return false;
             }
 
-            // 检查挖矿间隔
+            
             if ((DateTime.Now - _lastMineTime).TotalSeconds < 3.0)
             {
                 Say("挖矿太快了，请稍等");
                 return false;
             }
 
-            // 检查背包空间
+            
             if (Inventory.GetUsedSlots() >= Inventory.MaxSlots)
             {
                 Say("背包已满");
                 return false;
             }
 
-            // 执行挖矿动作
+            
             StartAction(ActionType.Mining, mineSpot.ObjectId);
 
-            // 更新挖矿时间
+            
             _lastMineTime = DateTime.Now;
             _mineCounter++;
 
             return true;
         }
 
-        /// <summary>
-        /// 挖肉
-        /// </summary>
+        
+        
+        
         public bool GetMeat(MonsterCorpse corpse)
         {
             if (corpse == null || corpse.CurrentMap != CurrentMap)
                 return false;
 
-            // 检查距离
+            
             if (!IsInRange(corpse, 1))
             {
                 Say("距离太远");
                 return false;
             }
 
-            // 检查挖肉间隔
+            
             if ((DateTime.Now - _lastGetMeatTime).TotalSeconds < 2.0)
             {
                 Say("挖肉太快了，请稍等");
                 return false;
             }
 
-            // 检查背包空间（使用GetUsedSlots方法）
+            
             if (Inventory.GetUsedSlots() >= Inventory.MaxSlots)
             {
                 Say("背包已满");
                 return false;
             }
 
-            // 执行挖肉动作
+            
             StartAction(ActionType.GetMeat, corpse.ObjectId);
 
-            // 更新挖肉时间
+            
             _lastGetMeatTime = DateTime.Now;
 
             return true;
         }
 
-        /// <summary>
-        /// 完成挖矿动作
-        /// </summary>
+        
+        
+        
         private void CompleteMining(uint mineSpotId)
         {
-            // 获取矿点对象
+            
             var mineSpot = CurrentMap?.GetObject(mineSpotId) as MineSpot;
             if (mineSpot == null)
                 return;
 
+            
+            
             ItemDefinition definition;
             if (_mineCounter % 10 == 0)
             {
-                // 每10次挖矿获得高级矿石
+                
                 definition = new ItemDefinition(4002, "金矿石", ItemType.Material);
-                definition.SellPrice = 500; // 价值更高
+                definition.SellPrice = 500; 
             }
             else if (_mineCounter % 5 == 0)
             {
-                // 每5次挖矿获得中级矿石
+                
                 definition = new ItemDefinition(4001, "银矿石", ItemType.Material);
                 definition.SellPrice = 200;
             }
             else
             {
-                // 普通矿石
+                
                 definition = new ItemDefinition(4000, "铁矿石", ItemType.Material);
                 definition.SellPrice = 50;
             }
 
-            // 创建物品实例（使用时间戳作为唯一ID）
-            var item = new ItemInstance(definition, (long)DateTime.Now.Ticks);
+            
+            var item = new ItemInstance(definition, (long)ItemManager.Instance.AllocateTempMakeIndex());
 
-            // 添加到背包
+            
             if (Inventory.AddItem(item))
             {
                 Say($"你挖到了一块{definition.Name}");
 
-                // 增加挖矿技能经验（如果有挖矿技能）
-                // 这里需要根据实际的技能系统来调整
+                
+                
 
+                
                 SaySystem("挖矿完成");
             }
             else
@@ -858,20 +964,23 @@ namespace GameServer
                 Say("背包已满");
             }
 
-            // 矿点消失
+            
+            
             CurrentMap?.RemoveObject(mineSpot);
         }
 
-        /// <summary>
-        /// 完成挖肉动作
-        /// </summary>
+        
+        
+        
         private void CompleteGetMeat(uint corpseId)
         {
-            // 获取尸体对象
+            
             var corpse = CurrentMap?.GetObject(corpseId) as MonsterCorpse;
             if (corpse == null)
                 return;
 
+            
+            
             Random rand = new Random();
             int meatCount = rand.Next(1, 4);
 
@@ -881,7 +990,7 @@ namespace GameServer
             bool success = false;
             for (int i = 0; i < meatCount; i++)
             {
-                var item = new ItemInstance(definition, (long)(DateTime.Now.Ticks + i));
+                var item = new ItemInstance(definition, (long)ItemManager.Instance.AllocateTempMakeIndex());
                 if (Inventory.AddItem(item))
                 {
                     success = true;
@@ -903,8 +1012,9 @@ namespace GameServer
                     Say("你获得了一块肉");
                 }
 
-                // 增加挖肉技能经验（如果有相关技能）
+                
 
+                
                 SaySystem("挖肉完成");
             }
             else
@@ -912,7 +1022,7 @@ namespace GameServer
                 Say("背包已满");
             }
 
-            // 尸体消失
+            
             CurrentMap?.RemoveObject(corpse);
         }
 
@@ -920,102 +1030,76 @@ namespace GameServer
 
         #region 移动和动作方法
 
-        /// <summary>
-        /// 行走到指定坐标
-        /// </summary>
+        
+        
+        
         public bool WalkXY(int x, int y)
         {
-            // 检查坐标是否有效
-            if (CurrentMap == null)
-                return false;
-
-            // 检查是否可以移动到目标位置
-            if (!CurrentMap.CanMoveTo(x, y))
-                return false;
-
-            X = (ushort)x;
-            Y = (ushort)y;
-            return true;
+            
+            return base.WalkXY((ushort)x, (ushort)y);
         }
 
-        /// <summary>
-        /// 向指定方向行走
-        /// </summary>
+        
+        
+        
         public bool Walk(byte direction)
         {
-            Direction = direction;
-            // 根据方向计算新坐标
-            int newX = X;
-            int newY = Y;
-
-            switch (direction)
-            {
-                case 0: newY--; break; // 上
-                case 1: newX++; newY--; break; // 右上
-                case 2: newX++; break; // 右
-                case 3: newX++; newY++; break; // 右下
-                case 4: newY++; break; // 下
-                case 5: newX--; newY++; break; // 左下
-                case 6: newX--; break; // 左
-                case 7: newX--; newY--; break; // 左上
-            }
-
-            return WalkXY(newX, newY);
+            return base.Walk((Direction)direction);
         }
 
-        /// <summary>
-        /// 跑到指定坐标
-        /// </summary>
+        
+        
+        
         public bool RunXY(int x, int y)
         {
-            return WalkXY(x, y); 
+            return base.RunXY((ushort)x, (ushort)y);
         }
 
-        /// <summary>
-        /// 向指定方向跑
-        /// </summary>
+        
+        
+        
         public bool Run(byte direction)
         {
-            return Walk(direction); 
+            return base.Run((Direction)direction);
         }
 
-        /// <summary>
-        /// 转向
-        /// </summary>
+        
+        
+        
         public bool Turn(byte direction)
         {
             Direction = direction;
             return true;
         }
 
-        /// <summary>
-        /// 攻击
-        /// </summary>
+        
+        
+        
         public bool Attack(byte direction)
         {
             Direction = direction;
 
-            // 根据方向计算目标坐标
+            
             int targetX = X;
             int targetY = Y;
 
             switch (direction)
             {
-                case 0: targetY--; break; // 上
-                case 1: targetX++; targetY--; break; // 右上
-                case 2: targetX++; break; // 右
-                case 3: targetX++; targetY++; break; // 右下
-                case 4: targetY++; break; // 下
-                case 5: targetX--; targetY++; break; // 左下
-                case 6: targetX--; break; // 左
-                case 7: targetX--; targetY--; break; // 左上
+                case 0: targetY--; break; 
+                case 1: targetX++; targetY--; break; 
+                case 2: targetX++; break; 
+                case 3: targetX++; targetY++; break; 
+                case 4: targetY++; break; 
+                case 5: targetX--; targetY++; break; 
+                case 6: targetX--; break; 
+                case 7: targetX--; targetY--; break; 
             }
 
-            // 检查目标位置是否有可攻击的对象
+            
             if (CurrentMap == null)
                 return false;
 
-            // 获取目标位置的对象
+            
             var target = CurrentMap.GetObjectAt(targetX, targetY) as ICombatEntity;
             if (target == null)
             {
@@ -1023,56 +1107,57 @@ namespace GameServer
                 return false;
             }
 
-            // 检查是否可以攻击该目标（根据攻击模式、行会关系等）
+            
             if (!CanAttackTarget(target))
             {
                 Say("不能攻击此目标");
                 return false;
             }
 
-            // 执行攻击
+            
             PerformAttack(target);
             return true;
         }
 
-        /// <summary>
-        /// 检查是否可以攻击目标
-        /// </summary>
+        
+        
+        
         private bool CanAttackTarget(ICombatEntity target)
         {
             if (target == null || target == this)
                 return false;
 
-            // 检查目标类型
+            
             if (target is HumanPlayer targetPlayer)
             {
-                // 检查攻击模式
-                // 这里需要根据实际的攻击模式系统来完善
+                
+                
+                
                 return true;
             }
             else if (target is MonsterEx)
             {
-                // 可以攻击怪物
+                
                 return true;
             }
             else if (target is Npc)
             {
-                // 检查是否可以攻击NPC（通常不能攻击NPC）
+                
                 return false;
             }
 
             return false;
         }
 
-        /// <summary>
-        /// 执行攻击
-        /// </summary>
+        
+        
+        
         private void PerformAttack(ICombatEntity target)
         {
             if (target == null || CurrentMap == null)
                 return;
 
-            // 使用CombatSystemManager执行战斗
+            
             var combatResult = CombatSystemManager.Instance.ExecuteCombat(this, target, DamageType.Physics);
 
             if (!combatResult.Hit)
@@ -1081,179 +1166,494 @@ namespace GameServer
                 return;
             }
 
-            // 消耗武器耐久度
+            
             DamageWeaponDurability();
 
-            // 检查PK（如果目标是玩家）
+            
             if (target is HumanPlayer targetPlayer)
             {
                 CheckPk(targetPlayer);
             }
 
-            // 发送攻击消息
-            SendAttackMessage(target, combatResult.Damage);
-
-            // 如果目标死亡，处理经验奖励
+            
             if (combatResult.TargetDied)
             {
                 OnKillTarget(target);
             }
+
+            
+            UpdateAutoMagic();
         }
 
-        /// <summary>
-        /// 消耗武器耐久度
-        /// </summary>
+        
+        
+        
         private void DamageWeaponDurability()
         {
-            // 获取当前武器
+            
             var weapon = Equipment.GetWeapon();
             if (weapon == null)
                 return;
 
-            // 实际应该根据武器类型、攻击次数、目标类型等计算
+            
+            
+            
 
-            // 检查武器是否有耐久度
+            
             if (weapon.Durability > 0)
             {
-                // 减少耐久度
+                
                 weapon.Durability--;
 
-                // 如果耐久度为0，武器损坏
+                
                 if (weapon.Durability <= 0)
                 {
                     Say("你的武器已经损坏！");
-                    // 移除武器或设置为损坏状态
-                    // 这里可以添加武器损坏的逻辑
+                    
+                    
                 }
 
-                // 发送武器耐久度更新消息
-                // SendWeaponDurabilityUpdate(weapon);
+                
+                
             }
         }
 
-        /// <summary>
-        /// 检查PK
-        /// </summary>
+        
+        
+        
         private void CheckPk(HumanPlayer target)
         {
             if (target == null)
                 return;
 
-            // 检查是否在安全区
+            
             if (InSafeArea() || target.InSafeArea())
                 return;
 
-            // 检查是否在战斗地图
+            
             if (CurrentMap != null && CurrentMap is LogicMap logicMap && logicMap.IsFightMap())
                 return;
 
-            // 检查行会关系
+            
             if (Guild != null && target.Guild != null)
             {
-                // 检查是否是敌对行会
+                
                 if (Guild.IsKillGuild(target.Guild))
                     return;
 
-                // 检查是否是联盟行会
+                
                 if (Guild.IsAllyGuild(target.Guild))
                     return;
             }
 
-            // 增加PK值
-            // 这里需要根据实际的PK系统来完善
-            // AddPkPoint(1);
+            
+            
+            
+            
 
-            // 发送PK值更新消息
-            // SendPkValueUpdate();
+            
+            
         }
 
-        /// <summary>
-        /// 检查是否在安全区
-        /// </summary>
+        
+        
+        
         private bool InSafeArea()
         {
             if (CurrentMap == null)
                 return false;
 
-            // 检查当前位置是否在安全区内
-            // 这里需要根据地图的安全区设置来检查
+            
+            
+            
             return false;
         }
 
-        /// <summary>
-        /// 杀死目标后的处理
-        /// </summary>
+        
+        
+        
         private void OnKillTarget(ICombatEntity target)
         {
             if (target == null)
                 return;
 
-            // 计算经验值
+            
             int exp = CombatSystemManager.Instance.CalculateExp(this, target);
             if (exp > 0)
             {
                 AddExp((uint)exp, false, target.Id);
             }
 
-            // 处理掉落物品
-            // 这里需要根据目标的掉落系统来完善
-
-            // 发送杀死目标消息
-            SendKillMessage(target);
+            
+            
         }
 
-        /// <summary>
-        /// 发送杀死目标消息
-        /// </summary>
-        private void SendKillMessage(ICombatEntity target)
-        {
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x28D); // SM_KILLTARGET
-            builder.WriteUInt16((ushort)target.Id);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteString($"你杀死了 {target.Name}");
-
-            SendMessage(builder.Build());
-        }
-
-        /// <summary>
-        /// 发送攻击消息
-        /// </summary>
-        private void SendAttackMessage(ICombatEntity target, int damage)
-        {
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x285); // SM_ATTACK
-            builder.WriteUInt16((ushort)target.Id);
-            builder.WriteUInt16((ushort)damage);
-            builder.WriteUInt16(0);
-
-            SendMessage(builder.Build());
-        }
-
-        /// <summary>
-        /// 施放技能
-        /// </summary>
+        
+        
+        
         public bool SpellCast(int x, int y, uint magicId, ushort targetId)
         {
-            // TODO: 实现技能施放逻辑
-            return true;
+            try
+            {
+                if (CurrentMap is LogicMap map && map.IsFlagSeted(MapFlag.MF_NOSPELL))
+                {
+                    SaySystem("当前地图禁止施法");
+                    return false;
+                }
+
+                var skill = SkillBook.GetSkill((int)magicId);
+                if (skill == null)
+                {
+                    SaySystem("未学习该技能");
+                    return false;
+                }
+
+                if (!skill.CanUse())
+                {
+                    SaySystem("技能冷却中");
+                    return false;
+                }
+
+                if (MagicManager.Instance.GetMagicCount() == 0)
+                {
+                    MagicManager.Instance.LoadAll();
+                }
+
+                var magicClass = MagicManager.Instance.GetClassById((int)magicId);
+                if (magicClass != null)
+                {
+                    int mpCost = Math.Max(0, (int)magicClass.sSpell);
+                    if (mpCost > 0 && !ConsumeMP(mpCost))
+                    {
+                        SaySystem("魔法不足");
+                        return false;
+                    }
+                }
+
+                
+                skill.Use();
+                TrainMagic(skill);
+                UpdateAutoMagic();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Warning($"SpellCast异常: player={Name}, magicId={magicId}, err={ex.Message}");
+                return false;
+            }
         }
 
-        /// <summary>
-        /// 使用物品
-        /// </summary>
+        
+        
+        
         public bool UseItem(uint makeIndex)
         {
-            // TODO: 实现使用物品逻辑
+            try
+            {
+                var item = Inventory.GetItemByMakeIndex(makeIndex);
+                if (item == null)
+                {
+                    SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_FAIL, 0, 0, 0);
+                    return false;
+                }
+
+                
+                SetUsingItem(item);
+
+                
+                string pageScript = item.Definition.PageScript ?? string.Empty;
+                if (!string.IsNullOrWhiteSpace(pageScript))
+                {
+                    bool executed = CxxScriptExecutor.Execute(this, pageScript, silent: true);
+                    var r = GetUsingItemResult();
+                    SetUsingItem(null);
+
+                    if (!executed)
+                    {
+                        SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_FAIL, 0, 0, 0);
+                        return false;
+                    }
+
+                    
+                    if (r == UsingItemResult.Deleted)
+                    {
+                        Inventory.RemoveItemByMakeIndex(makeIndex, 1);
+                        SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_OK, 0, 0, 0);
+                        SendWeightChanged();
+                        return true;
+                    }
+
+                    
+                    if (r == UsingItemResult.Updated)
+                    {
+                        SendUpdateItem(item);
+                    }
+
+                    
+                    SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_FAIL, 0, 0, 0);
+                    return true;
+                }
+
+                
+                bool success = false;
+                switch ((MirCommon.ItemStdMode)item.Definition.StdMode)
+                {
+                    case MirCommon.ItemStdMode.ISM_DRUG:
+                        {
+                            
+                            if (item.Definition.HP > 0)
+                                Heal(item.Definition.HP);
+                            if (item.Definition.MP > 0)
+                                RestoreMP(item.Definition.MP);
+
+                            success = true;
+                        }
+                        break;
+                    case MirCommon.ItemStdMode.ISM_BOOK:
+                        success = UseSkillBook(item);
+                        break;
+                    case MirCommon.ItemStdMode.ISM_USABLEITEM:
+                        {
+                            SetUsingItem(null);
+                            return UseUsableItem(makeIndex, item);
+                        }
+                    default:
+                        success = false;
+                        break;
+                }
+
+                SetUsingItem(null);
+
+                if (success)
+                {
+                    Inventory.RemoveItemByMakeIndex(makeIndex, 1);
+                    SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_OK, 0, 0, 0);
+                    SendWeightChanged();
+                    return true;
+                }
+
+                SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_FAIL, 0, 0, 0);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"使用物品失败: player={Name}, makeIndex={makeIndex}, err={ex.Message}");
+                try { SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_FAIL, 0, 0, 0); } catch { }
+                return false;
+            }
+        }
+
+        private bool UseUsableItem(uint makeIndex, ItemInstance item)
+        {
+            try
+            {
+                
+                if (CurrentMap == null)
+                {
+                    SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_FAIL, 0, 0, 0);
+                    return false;
+                }
+
+                uint targetMapId = (uint)Math.Max(0, MapId);
+                ushort targetX = X;
+                ushort targetY = Y;
+
+                switch (item.Definition.Shape)
+                {
+                    case 2: 
+                        {
+                            
+                            if (CurrentMap.IsFlagSeted(MapFlag.MF_NORUN))
+                            {
+                                SaySystem("当前地图不能使用随机");
+                                SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_FAIL, 0, 0, 0);
+                                return false;
+                            }
+
+                            if (!TryGetRandomTeleportPoint(CurrentMap, out targetX, out targetY))
+                            {
+                                SaySystem("无法找到可传送的位置");
+                                SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_FAIL, 0, 0, 0);
+                                return false;
+                            }
+                        }
+                        break;
+                    case 3: 
+                        {
+                            
+                            if (CurrentMap.IsFlagSeted(MapFlag.MF_NORECALL))
+                            {
+                                SaySystem("当前地图不能使用回城");
+                                SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_FAIL, 0, 0, 0);
+                                return false;
+                            }
+
+                            if (!GameWorld.Instance.GetBornPoint(Job, out int mapId, out int x, out int y, _startPointName))
+                            {
+                                SaySystem("回城点无效");
+                                SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_FAIL, 0, 0, 0);
+                                return false;
+                            }
+
+                            targetMapId = (uint)Math.Max(0, mapId);
+                            targetX = (ushort)Math.Clamp(x, 0, ushort.MaxValue);
+                            targetY = (ushort)Math.Clamp(y, 0, ushort.MaxValue);
+                        }
+                        break;
+                    default:
+                        SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_FAIL, 0, 0, 0);
+                        return false;
+                }
+
+                
+                Inventory.RemoveItemByMakeIndex(makeIndex, 1);
+                SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_OK, 0, 0, 0);
+                SendWeightChanged();
+
+                
+                _ = ChangeMap(targetMapId, targetX, targetY);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Warning($"UseUsableItem失败: player={Name}, makeIndex={makeIndex}, err={ex.Message}");
+                try { SendMsg(0, MirCommon.ProtocolCmd.SM_EAT_FAIL, 0, 0, 0); } catch { }
+                return false;
+            }
+        }
+
+        private static bool TryGetRandomTeleportPoint(LogicMap map, out ushort x, out ushort y)
+        {
+            x = 0;
+            y = 0;
+
+            if (map.Width <= 0 || map.Height <= 0)
+                return false;
+
+            var rnd = Random.Shared;
+            var pts = new System.Drawing.Point[1];
+
+            for (int i = 0; i < 200; i++)
+            {
+                int px = rnd.Next(0, map.Width);
+                int py = rnd.Next(0, map.Height);
+
+                if (!map.IsBlocked(px, py))
+                {
+                    x = (ushort)px;
+                    y = (ushort)py;
+                    return true;
+                }
+
+                if (map.GetValidPoint(px, py, pts, 1) > 0)
+                {
+                    x = (ushort)Math.Clamp(pts[0].X, 0, ushort.MaxValue);
+                    y = (ushort)Math.Clamp(pts[0].Y, 0, ushort.MaxValue);
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool UseSkillBook(ItemInstance item)
+        {
+            
+            
+            if (item.Definition.Shape != Job)
+            {
+                SaySystem("职业不符，无法学习该技能");
+                return false;
+            }
+
+            
+            if (item.Definition.MaxDura > Level)
+            {
+                SaySystem("等级不足，无法学习该技能");
+                return false;
+            }
+
+            
+            if (MagicManager.Instance.GetMagicCount() == 0)
+            {
+                MagicManager.Instance.LoadAll();
+            }
+
+            string magicName = item.Definition.Name;
+            var magicClass = MagicManager.Instance.GetClassByName(magicName);
+            if (magicClass == null)
+            {
+                SaySystem("技能物品未配置");
+                return false;
+            }
+
+            
+            bool hasNeedMagicRule = magicClass.wNeedMagic.Any(id => id != 0);
+            if (hasNeedMagicRule)
+            {
+                bool ok = false;
+                var needNames = new List<string>();
+
+                foreach (var needId in magicClass.wNeedMagic)
+                {
+                    if (needId == 0) continue;
+                    if (SkillBook.HasMagic(needId))
+                    {
+                        ok = true;
+                        break;
+                    }
+
+                    var needClass = MagicManager.Instance.GetClassById(needId);
+                    if (needClass != null && !string.IsNullOrWhiteSpace(needClass.szName))
+                    {
+                        needNames.Add(needClass.szName);
+                    }
+                }
+
+                if (!ok)
+                {
+                    SaySystem($"你不能学习{magicClass.szName}，在这之前你需要学习{string.Join(",", needNames)}");
+                    return false;
+                }
+            }
+
+            
+            foreach (var mutexId in magicClass.wMutexMagic)
+            {
+                if (mutexId == 0) continue;
+                if (SkillBook.HasMagic(mutexId))
+                {
+                    var mutexClass = MagicManager.Instance.GetClassById(mutexId);
+                    string mutexName = mutexClass?.szName ?? mutexId.ToString();
+                    SaySystem($"你已经学会{mutexName}，无法学习{magicClass.szName}");
+                    return false;
+                }
+            }
+
+            
+            if (SkillBook.HasMagic(magicClass.id))
+            {
+                SaySystem($"你已经学会{magicClass.szName}，无法重复学习");
+                return false;
+            }
+
+             
+             var magicDb = new MirCommon.Database.MAGICDB
+             {
+                 btUserKey = 0,
+                 
+                 btCurLevel = 0,
+                 wMagicId = (ushort)magicClass.id,
+                 dwCurTrain = 0
+             };
+
+            SetMagic(magicDb, 0);
             return true;
         }
 
-        /// <summary>
-        /// 丢弃金币
-        /// </summary>
+        
+        
+        
         public bool DropGold(uint amount)
         {
             if (Gold < amount)
@@ -1263,12 +1663,12 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 购买物品
-        /// </summary>
+        
+        
+        
         public bool BuyItem(uint npcInstanceId, int itemIndex)
         {
-            // 获取NPC
+            
             var npc = NPCManager.Instance.GetNPC(npcInstanceId);
             if (npc == null || !npc.Definition.HasFunction(NPCFunction.Shop))
             {
@@ -1276,7 +1676,7 @@ namespace GameServer
                 return false;
             }
 
-            // 检查NPC商店是否有该物品
+            
             if (itemIndex < 0 || itemIndex >= npc.Definition.ShopItems.Count)
             {
                 SaySystem("无效的物品索引");
@@ -1291,25 +1691,25 @@ namespace GameServer
                 return false;
             }
 
-            // 计算价格（考虑NPC的出售倍率）
+            
             uint price = (uint)(itemDef.BuyPrice * npc.Definition.SellRate);
-            if (price == 0) price = 1; // 最低1金币
+            if (price == 0) price = 1; 
 
-            // 检查金币是否足够
+            
             if (Gold < price)
             {
                 SaySystem($"金币不足，需要 {price} 金币");
                 return false;
             }
 
-            // 检查背包空间
+            
             if (Inventory.GetUsedSlots() >= Inventory.MaxSlots)
             {
                 SaySystem("背包已满");
                 return false;
             }
 
-            // 创建物品
+            
             var item = ItemManager.Instance.CreateItem(itemId);
             if (item == null)
             {
@@ -1317,40 +1717,40 @@ namespace GameServer
                 return false;
             }
 
-            // 扣除金币
+            
             if (!TakeGold(price))
             {
                 SaySystem("金币扣除失败");
                 return false;
             }
 
-            // 添加到背包
+            
             if (!Inventory.AddItem(item))
             {
-                // 如果添加失败，返还金币
+                
                 AddGold(price);
                 SaySystem("背包空间不足");
                 return false;
             }
 
-            // 记录日志
+            
             LogManager.Default.Info($"{Name} 从 {npc.Definition.Name} 购买了 {item.Definition.Name}，花费 {price} 金币");
 
-            // 发送购买成功消息
+            
             SaySystem($"购买了 {item.Definition.Name}，花费 {price} 金币");
 
-            // 发送背包更新消息
+            
             SendInventoryUpdate();
 
             return true;
         }
 
-        /// <summary>
-        /// 出售物品
-        /// </summary>
+        
+        
+        
         public bool SellItem(uint npcInstanceId, int bagSlot)
         {
-            // 获取NPC
+            
             var npc = NPCManager.Instance.GetNPC(npcInstanceId);
             if (npc == null || !npc.Definition.HasFunction(NPCFunction.Shop))
             {
@@ -1358,7 +1758,7 @@ namespace GameServer
                 return false;
             }
 
-            // 获取背包物品
+            
             var item = Inventory.GetItem(bagSlot);
             if (item == null)
             {
@@ -1366,61 +1766,61 @@ namespace GameServer
                 return false;
             }
 
-            // 检查物品是否可以出售
+            
             if (!item.Definition.CanTrade)
             {
                 SaySystem("这个物品不能出售");
                 return false;
             }
 
-            // 检查物品是否绑定
+            
             if (item.IsBound)
             {
                 SaySystem("绑定物品不能出售");
                 return false;
             }
 
-            // 计算价格（考虑NPC的收购倍率）
+            
             uint price = (uint)(item.Definition.SellPrice * npc.Definition.BuyRate * item.Count);
-            if (price == 0) price = 1; // 最低1金币
+            if (price == 0) price = 1; 
 
-            // 确认出售
+            
             SaySystem($"出售 {item.Definition.Name} x{item.Count}，获得 {price} 金币？");
 
-            // 从背包移除物品
+            
             if (!Inventory.RemoveItem(bagSlot, item.Count))
             {
                 SaySystem("移除物品失败");
                 return false;
             }
 
-            // 添加金币
+            
             if (!AddGold(price))
             {
-                // 如果添加金币失败，返还物品
+                
                 Inventory.AddItem(item);
                 SaySystem("金币添加失败");
                 return false;
             }
 
-            // 记录日志
+            
             LogManager.Default.Info($"{Name} 向 {npc.Definition.Name} 出售了 {item.Definition.Name} x{item.Count}，获得 {price} 金币");
 
-            // 发送出售成功消息
+            
             SaySystem($"出售了 {item.Definition.Name} x{item.Count}，获得 {price} 金币");
 
-            // 发送背包更新消息
+            
             SendInventoryUpdate();
 
             return true;
         }
 
-        /// <summary>
-        /// 修理物品
-        /// </summary>
+        
+        
+        
         public bool RepairItem(uint npcInstanceId, int bagSlot)
         {
-            // 获取NPC
+            
             var npc = NPCManager.Instance.GetNPC(npcInstanceId);
             if (npc == null || !npc.Definition.HasFunction(NPCFunction.Repair))
             {
@@ -1428,12 +1828,12 @@ namespace GameServer
                 return false;
             }
 
-            // 获取物品
+            
             ItemInstance? item = null;
 
             if (bagSlot >= 0)
             {
-                // 修理背包物品
+                
                 item = Inventory.GetItem(bagSlot);
                 if (item == null)
                 {
@@ -1443,7 +1843,7 @@ namespace GameServer
             }
             else
             {
-                // 修理装备（bagSlot为负数表示装备槽）
+                
                 int equipSlot = -bagSlot - 1;
                 if (equipSlot < 0 || equipSlot >= (int)EquipSlot.Max)
                 {
@@ -1459,14 +1859,14 @@ namespace GameServer
                 }
             }
 
-            // 检查物品是否需要修理
+            
             if (item.Durability >= item.MaxDurability)
             {
                 SaySystem("物品不需要修理");
                 return false;
             }
 
-            // 计算修理费用
+            
             uint repairCost = CalculateRepairCost(item);
             if (repairCost == 0)
             {
@@ -1474,30 +1874,30 @@ namespace GameServer
                 return false;
             }
 
-            // 检查金币是否足够
+            
             if (Gold < repairCost)
             {
                 SaySystem($"金币不足，需要 {repairCost} 金币");
                 return false;
             }
 
-            // 扣除金币
+            
             if (!TakeGold(repairCost))
             {
                 SaySystem("金币扣除失败");
                 return false;
             }
 
-            // 修理物品
+            
             item.Durability = item.MaxDurability;
 
-            // 记录日志
+            
             LogManager.Default.Info($"{Name} 修理了 {item.Definition.Name}，花费 {repairCost} 金币");
 
-            // 发送修理成功消息
+            
             SaySystem($"修理了 {item.Definition.Name}，花费 {repairCost} 金币");
 
-            // 发送物品更新消息
+            
             if (bagSlot >= 0)
             {
                 SendInventoryUpdate();
@@ -1510,12 +1910,12 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 查询修理价格
-        /// </summary>
+        
+        
+        
         public bool QueryRepairPrice(uint npcInstanceId, int bagSlot)
         {
-            // 获取NPC
+            
             var npc = NPCManager.Instance.GetNPC(npcInstanceId);
             if (npc == null || !npc.Definition.HasFunction(NPCFunction.Repair))
             {
@@ -1523,12 +1923,12 @@ namespace GameServer
                 return false;
             }
 
-            // 获取物品
+            
             ItemInstance? item = null;
 
             if (bagSlot >= 0)
             {
-                // 查询背包物品修理价格
+                
                 item = Inventory.GetItem(bagSlot);
                 if (item == null)
                 {
@@ -1538,7 +1938,7 @@ namespace GameServer
             }
             else
             {
-                // 查询装备修理价格（bagSlot为负数表示装备槽）
+                
                 int equipSlot = -bagSlot - 1;
                 if (equipSlot < 0 || equipSlot >= (int)EquipSlot.Max)
                 {
@@ -1554,14 +1954,14 @@ namespace GameServer
                 }
             }
 
-            // 检查物品是否需要修理
+            
             if (item.Durability >= item.MaxDurability)
             {
                 SaySystem("物品不需要修理");
                 return true;
             }
 
-            // 计算修理费用
+            
             uint repairCost = CalculateRepairCost(item);
             if (repairCost == 0)
             {
@@ -1569,18 +1969,18 @@ namespace GameServer
                 return false;
             }
 
-            // 显示修理价格
+            
             SaySystem($"修理 {item.Definition.Name} 需要 {repairCost} 金币");
 
             return true;
         }
 
-        /// <summary>
-        /// 查看装备
-        /// </summary>
+        
+        
+        
         public bool ViewEquipment(uint targetPlayerId)
         {
-            // 获取目标玩家
+            
             var targetPlayer = HumanPlayerMgr.Instance.FindById(targetPlayerId);
             if (targetPlayer == null)
             {
@@ -1588,27 +1988,27 @@ namespace GameServer
                 return false;
             }
 
-            // 检查距离
+            
             if (CurrentMap != targetPlayer.CurrentMap || !IsInRange(targetPlayer, 5))
             {
                 SaySystem("距离太远");
                 return false;
             }
 
-            // 构建装备信息消息
+            
             var builder = new PacketBuilder();
             builder.WriteUInt32(targetPlayer.ObjectId);
-            builder.WriteUInt16(0x28A); // SM_VIEWEQUIPMENT
+            builder.WriteUInt16(0x28A); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
 
-            // 添加玩家信息
+            
             builder.WriteString(targetPlayer.Name);
             builder.WriteUInt16((ushort)targetPlayer.Level);
             builder.WriteByte(targetPlayer.Job);
 
-            // 添加装备信息
+            
             var allEquipment = targetPlayer.Equipment.GetAllEquipment();
             builder.WriteByte((byte)allEquipment.Count);
 
@@ -1622,113 +2022,199 @@ namespace GameServer
                 builder.WriteByte((byte)equip.EnhanceLevel);
             }
 
-            // 发送消息
+            
             SendMessage(builder.Build());
 
-            // 记录日志
+            
             LogManager.Default.Info($"{Name} 查看了 {targetPlayer.Name} 的装备");
 
             return true;
         }
 
 
-        /// <summary>
-        /// 特殊攻击
-        /// </summary>
+        
+        
+        
+        
         public bool SpecialHit(byte direction, int skillType)
         {
             Direction = direction;
 
-            // 根据技能类型执行不同的特殊攻击
+            
             switch (skillType)
             {
-                case 7:  // 刺杀剑术
+                case 7:  
+                    return ExecuteKill(direction);
+                case 12: 
                     return ExecuteAssassinate(direction);
-                case 12: // 半月弯刀
+                case 25: 
                     return ExecuteHalfMoon(direction);
-                case 25: // 烈火剑法
+                case 26: 
                     return ExecuteFireSword(direction);
-                case 26: // 野蛮冲撞
-                    return ExecuteRush(direction);
                 default:
                     SaySystem("未知的特殊攻击类型");
                     return false;
             }
         }
 
-        /// <summary>
-        /// 执行刺杀剑术
-        /// </summary>
+        
+        
+        
+        private bool ExecuteKill(byte direction)
+        {
+            if (!SkillBook.HasSkill(7))
+            {
+                SaySystem("未学习攻杀剑法");
+                return false;
+            }
+
+            var skill = SkillBook.GetSkill(7);
+            if (skill == null)
+                return false;
+
+            
+            if (!skill.Activated)
+            {
+                return Attack(direction);
+            }
+
+            skill.Activated = false;
+
+            if (CurrentMap == null)
+                return false;
+
+            
+            int targetX = X;
+            int targetY = Y;
+            switch (direction)
+            {
+                case 0: targetY--; break;
+                case 1: targetX++; targetY--; break;
+                case 2: targetX++; break;
+                case 3: targetX++; targetY++; break;
+                case 4: targetY++; break;
+                case 5: targetX--; targetY++; break;
+                case 6: targetX--; break;
+                case 7: targetX--; targetY--; break;
+            }
+
+            var target = CurrentMap.GetObjectAt(targetX, targetY) as ICombatEntity;
+            if (target == null || !CanAttackTarget(target))
+                return false;
+
+            if (MagicManager.Instance.GetMagicCount() == 0)
+                MagicManager.Instance.LoadAll();
+
+            int bonus = 0;
+            var magicClass = MagicManager.Instance.GetClassById(7);
+            if (magicClass != null)
+            {
+                bonus = magicClass.sDefPower + magicClass.sDefMaxPower * skill.Level;
+                if (bonus < 0) bonus = 0;
+            }
+
+            var combatResult = CombatSystemManager.Instance.ExecuteCombat(this, target, DamageType.Physics);
+            if (!combatResult.Hit)
+                return false;
+
+            if (bonus > 0 && !combatResult.TargetDied)
+            {
+                combatResult.TargetDied = target.TakeDamage(this, bonus, DamageType.Physics);
+            }
+
+            DamageWeaponDurability();
+
+            if (target is HumanPlayer targetPlayer)
+            {
+                CheckPk(targetPlayer);
+            }
+
+            if (combatResult.TargetDied)
+            {
+                OnKillTarget(target);
+            }
+
+            skill.Use();
+            TrainMagic(skill);
+            UpdateAutoMagic();
+            SaySystem("攻杀剑法！");
+            return true;
+        }
+
+        
+        
+        
         private bool ExecuteAssassinate(byte direction)
         {
-            // 检查是否学习了刺杀剑术技能
-            if (!SkillBook.HasSkill(1002)) // 1002是刺杀剑术的技能ID
+            
+            if (!SkillBook.HasSkill(12))
             {
                 SaySystem("未学习刺杀剑术");
                 return false;
             }
 
-            // 获取技能
-            var skill = SkillBook.GetSkill(1002);
+            
+            var skill = SkillBook.GetSkill(12);
             if (skill == null || !skill.CanUse())
             {
                 SaySystem("刺杀剑术技能不可用");
                 return false;
             }
 
-            // 根据方向计算目标位置
+            
             int targetX = X;
             int targetY = Y;
             int secondTargetX = X;
             int secondTargetY = Y;
 
-            // 刺杀剑术可以攻击两格距离的目标
+            
             switch (direction)
             {
-                case 0: // 上
+                case 0: 
                     targetY--;
                     secondTargetY -= 2;
                     break;
-                case 1: // 右上
+                case 1: 
                     targetX++; targetY--;
                     secondTargetX += 2; secondTargetY -= 2;
                     break;
-                case 2: // 右
+                case 2: 
                     targetX++;
                     secondTargetX += 2;
                     break;
-                case 3: // 右下
+                case 3: 
                     targetX++; targetY++;
                     secondTargetX += 2; secondTargetY += 2;
                     break;
-                case 4: // 下
+                case 4: 
                     targetY++;
                     secondTargetY += 2;
                     break;
-                case 5: // 左下
+                case 5: 
                     targetX--; targetY++;
                     secondTargetX -= 2; secondTargetY += 2;
                     break;
-                case 6: // 左
+                case 6: 
                     targetX--;
                     secondTargetX -= 2;
                     break;
-                case 7: // 左上
+                case 7: 
                     targetX--; targetY--;
                     secondTargetX -= 2; secondTargetY -= 2;
                     break;
             }
 
-            // 攻击第一个目标
+            
             bool hitFirst = AttackTargetAt(targetX, targetY);
 
-            // 攻击第二个目标（如果有）
+            
             bool hitSecond = AttackTargetAt(secondTargetX, secondTargetY);
 
-            // 使用技能
+            
             if (hitFirst || hitSecond)
             {
                 skill.Use();
+                TrainMagic(skill);
                 SaySystem("刺杀剑术！");
                 return true;
             }
@@ -1737,30 +2223,30 @@ namespace GameServer
             return false;
         }
 
-        /// <summary>
-        /// 执行半月弯刀
-        /// </summary>
+        
+        
+        
         private bool ExecuteHalfMoon(byte direction)
         {
-            // 检查是否学习了半月弯刀技能
-            if (!SkillBook.HasSkill(1003)) // 1003是半月弯刀技能ID
+            
+            if (!SkillBook.HasSkill(25))
             {
                 SaySystem("未学习半月弯刀");
                 return false;
             }
 
-            // 获取技能
-            var skill = SkillBook.GetSkill(1003);
+            
+            var skill = SkillBook.GetSkill(25);
             if (skill == null || !skill.CanUse())
             {
                 SaySystem("半月弯刀技能不可用");
                 return false;
             }
 
-            // 半月弯刀攻击周围所有敌人
+            
             bool hitAny = false;
 
-            // 获取周围8个方向的目标
+            
             for (int i = 0; i < 8; i++)
             {
                 int targetX = X;
@@ -1768,14 +2254,14 @@ namespace GameServer
 
                 switch (i)
                 {
-                    case 0: targetY--; break; // 上
-                    case 1: targetX++; targetY--; break; // 右上
-                    case 2: targetX++; break; // 右
-                    case 3: targetX++; targetY++; break; // 右下
-                    case 4: targetY++; break; // 下
-                    case 5: targetX--; targetY++; break; // 左下
-                    case 6: targetX--; break; // 左
-                    case 7: targetX--; targetY--; break; // 左上
+                    case 0: targetY--; break; 
+                    case 1: targetX++; targetY--; break; 
+                    case 2: targetX++; break; 
+                    case 3: targetX++; targetY++; break; 
+                    case 4: targetY++; break; 
+                    case 5: targetX--; targetY++; break; 
+                    case 6: targetX--; break; 
+                    case 7: targetX--; targetY--; break; 
                 }
 
                 if (AttackTargetAt(targetX, targetY))
@@ -1784,10 +2270,11 @@ namespace GameServer
                 }
             }
 
-            // 使用技能
+            
             if (hitAny)
             {
                 skill.Use();
+                TrainMagic(skill);
                 SaySystem("半月弯刀！");
                 return true;
             }
@@ -1796,53 +2283,54 @@ namespace GameServer
             return false;
         }
 
-        /// <summary>
-        /// 执行烈火剑法
-        /// </summary>
+        
+        
+        
         private bool ExecuteFireSword(byte direction)
         {
-            // 检查是否学习了烈火剑法技能
-            if (!SkillBook.HasSkill(1004)) // 假设1004是烈火剑法技能ID
+            
+            if (!SkillBook.HasSkill(26))
             {
                 SaySystem("未学习烈火剑法");
                 return false;
             }
 
-            // 获取技能
-            var skill = SkillBook.GetSkill(1004);
+            
+            var skill = SkillBook.GetSkill(26);
             if (skill == null || !skill.CanUse())
             {
                 SaySystem("烈火剑法技能不可用");
                 return false;
             }
 
-            // 根据方向计算目标位置
+            
             int targetX = X;
             int targetY = Y;
 
             switch (direction)
             {
-                case 0: targetY--; break; // 上
-                case 1: targetX++; targetY--; break; // 右上
-                case 2: targetX++; break; // 右
-                case 3: targetX++; targetY++; break; // 右下
-                case 4: targetY++; break; // 下
-                case 5: targetX--; targetY++; break; // 左下
-                case 6: targetX--; break; // 左
-                case 7: targetX--; targetY--; break; // 左上
+                case 0: targetY--; break; 
+                case 1: targetX++; targetY--; break; 
+                case 2: targetX++; break; 
+                case 3: targetX++; targetY++; break; 
+                case 4: targetY++; break; 
+                case 5: targetX--; targetY++; break; 
+                case 6: targetX--; break; 
+                case 7: targetX--; targetY--; break; 
             }
 
-            // 攻击目标
+            
             bool hit = AttackTargetAt(targetX, targetY);
 
-            // 使用技能
+            
             if (hit)
             {
                 skill.Use();
+                TrainMagic(skill);
                 SaySystem("烈火剑法！");
 
-                // 烈火剑法有额外伤害效果
-                // 这里可以添加额外的伤害计算逻辑
+                
+                
                 return true;
             }
 
@@ -1850,19 +2338,19 @@ namespace GameServer
             return false;
         }
 
-        /// <summary>
-        /// 执行野蛮冲撞
-        /// </summary>
+        
+        
+        
         private bool ExecuteRush(byte direction)
         {
-            // 检查是否学习了野蛮冲撞技能
-            if (!SkillBook.HasSkill(1005)) // 假设1005是野蛮冲撞技能ID
+            
+            if (!SkillBook.HasSkill(1005)) 
             {
                 SaySystem("未学习野蛮冲撞");
                 return false;
             }
 
-            // 获取技能
+            
             var skill = SkillBook.GetSkill(1005);
             if (skill == null || !skill.CanUse())
             {
@@ -1870,72 +2358,74 @@ namespace GameServer
                 return false;
             }
 
-            // 计算冲撞路径
+            
             int targetX = X;
             int targetY = Y;
 
-            // 冲撞可以移动多格距离
-            int maxDistance = 3; // 最大冲撞距离
+            
+            int maxDistance = 3; 
             bool hitTarget = false;
 
             for (int i = 1; i <= maxDistance; i++)
             {
-                // 计算当前位置
+                
                 int currentX = X;
                 int currentY = Y;
 
                 switch (direction)
                 {
-                    case 0: currentY -= i; break; // 上
-                    case 1: currentX += i; currentY -= i; break; // 右上
-                    case 2: currentX += i; break; // 右
-                    case 3: currentX += i; currentY += i; break; // 右下
-                    case 4: currentY += i; break; // 下
-                    case 5: currentX -= i; currentY += i; break; // 左下
-                    case 6: currentX -= i; break; // 左
-                    case 7: currentX -= i; currentY -= i; break; // 左上
+                    case 0: currentY -= i; break; 
+                    case 1: currentX += i; currentY -= i; break; 
+                    case 2: currentX += i; break; 
+                    case 3: currentX += i; currentY += i; break; 
+                    case 4: currentY += i; break; 
+                    case 5: currentX -= i; currentY += i; break; 
+                    case 6: currentX -= i; break; 
+                    case 7: currentX -= i; currentY -= i; break; 
                 }
 
-                // 检查是否可以移动到该位置
+                
                 if (CurrentMap == null || !CurrentMap.CanMoveTo(currentX, currentY))
                 {
-                    // 遇到障碍物或地图边界，停止冲撞
+                    
                     break;
                 }
 
-                // 检查该位置是否有目标
+                
                 var target = CurrentMap.GetObjectAt(currentX, currentY) as ICombatEntity;
                 if (target != null && CanAttackTarget(target))
                 {
-                    // 攻击目标
+                    
                     PerformAttack(target);
                     hitTarget = true;
 
-                    // 冲撞到目标后停止
+                    
                     break;
                 }
 
-                // 移动到该位置
+                
                 X = (ushort)currentX;
                 Y = (ushort)currentY;
                 targetX = currentX;
                 targetY = currentY;
             }
 
-            // 使用技能
+            
             if (hitTarget)
             {
                 skill.Use();
+                TrainMagic(skill);
                 SaySystem("野蛮冲撞！");
                 return true;
             }
 
-            // 即使没有撞到目标，也移动到目标位置
+            
             if (targetX != X || targetY != Y)
             {
                 X = (ushort)targetX;
                 Y = (ushort)targetY;
                 skill.Use();
+                TrainMagic(skill);
                 SaySystem("野蛮冲撞！");
                 return true;
             }
@@ -1944,9 +2434,9 @@ namespace GameServer
             return false;
         }
 
-        /// <summary>
-        /// 攻击指定位置的目标
-        /// </summary>
+        
+        
+        
         private bool AttackTargetAt(int x, int y)
         {
             if (CurrentMap == null)
@@ -1967,36 +2457,144 @@ namespace GameServer
 
         #region 状态检查方法
 
-        /// <summary>
-        /// 是否在战斗中
-        /// </summary>
+        
+        
+        
         public bool IsInCombat()
         {
+            
             return false;
         }
 
-        /// <summary>
-        /// 是否在摆摊中
-        /// </summary>
+        
+        
+        
         public bool IsInPrivateShop()
         {
+            
             return false;
         }
 
-        /// <summary>
-        /// 重新计算总属性
-        /// </summary>
+        
+        
+        
         public void RecalcTotalStats()
         {
-            // 重新计算所有属性
-            // 基础属性 + 装备属性 + 技能加成等
+            
+            
+            
+            
+            
+            
 
-            // 这里应该实现完整的属性计算逻辑
+            if (!_dbBaseStatsLoaded)
+            {
+                
+                _dbBaseStats.MinDC = Stats.MinDC;
+                _dbBaseStats.MaxDC = Stats.MaxDC;
+                _dbBaseStats.MinMC = Stats.MinMC;
+                _dbBaseStats.MaxMC = Stats.MaxMC;
+                _dbBaseStats.MinSC = Stats.MinSC;
+                _dbBaseStats.MaxSC = Stats.MaxSC;
+                _dbBaseStats.MinAC = Stats.MinAC;
+                _dbBaseStats.MaxAC = Stats.MaxAC;
+                _dbBaseStats.MinMAC = Stats.MinMAC;
+                _dbBaseStats.MaxMAC = Stats.MaxMAC;
+                _dbBaseStats.Accuracy = Stats.Accuracy;
+                _dbBaseStats.Agility = Stats.Agility;
+                _dbBaseStats.Lucky = Stats.Lucky;
+                _dbBaseMaxHP = MaxHP;
+                _dbBaseMaxMP = MaxMP;
+                _dbBaseStatsLoaded = true;
+            }
+
+            CombatStats newEquip = Equipment?.GetTotalStats() ?? new CombatStats();
+
+            
+            int deltaMinDC = Stats.MinDC - (_dbBaseStats.MinDC + _equipStatsCache.MinDC);
+            int deltaMaxDC = Stats.MaxDC - (_dbBaseStats.MaxDC + _equipStatsCache.MaxDC);
+            int deltaMinMC = Stats.MinMC - (_dbBaseStats.MinMC + _equipStatsCache.MinMC);
+            int deltaMaxMC = Stats.MaxMC - (_dbBaseStats.MaxMC + _equipStatsCache.MaxMC);
+            int deltaMinSC = Stats.MinSC - (_dbBaseStats.MinSC + _equipStatsCache.MinSC);
+            int deltaMaxSC = Stats.MaxSC - (_dbBaseStats.MaxSC + _equipStatsCache.MaxSC);
+            int deltaMinAC = Stats.MinAC - (_dbBaseStats.MinAC + _equipStatsCache.MinAC);
+            int deltaMaxAC = Stats.MaxAC - (_dbBaseStats.MaxAC + _equipStatsCache.MaxAC);
+            int deltaMinMAC = Stats.MinMAC - (_dbBaseStats.MinMAC + _equipStatsCache.MinMAC);
+            int deltaMaxMAC = Stats.MaxMAC - (_dbBaseStats.MaxMAC + _equipStatsCache.MaxMAC);
+            int deltaAcc = Stats.Accuracy - (_dbBaseStats.Accuracy + _equipStatsCache.Accuracy);
+            int deltaAgi = Stats.Agility - (_dbBaseStats.Agility + _equipStatsCache.Agility);
+            int deltaLucky = Stats.Lucky - (_dbBaseStats.Lucky + _equipStatsCache.Lucky);
+
+            int deltaMaxHp = MaxHP - (_dbBaseMaxHP + _equipStatsCache.MaxHP);
+            int deltaMaxMp = MaxMP - (_dbBaseMaxMP + _equipStatsCache.MaxMP);
+
+            
+            Stats.MinDC = _dbBaseStats.MinDC + newEquip.MinDC + deltaMinDC;
+            Stats.MaxDC = _dbBaseStats.MaxDC + newEquip.MaxDC + deltaMaxDC;
+            Stats.MinMC = _dbBaseStats.MinMC + newEquip.MinMC + deltaMinMC;
+            Stats.MaxMC = _dbBaseStats.MaxMC + newEquip.MaxMC + deltaMaxMC;
+            Stats.MinSC = _dbBaseStats.MinSC + newEquip.MinSC + deltaMinSC;
+            Stats.MaxSC = _dbBaseStats.MaxSC + newEquip.MaxSC + deltaMaxSC;
+            Stats.MinAC = _dbBaseStats.MinAC + newEquip.MinAC + deltaMinAC;
+            Stats.MaxAC = _dbBaseStats.MaxAC + newEquip.MaxAC + deltaMaxAC;
+            Stats.MinMAC = _dbBaseStats.MinMAC + newEquip.MinMAC + deltaMinMAC;
+            Stats.MaxMAC = _dbBaseStats.MaxMAC + newEquip.MaxMAC + deltaMaxMAC;
+            Stats.Accuracy = _dbBaseStats.Accuracy + newEquip.Accuracy + deltaAcc;
+            Stats.Agility = _dbBaseStats.Agility + newEquip.Agility + deltaAgi;
+            Stats.Lucky = _dbBaseStats.Lucky + newEquip.Lucky + deltaLucky;
+
+            MaxHP = _dbBaseMaxHP + newEquip.MaxHP + deltaMaxHp;
+            MaxMP = _dbBaseMaxMP + newEquip.MaxMP + deltaMaxMp;
+
+            
+            if (Stats.MinDC < 0) Stats.MinDC = 0;
+            if (Stats.MaxDC < Stats.MinDC) Stats.MaxDC = Stats.MinDC;
+            if (Stats.MinMC < 0) Stats.MinMC = 0;
+            if (Stats.MaxMC < Stats.MinMC) Stats.MaxMC = Stats.MinMC;
+            if (Stats.MinSC < 0) Stats.MinSC = 0;
+            if (Stats.MaxSC < Stats.MinSC) Stats.MaxSC = Stats.MinSC;
+            if (Stats.MinAC < 0) Stats.MinAC = 0;
+            if (Stats.MaxAC < Stats.MinAC) Stats.MaxAC = Stats.MinAC;
+            if (Stats.MinMAC < 0) Stats.MinMAC = 0;
+            if (Stats.MaxMAC < Stats.MinMAC) Stats.MaxMAC = Stats.MinMAC;
+            if (Stats.Accuracy < 0) Stats.Accuracy = 0;
+            if (Stats.Agility < 0) Stats.Agility = 0;
+            
+
+            MaxHP = Math.Max(1, MaxHP);
+            MaxMP = Math.Max(1, MaxMP);
+            if (CurrentHP > MaxHP) CurrentHP = MaxHP;
+            if (CurrentHP < 0) CurrentHP = 0;
+            if (CurrentMP > MaxMP) CurrentMP = MaxMP;
+            if (CurrentMP < 0) CurrentMP = 0;
+
+            
+            Stats.MaxHP = MaxHP;
+            Stats.HP = CurrentHP;
+            Stats.MaxMP = MaxMP;
+            Stats.MP = CurrentMP;
+
+            
+            _equipStatsCache.MaxHP = newEquip.MaxHP;
+            _equipStatsCache.MaxMP = newEquip.MaxMP;
+            _equipStatsCache.MinDC = newEquip.MinDC;
+            _equipStatsCache.MaxDC = newEquip.MaxDC;
+            _equipStatsCache.MinMC = newEquip.MinMC;
+            _equipStatsCache.MaxMC = newEquip.MaxMC;
+            _equipStatsCache.MinSC = newEquip.MinSC;
+            _equipStatsCache.MaxSC = newEquip.MaxSC;
+            _equipStatsCache.MinAC = newEquip.MinAC;
+            _equipStatsCache.MaxAC = newEquip.MaxAC;
+            _equipStatsCache.MinMAC = newEquip.MinMAC;
+            _equipStatsCache.MaxMAC = newEquip.MaxMAC;
+            _equipStatsCache.Accuracy = newEquip.Accuracy;
+            _equipStatsCache.Agility = newEquip.Agility;
+            _equipStatsCache.Lucky = newEquip.Lucky;
         }
 
-        /// <summary>
-        /// 添加物品到背包
-        /// </summary>
+        
+        
+        
         public bool AddItem(ItemInstance item)
         {
             return Inventory.AddItem(item);
@@ -2006,16 +2604,16 @@ namespace GameServer
 
         #region 宠物仓库方法
 
-        /// <summary>
-        /// 放入宠物仓库
-        /// </summary>
+        
+        
+        
         public void PutItemToPetBag(uint itemId)
         {
             try
             {
                 LogManager.Default.Info($"{Name} 放入宠物仓库物品: {itemId}");
                 
-                // 获取背包物品
+                
                 var item = Inventory.GetItem((int)itemId);
                 if (item == null)
                 {
@@ -2023,7 +2621,7 @@ namespace GameServer
                     return;
                 }
                 
-                // 检查宠物背包空间
+                
                 var petBag = PetSystem.GetPetBag();
                 if (petBag.GetUsedSlots() >= petBag.MaxSlots)
                 {
@@ -2031,26 +2629,26 @@ namespace GameServer
                     return;
                 }
                 
-                // 从背包移除物品
+                
                 if (!Inventory.RemoveItem((int)itemId, 1))
                 {
                     SaySystem("移除物品失败");
                     return;
                 }
                 
-                // 添加到宠物背包
+                
                 if (!petBag.AddItem(item))
                 {
-                    // 如果添加失败，返还物品
+                    
                     Inventory.AddItem(item);
                     SaySystem("放入宠物背包失败");
                     return;
                 }
                 
-                // 发送背包更新消息
+                
                 SendInventoryUpdate();
                 
-                // 发送宠物背包更新消息
+                
                 SendPetBagUpdate();
                 
                 SaySystem($"已将 {item.Definition.Name} 放入宠物背包");
@@ -2062,16 +2660,16 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 从宠物仓库取出
-        /// </summary>
+        
+        
+        
         public void GetItemFromPetBag(uint itemId)
         {
             try
             {
                 LogManager.Default.Info($"{Name} 从宠物仓库取出物品: {itemId}");
                 
-                // 获取宠物背包物品
+                
                 var petBag = PetSystem.GetPetBag();
                 var item = petBag.GetItem((int)itemId);
                 if (item == null)
@@ -2080,33 +2678,33 @@ namespace GameServer
                     return;
                 }
                 
-                // 检查背包空间
+                
                 if (Inventory.GetUsedSlots() >= Inventory.MaxSlots)
                 {
                     SaySystem("背包已满");
                     return;
                 }
                 
-                // 从宠物背包移除物品
+                
                 if (!petBag.RemoveItem((int)itemId, 1))
                 {
                     SaySystem("移除物品失败");
                     return;
                 }
                 
-                // 添加到背包
+                
                 if (!Inventory.AddItem(item))
                 {
-                    // 如果添加失败，返还物品
+                    
                     petBag.AddItem(item);
                     SaySystem("放入背包失败");
                     return;
                 }
                 
-                // 发送宠物背包更新消息
+                
                 SendPetBagUpdate();
                 
-                // 发送背包更新消息
+                
                 SendInventoryUpdate();
                 
                 SaySystem($"已将 {item.Definition.Name} 从宠物背包取出");
@@ -2122,23 +2720,23 @@ namespace GameServer
 
         #region 任务系统方法
 
-        /// <summary>
-        /// 删除任务
-        /// </summary>
+        
+        
+        
         public void DeleteTask(uint taskId)
         {
             try
             {
                 LogManager.Default.Info($"{Name} 删除任务: {taskId}");
                 
-                // 从任务管理器删除任务
+                
                 bool success = QuestManager.DeleteTask((int)taskId);
                 
                 if (success)
                 {
                     SaySystem($"已删除任务: {taskId}");
                     
-                    // 发送任务删除消息给客户端
+                    
                     SendTaskDeleted(taskId);
                 }
                 else
@@ -2153,14 +2751,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送任务删除消息
-        /// </summary>
+        
+        
+        
         private void SendTaskDeleted(uint taskId)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x296); // SM_TASKDELETED
+            builder.WriteUInt16(0x296); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -2173,19 +2771,20 @@ namespace GameServer
 
         #region 好友系统方法
 
-        /// <summary>
-        /// 删除好友
-        /// </summary>
+        
+        
+        
         public void DeleteFriend(string friendName)
         {
             try
             {
                 LogManager.Default.Info($"{Name} 删除好友: {friendName}");
                 
-                // 这里需要根据实际的好友系统实现
+                
+                
                 SaySystem($"已删除好友: {friendName}");
                 
-                // 发送好友删除消息给客户端
+                
                 SendFriendDeleted(friendName);
             }
             catch (Exception ex)
@@ -2195,19 +2794,20 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 回复添加好友请求
-        /// </summary>
+        
+        
+        
         public void ReplyAddFriendRequest(uint requestId, string replyData)
         {
             try
             {
                 LogManager.Default.Info($"{Name} 回复添加好友请求: {requestId}, {replyData}");
                 
-                // 解析回复数据
+                
                 bool accept = replyData.Contains("accept", StringComparison.OrdinalIgnoreCase);
                 
-                // 这里需要根据实际的好友系统实现
+                
+                
                 if (accept)
                 {
                     SaySystem("已接受好友请求");
@@ -2217,7 +2817,7 @@ namespace GameServer
                     SaySystem("已拒绝好友请求");
                 }
                 
-                // 发送回复结果消息给客户端
+                
                 SendFriendRequestReply(requestId, accept);
             }
             catch (Exception ex)
@@ -2227,14 +2827,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送好友删除消息
-        /// </summary>
+        
+        
+        
         private void SendFriendDeleted(string friendName)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x297); // SM_FRIENDDELETED
+            builder.WriteUInt16(0x297); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -2243,14 +2843,14 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送好友请求回复消息
-        /// </summary>
+        
+        
+        
         private void SendFriendRequestReply(uint requestId, bool accept)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x298); // SM_FRIENDREQUESTREPLY
+            builder.WriteUInt16(0x298); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -2260,14 +2860,14 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送好友系统错误消息
-        /// </summary>
+        
+        
+        
         public void SendFriendSystemError(byte error, string friendName)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x299); // SM_FRIENDSYSTEMERROR
+            builder.WriteUInt16(0x299); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -2277,16 +2877,16 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送添加好友请求
-        /// </summary>
+        
+        
+        
         public void PostAddFriendRequest(HumanPlayer requester)
         {
             try
             {
                 LogManager.Default.Info($"{Name} 收到来自 {requester.Name} 的好友请求");
                 
-                // 发送好友请求消息给客户端
+                
                 SendFriendRequest(requester);
             }
             catch (Exception ex)
@@ -2295,14 +2895,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送好友请求消息
-        /// </summary>
+        
+        
+        
         private void SendFriendRequest(HumanPlayer requester)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x29A); // SM_FRIENDREQUEST
+            builder.WriteUInt16(0x29A); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -2316,16 +2916,17 @@ namespace GameServer
 
         #region 行会系统方法
 
-        /// <summary>
-        /// 回复加入行会请求
-        /// </summary>
+        
+        
+        
         public void ReplyAddToGuildRequest(bool accept)
         {
             try
             {
                 LogManager.Default.Info($"{Name} 回复加入行会请求: {(accept ? "接受" : "拒绝")}");
                 
-                // 这里需要根据实际的行会系统实现
+                
+                
                 if (accept)
                 {
                     SaySystem("已接受加入行会请求");
@@ -2335,7 +2936,7 @@ namespace GameServer
                     SaySystem("已拒绝加入行会请求");
                 }
                 
-                // 发送回复结果消息给客户端
+                
                 SendGuildRequestReply(accept);
             }
             catch (Exception ex)
@@ -2345,16 +2946,16 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送加入行会请求
-        /// </summary>
+        
+        
+        
         public void PostAddToGuildRequest(HumanPlayer inviter)
         {
             try
             {
                 LogManager.Default.Info($"{Name} 收到来自 {inviter.Name} 的加入行会请求");
                 
-                // 发送加入行会请求消息给客户端
+                
                 SendGuildInvite(inviter);
             }
             catch (Exception ex)
@@ -2363,14 +2964,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送行会请求回复消息
-        /// </summary>
+        
+        
+        
         private void SendGuildRequestReply(bool accept)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x29B); // SM_GUILDREQUESTREPLY
+            builder.WriteUInt16(0x29B); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -2379,14 +2980,14 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送行会邀请消息
-        /// </summary>
+        
+        
+        
         private void SendGuildInvite(HumanPlayer inviter)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x29C); // SM_GUILDINVITE
+            builder.WriteUInt16(0x29C); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -2401,28 +3002,29 @@ namespace GameServer
 
         #region 仓库系统方法
 
-        /// <summary>
-        /// 从仓库取出物品
-        /// </summary>
+        
+        
+        
         public bool TakeBankItem(uint itemId)
         {
             try
             {
                 LogManager.Default.Info($"{Name} 从仓库取出物品: {itemId}");
                 
-                // 这里需要根据实际的仓库系统实现
                 
-                // 检查背包空间
+                
+                
+                
                 if (Inventory.GetUsedSlots() >= Inventory.MaxSlots)
                 {
                     SaySystem("背包已满");
                     return false;
                 }
                 
-                // 模拟取出物品
+                
                 SaySystem("已从仓库取出物品");
                 
-                // 发送背包更新消息
+                
                 SendInventoryUpdate();
                 
                 return true;
@@ -2435,20 +3037,22 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 放入仓库物品
-        /// </summary>
+        
+        
+        
         public bool PutBankItem(uint itemId)
         {
             try
             {
                 LogManager.Default.Info($"{Name} 放入仓库物品: {itemId}");
                 
-                // 这里需要根据实际的仓库系统实现
                 
-                // 检查仓库空间
                 
-                // 模拟放入物品
+                
+                
+                
+                
+                
                 SaySystem("已放入仓库物品");
                 
                 return true;
@@ -2465,16 +3069,16 @@ namespace GameServer
 
         #region 技能快捷键方法
 
-        /// <summary>
-        /// 设置技能快捷键
-        /// </summary>
+        
+        
+        
         public void SetMagicKey(uint skillId, ushort key1, ushort key2)
         {
             try
             {
                 LogManager.Default.Info($"{Name} 设置技能快捷键: 技能ID={skillId}, 快捷键={key1},{key2}");
                 
-                // 获取技能
+                
                 var skill = SkillBook.GetSkill((int)skillId);
                 if (skill == null)
                 {
@@ -2482,9 +3086,11 @@ namespace GameServer
                     return;
                 }
                 
-                // 设置技能快捷键
                 
-                // 发送技能快捷键更新消息
+                
+                
+                
+                
                 SendMagicKeyUpdated(skillId, key1, key2);
                 
                 SaySystem("已设置技能快捷键");
@@ -2496,14 +3102,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送技能快捷键更新消息
-        /// </summary>
+        
+        
+        
         private void SendMagicKeyUpdated(uint skillId, ushort key1, ushort key2)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x29D); // SM_MAGICKEYUPDATED
+            builder.WriteUInt16(0x29D); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -2518,16 +3124,16 @@ namespace GameServer
 
         #region 其他方法
 
-        /// <summary>
-        /// 切割尸体
-        /// </summary>
+        
+        
+        
         public bool CutBody(uint corpseId, ushort param1, ushort param2, ushort param3)
         {
             try
             {
                 LogManager.Default.Info($"{Name} 切割尸体: 尸体ID={corpseId}, 参数={param1},{param2},{param3}");
                 
-                // 获取尸体对象
+                
                 var corpse = CurrentMap?.GetObject(corpseId) as MonsterCorpse;
                 if (corpse == null)
                 {
@@ -2535,20 +3141,20 @@ namespace GameServer
                     return false;
                 }
                 
-                // 检查距离
+                
                 if (!IsInRange(corpse, 1))
                 {
                     SaySystem("距离太远");
                     return false;
                 }
                 
-                // 执行切割动作 - 使用GetMeat动作代替CutBody
+                
                 StartAction(ActionType.GetMeat, corpseId);
                 
-                // 更新切割时间
+                
                 _lastGetMeatTime = DateTime.Now;
                 
-                // 发送切割特效消息
+                
                 SendCutBodyEffect(corpseId);
                 
                 return true;
@@ -2561,14 +3167,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送切割尸体特效消息
-        /// </summary>
+        
+        
+        
         private void SendCutBodyEffect(uint corpseId)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x29E); // SM_CUTBODYEFFECT
+            builder.WriteUInt16(0x29E); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -2577,16 +3183,17 @@ namespace GameServer
             SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 放入物品
-        /// </summary>
+        
+        
+        
         public void OnPutItem(uint itemId, uint param)
         {
             try
             {
                 LogManager.Default.Info($"{Name} 放入物品: 物品ID={itemId}, 参数={param}");
                 
-                // 这里需要根据实际的物品系统实现
+                
+                
                 SaySystem("已放入物品");
             }
             catch (Exception ex)
@@ -2596,19 +3203,19 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 显示宠物信息
-        /// </summary>
+        
+        
+        
         public void ShowPetInfo()
         {
             try
             {
                 LogManager.Default.Info($"{Name} 显示宠物信息");
                 
-                // 获取宠物信息
+                
                 var petInfo = PetSystem.GetPetInfo();
                 
-                // 发送宠物信息消息
+                
                 SendPetInfo(petInfo);
                 
                 SaySystem("已显示宠物信息");
@@ -2620,22 +3227,256 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送宠物信息消息
-        /// </summary>
+        
+        
+        
         private void SendPetInfo(object petInfo)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(ObjectId);
-            builder.WriteUInt16(0x29F); // SM_PETINFO
+            builder.WriteUInt16(0x29F); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             
-            // 这里需要根据实际的宠物信息结构来构建消息
+            
+            
             builder.WriteString("宠物信息");
             
             SendMessage(builder.Build());
+        }
+
+        #endregion
+
+        
+        
+        
+        
+        public void LoadVars()
+        {
+            
+        }
+
+        
+        
+        
+        
+        public bool CreateBagItem(string itemName, bool silence = false)
+        {
+            if (string.IsNullOrWhiteSpace(itemName))
+                return false;
+
+            
+            
+            if (!GetSystemFlag((int)MirCommon.SystemFlag.SF_BAGLOADED))
+            {
+                if (!silence)
+                    SaySystem("背包数据加载中，请稍后再试");
+                return false;
+            }
+
+            var def = ItemManager.Instance.GetDefinitionByName(itemName.Trim());
+            if (def == null)
+                return false;
+
+            var instance = ItemManager.Instance.CreateItem(def.ItemId, 1);
+            if (instance == null)
+                return false;
+
+            
+            if (!Inventory.TryAddItemNoStack(instance, out _))
+                return false;
+
+            if (!silence)
+            {
+                SendAddBagItem(instance);
+                SendWeightChanged();
+            }
+
+            return true;
+        }
+
+        
+        
+        
+        public void SendAddBagItem(ItemInstance item)
+        {
+            try
+            {
+                if (item == null)
+                    return;
+
+                var itemClient = ItemPacketBuilder.BuildItemClient(item);
+
+                byte[] payload = StructToBytes(itemClient);
+                SendMsg(ObjectId, MirCommon.ProtocolCmd.SM_ADDBAGITEM, 0, 0, 1, payload);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"发送新增背包物品失败: player={Name}, err={ex.Message}");
+            }
+        }
+
+        
+        
+        
+        public void SendUpdateItem(ItemInstance item)
+        {
+            try
+            {
+                if (item == null)
+                    return;
+
+                var itemClient = ItemPacketBuilder.BuildItemClient(item);
+
+                byte[] payload = StructToBytes(itemClient);
+                SendMsg(ObjectId, MirCommon.ProtocolCmd.SM_UPDATEITEM, 0, 0, 1, payload);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"发送更新背包物品失败: player={Name}, err={ex.Message}");
+            }
+        }
+
+        
+        
+        
+        public void SetBagItemPos(MirCommon.BAGITEMPOS[] itempos, int count)
+        {
+            
+        }
+
+        #region 被动/自动技能（对齐C++）
+
+        
+        
+        
+        public void PostMsg(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return;
+
+            if (_stream == null || _tcpClient == null || !_tcpClient.Connected)
+                return;
+
+            try
+            {
+                byte[] bytes = System.Text.Encoding.GetEncoding("GBK").GetBytes(message);
+                lock (_stream)
+                {
+                    _stream.Write(bytes, 0, bytes.Length);
+                    _stream.Flush();
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Warning($"PostMsg发送失败: player={Name}, msg={message}, err={ex.Message}");
+            }
+        }
+
+        private static int CalcAutoAddPower(int skillLevel)
+        {
+            int level = Math.Clamp(skillLevel, 0, 7);
+            int span = Math.Max(1, 7 - level);
+            return span - Random.Shared.Next(span); 
+        }
+
+        
+        
+        
+        public void RecalcHitSpeed()
+        {
+            int bonus = 0;
+
+            
+            var s3 = SkillBook.GetSkill(3);
+            if (s3 != null && s3.Level > 0)
+                bonus += (8 * s3.Level) / 3;
+
+            
+            var s4 = SkillBook.GetSkill(4);
+            if (s4 != null && s4.Level > 0)
+                bonus += (9 * s4.Level) / 3;
+
+            
+            var s7 = SkillBook.GetSkill(7);
+            if (s7 != null)
+            {
+                s7.Activated = true;
+                if (s7.Level > 0)
+                    bonus += (3 * s7.Level) / 3;
+            }
+
+            
+            var s74 = SkillBook.GetSkill(74);
+            if (s74 != null && s74.Level > 0)
+                bonus += s74.Level;
+
+            int delta = bonus - _hitPointBonus;
+            if (delta != 0)
+            {
+                Stats.Accuracy += delta;
+                Accuracy += delta;
+                if (Stats.Accuracy < 0) Stats.Accuracy = 0;
+                if (Accuracy < 0) Accuracy = 0;
+            }
+
+            _hitPointBonus = bonus;
+        }
+
+        
+        
+        
+        private void UpdateAutoMagic()
+        {
+            
+
+            if (MagicManager.Instance.GetMagicCount() == 0)
+            {
+                MagicManager.Instance.LoadAll();
+            }
+
+            foreach (var skill in SkillBook.GetAllSkills())
+            {
+                var magicClass = MagicManager.Instance.GetClassById(skill.SkillId);
+                if (magicClass == null)
+                    continue;
+
+                bool forced = (magicClass.dwFlag & (uint)MagicFlag.MAGICFLAG_FORCED) != 0;
+                bool actived = (magicClass.dwFlag & (uint)MagicFlag.MAGICFLAG_ACTIVED) != 0;
+
+                
+                if (!forced || actived)
+                    continue;
+
+                if (skill.AutoAddPower <= 0)
+                    skill.AutoAddPower = CalcAutoAddPower(skill.Level);
+
+                skill.AutoAddPower--;
+                if (skill.AutoAddPower > 0)
+                    continue;
+
+                skill.AutoAddPower = CalcAutoAddPower(skill.Level);
+
+                TrainMagic(skill);
+
+                
+                switch (skill.SkillId)
+                {
+                    case 7:  
+                        skill.Activated = true;
+                        PostMsg("#+PWR!");
+                        break;
+                    case 40: 
+                        skill.Activated = true;
+                        PostMsg("#+VIS!");
+                        break;
+                    case 41: 
+                        skill.Activated = true;
+                        PostMsg("#+SHAD!");
+                        break;
+                }
+            }
         }
 
         #endregion

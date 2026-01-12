@@ -8,9 +8,9 @@ using MirCommon.Utils;
 
 namespace MirCommon.Network
 {
-    /// <summary>
-    /// IOCP网络引擎测试程序
-    /// </summary>
+    
+    
+    
     public class IocpNetworkTest
     {
         private IocpNetworkEngine _serverEngine;
@@ -19,28 +19,28 @@ namespace MirCommon.Network
         private bool _testCompleted = false;
         private readonly object _syncLock = new object();
         
-        /// <summary>
-        /// 运行IOCP网络引擎测试
-        /// </summary>
+        
+        
+        
         public async Task RunTest()
         {
             try
             {
                 LogManager.Default.Info("开始IOCP网络引擎测试...");
                 
-                // 测试1：创建和销毁引擎
+                
                 await TestCreateAndDispose();
                 
-                // 测试2：启动和停止引擎
+                
                 await TestStartAndStop();
                 
-                // 测试3：监听和连接
+                
                 await TestListenAndConnect();
                 
-                // 测试4：发送和接收数据
+                
                 await TestSendAndReceive();
                 
-                // 测试5：并发连接测试
+                
                 await TestConcurrentConnections();
                 
                 LogManager.Default.Info("IOCP网络引擎测试完成！");
@@ -51,24 +51,24 @@ namespace MirCommon.Network
             }
         }
         
-        /// <summary>
-        /// 测试1：创建和销毁引擎
-        /// </summary>
+        
+        
+        
         private async Task TestCreateAndDispose()
         {
             LogManager.Default.Info("测试1：创建和销毁引擎");
             
             try
             {
-                // 创建引擎
+                
                 _serverEngine = new IocpNetworkEngine();
                 LogManager.Default.Info("✓ 成功创建IOCP网络引擎");
                 
-                // 销毁引擎
+                
                 _serverEngine.Dispose();
                 LogManager.Default.Info("✓ 成功销毁IOCP网络引擎");
                 
-                // 重新创建
+                
                 _serverEngine = new IocpNetworkEngine();
                 LogManager.Default.Info("✓ 成功重新创建IOCP网络引擎");
             }
@@ -81,31 +81,31 @@ namespace MirCommon.Network
             await Task.CompletedTask;
         }
         
-        /// <summary>
-        /// 测试2：启动和停止引擎
-        /// </summary>
+        
+        
+        
         private async Task TestStartAndStop()
         {
             LogManager.Default.Info("测试2：启动和停止引擎");
             
             try
             {
-                // 启动引擎
-                bool started = _serverEngine.Start(2); // 使用2个工作线程
+                
+                bool started = _serverEngine.Start(2); 
                 if (!started)
                 {
                     throw new Exception("启动引擎失败");
                 }
                 LogManager.Default.Info("✓ 成功启动IOCP网络引擎");
                 
-                // 等待引擎初始化
+                
                 await Task.Delay(100);
                 
-                // 停止引擎
+                
                 _serverEngine.Stop();
                 LogManager.Default.Info("✓ 成功停止IOCP网络引擎");
                 
-                // 重新启动
+                
                 started = _serverEngine.Start();
                 if (!started)
                 {
@@ -120,16 +120,16 @@ namespace MirCommon.Network
             }
         }
         
-        /// <summary>
-        /// 测试3：监听和连接
-        /// </summary>
+        
+        
+        
         private async Task TestListenAndConnect()
         {
             LogManager.Default.Info("测试3：监听和连接");
             
             try
             {
-                // 启动客户端引擎
+                
                 _clientEngine = new IocpNetworkEngine();
                 bool clientStarted = _clientEngine.Start(1);
                 if (!clientStarted)
@@ -138,7 +138,7 @@ namespace MirCommon.Network
                 }
                 LogManager.Default.Info("✓ 成功启动客户端引擎");
                 
-                // 服务器监听端口
+                
                 string serverIp = "127.0.0.1";
                 int serverPort = 8888;
                 
@@ -149,21 +149,21 @@ namespace MirCommon.Network
                 }
                 LogManager.Default.Info($"✓ 成功监听端口: {serverIp}:{serverPort}");
                 
-                // 注册服务器事件
+                
                 _serverEngine.OnConnection += OnServerConnection;
                 _serverEngine.OnDataReceived += OnServerDataReceived;
                 _serverEngine.OnDisconnection += OnServerDisconnection;
                 
-                // 注册客户端事件
+                
                 _clientEngine.OnConnection += OnClientConnection;
                 _clientEngine.OnDataReceived += OnClientDataReceived;
                 _clientEngine.OnDisconnection += OnClientDisconnection;
                 
-                // 客户端连接服务器
+                
                 await ConnectClientToServer(serverIp, serverPort);
                 
-                // 等待连接建立
-                for (int i = 0; i < 50; i++) // 最多等待5秒
+                
+                for (int i = 0; i < 50; i++) 
                 {
                     if (_clientSocket != null && _clientSocket.Connected)
                     {
@@ -179,7 +179,7 @@ namespace MirCommon.Network
                 
                 LogManager.Default.Info("✓ 客户端成功连接到服务器");
                 
-                // 等待一段时间让连接稳定
+                
                 await Task.Delay(500);
             }
             catch (Exception ex)
@@ -189,9 +189,9 @@ namespace MirCommon.Network
             }
         }
         
-        /// <summary>
-        /// 测试4：发送和接收数据
-        /// </summary>
+        
+        
+        
         private async Task TestSendAndReceive()
         {
             LogManager.Default.Info("测试4：发送和接收数据");
@@ -203,10 +203,10 @@ namespace MirCommon.Network
                     throw new Exception("客户端未连接");
                 }
                 
-                // 重置测试完成标志
+                
                 _testCompleted = false;
                 
-                // 发送测试数据
+                
                 string testMessage = "Hello IOCP Server!";
                 byte[] testData = Encoding.UTF8.GetBytes(testMessage);
                 
@@ -218,8 +218,8 @@ namespace MirCommon.Network
                 
                 LogManager.Default.Info($"✓ 客户端发送数据: {testMessage}");
                 
-                // 等待服务器接收数据
-                for (int i = 0; i < 50; i++) // 最多等待5秒
+                
+                for (int i = 0; i < 50; i++) 
                 {
                     if (_testCompleted)
                     {
@@ -235,9 +235,11 @@ namespace MirCommon.Network
                 
                 LogManager.Default.Info("✓ 服务器成功接收数据");
                 
-                // 服务器回复数据
+                
                 string replyMessage = "Hello IOCP Client!";
                 byte[] replyData = Encoding.UTF8.GetBytes(replyMessage);
+                
+                
                 
                 LogManager.Default.Info($"✓ 服务器回复数据: {replyMessage}");
             }
@@ -248,9 +250,9 @@ namespace MirCommon.Network
             }
         }
         
-        /// <summary>
-        /// 测试5：并发连接测试
-        /// </summary>
+        
+        
+        
         private async Task TestConcurrentConnections()
         {
             LogManager.Default.Info("测试5：并发连接测试");
@@ -262,7 +264,7 @@ namespace MirCommon.Network
                 
                 LogManager.Default.Info($"开始并发连接测试，目标连接数: {connectionCount}");
                 
-                // 创建多个客户端连接
+                
                 var clients = new Socket[connectionCount];
                 var tasks = new Task[connectionCount];
                 
@@ -282,12 +284,12 @@ namespace MirCommon.Network
                             Interlocked.Increment(ref successfulConnections);
                             LogManager.Default.Debug($"客户端 {clientIndex + 1} 连接成功");
                             
-                            // 发送测试数据
+                            
                             string message = $"Client {clientIndex + 1} Test";
                             byte[] data = Encoding.UTF8.GetBytes(message);
                             await client.SendAsync(data, SocketFlags.None);
                             
-                            // 接收回复
+                            
                             byte[] buffer = new byte[1024];
                             int received = await client.ReceiveAsync(buffer, SocketFlags.None);
                             if (received > 0)
@@ -296,7 +298,7 @@ namespace MirCommon.Network
                                 LogManager.Default.Debug($"客户端 {clientIndex + 1} 收到回复: {reply}");
                             }
                             
-                            // 关闭连接
+                            
                             client.Shutdown(SocketShutdown.Both);
                             client.Close();
                         }
@@ -307,7 +309,7 @@ namespace MirCommon.Network
                     });
                 }
                 
-                // 等待所有任务完成
+                
                 await Task.WhenAll(tasks);
                 
                 LogManager.Default.Info($"并发连接测试完成，成功连接数: {successfulConnections}/{connectionCount}");
@@ -328,9 +330,9 @@ namespace MirCommon.Network
             }
         }
         
-        /// <summary>
-        /// 客户端连接服务器
-        /// </summary>
+        
+        
+        
         private async Task ConnectClientToServer(string ip, int port)
         {
             try
@@ -340,7 +342,8 @@ namespace MirCommon.Network
                 
                 await _clientSocket.ConnectAsync(ip, port);
                 
-                // 将客户端Socket绑定到客户端引擎
+                
+                
                 LogManager.Default.Debug("客户端连接成功");
             }
             catch (Exception ex)
@@ -361,13 +364,13 @@ namespace MirCommon.Network
             string message = Encoding.UTF8.GetString(data, 0, length);
             LogManager.Default.Info($"服务器: 收到数据 - 远程地址: {socket.RemoteEndPoint}, 数据: {message}");
             
-            // 标记测试完成
+            
             lock (_syncLock)
             {
                 _testCompleted = true;
             }
             
-            // 回复客户端
+            
             try
             {
                 string reply = "Server received: " + message;
@@ -405,9 +408,9 @@ namespace MirCommon.Network
         }
         #endregion
         
-        /// <summary>
-        /// 清理资源
-        /// </summary>
+        
+        
+        
         public void Cleanup()
         {
             try
@@ -447,9 +450,9 @@ namespace MirCommon.Network
         }
     }
     
-    /// <summary>
-    /// IOCP网络测试程序入口
-    /// </summary>
+    
+    
+    
     public class IocpNetworkTestProgram
     {
         public static async Task Main()
@@ -472,7 +475,7 @@ namespace MirCommon.Network
                 test.Cleanup();
             }
             
-            // 等待用户输入
+            
             Console.WriteLine("按任意键退出...");
             Console.ReadKey();
         }

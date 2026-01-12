@@ -1,6 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<ItemGroup>
+	  <Compile Remove="IocpGameClient.cs" />
+	  <Compile Remove="IocpGameServerApp.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<ProjectReference Include="..\MirCommon\MirCommon.csproj" />
 	</ItemGroup>
 

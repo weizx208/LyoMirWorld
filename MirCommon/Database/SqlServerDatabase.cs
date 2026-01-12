@@ -3,9 +3,9 @@ using System.Data.SqlClient;
 
 namespace MirCommon.Database
 {
-    /// <summary>
-    /// SQL Server数据库实现
-    /// </summary>
+    
+    
+    
     public class SqlServerDatabase : BaseDatabase
     {
         public SqlServerDatabase(string connectionString) : base(connectionString)
@@ -37,7 +37,7 @@ namespace MirCommon.Database
             }
         }
         
-        // SQL Server特定的方法重写
+        
         public override SERVER_ERROR DelCharacter(string account, string serverName, string name)
         {
             try

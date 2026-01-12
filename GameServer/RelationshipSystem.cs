@@ -6,31 +6,31 @@ namespace GameServer
     using MirCommon;
     using MirCommon.Utils;
 
-    /// <summary>
-    /// 关系类型
-    /// </summary>
+    
+    
+    
     public enum RelationshipType
     {
-        MasterApprentice = 0,    // 师徒
-        Married = 1,             // 夫妻
-        SwornBrother = 2,        // 结拜兄弟
-        Friend = 3               // 好友
+        MasterApprentice = 0,    
+        Married = 1,             
+        SwornBrother = 2,        
+        Friend = 3               
     }
 
-    /// <summary>
-    /// 关系状态
-    /// </summary>
+    
+    
+    
     public enum RelationshipStatus
     {
-        Pending = 0,     // 等待确认
-        Active = 1,      // 活跃中
-        Broken = 2,      // 已解除
-        Expired = 3      // 已过期
+        Pending = 0,     
+        Active = 1,      
+        Broken = 2,      
+        Expired = 3      
     }
 
-    /// <summary>
-    /// 关系信息
-    /// </summary>
+    
+    
+    
     public class Relationship
     {
         public uint RelationshipId { get; set; }
@@ -45,7 +45,7 @@ namespace GameServer
         public DateTime? BreakTime { get; set; }
         public uint Experience { get; set; }
         public uint Level { get; set; }
-        public string CustomName { get; set; } = string.Empty; // 自定义关系名称
+        public string CustomName { get; set; } = string.Empty; 
 
         public Relationship(uint relationshipId, RelationshipType type, uint player1Id, string player1Name, uint player2Id, string player2Name)
         {
@@ -61,32 +61,32 @@ namespace GameServer
             Experience = 0;
         }
 
-        /// <summary>
-        /// 确认关系
-        /// </summary>
+        
+        
+        
         public void Confirm()
         {
             Status = RelationshipStatus.Active;
             ConfirmTime = DateTime.Now;
         }
 
-        /// <summary>
-        /// 解除关系
-        /// </summary>
+        
+        
+        
         public void Break()
         {
             Status = RelationshipStatus.Broken;
             BreakTime = DateTime.Now;
         }
 
-        /// <summary>
-        /// 增加经验
-        /// </summary>
+        
+        
+        
         public void AddExperience(uint amount)
         {
             Experience += amount;
             
-            // 检查升级
+            
             uint requiredExp = GetRequiredExperience();
             while (Experience >= requiredExp && Level < GetMaxLevel())
             {
@@ -96,17 +96,17 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取升级所需经验
-        /// </summary>
+        
+        
+        
         private uint GetRequiredExperience()
         {
             return Level * 1000;
         }
 
-        /// <summary>
-        /// 获取最大等级
-        /// </summary>
+        
+        
+        
         private uint GetMaxLevel()
         {
             return Type switch
@@ -119,9 +119,9 @@ namespace GameServer
             };
         }
 
-        /// <summary>
-        /// 获取关系加成
-        /// </summary>
+        
+        
+        
         public RelationshipBonus GetBonus()
         {
             return new RelationshipBonus
@@ -133,75 +133,75 @@ namespace GameServer
             };
         }
 
-        /// <summary>
-        /// 获取经验加成
-        /// </summary>
+        
+        
+        
         private float GetExpBonus()
         {
             return Type switch
             {
-                RelationshipType.MasterApprentice => 0.05f + Level * 0.01f, // 5% + 1%每级
-                RelationshipType.Married => 0.10f + Level * 0.005f,         // 10% + 0.5%每级
-                RelationshipType.SwornBrother => 0.03f + Level * 0.008f,    // 3% + 0.8%每级
-                RelationshipType.Friend => 0.01f + Level * 0.002f,          // 1% + 0.2%每级
+                RelationshipType.MasterApprentice => 0.05f + Level * 0.01f, 
+                RelationshipType.Married => 0.10f + Level * 0.005f,         
+                RelationshipType.SwornBrother => 0.03f + Level * 0.008f,    
+                RelationshipType.Friend => 0.01f + Level * 0.002f,          
                 _ => 0
             };
         }
 
-        /// <summary>
-        /// 获取掉落加成
-        /// </summary>
+        
+        
+        
         private float GetDropBonus()
         {
             return Type switch
             {
-                RelationshipType.Married => 0.05f + Level * 0.002f,         // 5% + 0.2%每级
-                RelationshipType.SwornBrother => 0.03f + Level * 0.0015f,   // 3% + 0.15%每级
+                RelationshipType.Married => 0.05f + Level * 0.002f,         
+                RelationshipType.SwornBrother => 0.03f + Level * 0.0015f,   
                 _ => 0
             };
         }
 
-        /// <summary>
-        /// 获取伤害加成
-        /// </summary>
+        
+        
+        
         private float GetDamageBonus()
         {
             return Type switch
             {
-                RelationshipType.Married => 0.03f + Level * 0.001f,         // 3% + 0.1%每级
-                RelationshipType.SwornBrother => 0.05f + Level * 0.002f,    // 5% + 0.2%每级
+                RelationshipType.Married => 0.03f + Level * 0.001f,         
+                RelationshipType.SwornBrother => 0.05f + Level * 0.002f,    
                 _ => 0
             };
         }
 
-        /// <summary>
-        /// 获取防御加成
-        /// </summary>
+        
+        
+        
         private float GetDefenseBonus()
         {
             return Type switch
             {
-                RelationshipType.Married => 0.03f + Level * 0.001f,         // 3% + 0.1%每级
-                RelationshipType.SwornBrother => 0.04f + Level * 0.0015f,   // 4% + 0.15%每级
+                RelationshipType.Married => 0.03f + Level * 0.001f,         
+                RelationshipType.SwornBrother => 0.04f + Level * 0.0015f,   
                 _ => 0
             };
         }
     }
 
-    /// <summary>
-    /// 关系加成
-    /// </summary>
+    
+    
+    
     public class RelationshipBonus
     {
-        public float ExpBonus { get; set; }      // 经验加成
-        public float DropBonus { get; set; }     // 掉落加成
-        public float DamageBonus { get; set; }   // 伤害加成
-        public float DefenseBonus { get; set; }  // 防御加成
+        public float ExpBonus { get; set; }      
+        public float DropBonus { get; set; }     
+        public float DamageBonus { get; set; }   
+        public float DefenseBonus { get; set; }  
     }
 
-    /// <summary>
-    /// 师徒关系特殊信息
-    /// </summary>
+    
+    
+    
     public class MasterApprenticeInfo
     {
         public uint MasterId { get; set; }
@@ -209,12 +209,12 @@ namespace GameServer
         public List<uint> ApprenticeIds { get; set; } = new();
         public uint MaxApprentices { get; set; } = 3;
         public DateTime LastRewardTime { get; set; }
-        public uint TotalTaught { get; set; }    // 总共教导的徒弟数
+        public uint TotalTaught { get; set; }    
     }
 
-    /// <summary>
-    /// 夫妻关系特殊信息
-    /// </summary>
+    
+    
+    
     public class MarriageInfo
     {
         public uint HusbandId { get; set; }
@@ -225,19 +225,19 @@ namespace GameServer
         public uint WeddingMap { get; set; }
         public uint WeddingX { get; set; }
         public uint WeddingY { get; set; }
-        public string Vows { get; set; } = string.Empty; // 誓言
+        public string Vows { get; set; } = string.Empty; 
     }
 
-    /// <summary>
-    /// 关系管理器
-    /// </summary>
+    
+    
+    
     public class RelationshipManager
     {
         private static RelationshipManager? _instance;
         public static RelationshipManager Instance => _instance ??= new RelationshipManager();
 
         private readonly Dictionary<uint, Relationship> _relationships = new();
-        private readonly Dictionary<uint, List<uint>> _playerRelationships = new(); // playerId -> relationshipIds
+        private readonly Dictionary<uint, List<uint>> _playerRelationships = new(); 
         private readonly Dictionary<uint, MasterApprenticeInfo> _masterInfo = new();
         private readonly Dictionary<uint, MarriageInfo> _marriageInfo = new();
         private readonly object _lock = new();
@@ -246,19 +246,19 @@ namespace GameServer
 
         private RelationshipManager() { }
 
-        /// <summary>
-        /// 发起关系请求
-        /// </summary>
+        
+        
+        
         public Relationship? RequestRelationship(RelationshipType type, uint requesterId, string requesterName, uint targetId, string targetName)
         {
             if (requesterId == targetId)
                 return null;
 
-            // 检查是否已有相同类型的关系
+            
             if (HasRelationship(type, requesterId, targetId))
                 return null;
 
-            // 检查关系限制
+            
             if (!CanHaveRelationship(type, requesterId, targetId))
                 return null;
 
@@ -269,7 +269,7 @@ namespace GameServer
                 
                 _relationships[relationshipId] = relationship;
                 
-                // 添加到玩家关系映射
+                
                 AddToPlayerRelationships(requesterId, relationshipId);
                 AddToPlayerRelationships(targetId, relationshipId);
                 
@@ -278,9 +278,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 确认关系请求
-        /// </summary>
+        
+        
+        
         public bool ConfirmRelationship(uint relationshipId, uint confirmerId)
         {
             lock (_lock)
@@ -288,26 +288,26 @@ namespace GameServer
                 if (!_relationships.TryGetValue(relationshipId, out var relationship))
                     return false;
 
-                // 只有被邀请者可以确认
+                
                 if (relationship.Player2Id != confirmerId)
                     return false;
 
-                // 检查关系是否还在等待状态
+                
                 if (relationship.Status != RelationshipStatus.Pending)
                     return false;
 
-                // 检查关系限制
+                
                 if (!CanHaveRelationship(relationship.Type, relationship.Player1Id, relationship.Player2Id))
                     return false;
 
                 relationship.Confirm();
                 
-                // 如果是师徒关系，更新师徒信息
+                
                 if (relationship.Type == RelationshipType.MasterApprentice)
                 {
                     UpdateMasterApprenticeInfo(relationship);
                 }
-                // 如果是夫妻关系，更新夫妻信息
+                
                 else if (relationship.Type == RelationshipType.Married)
                 {
                     UpdateMarriageInfo(relationship);
@@ -318,9 +318,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 拒绝关系请求
-        /// </summary>
+        
+        
+        
         public bool RejectRelationship(uint relationshipId, uint rejecterId)
         {
             lock (_lock)
@@ -328,11 +328,11 @@ namespace GameServer
                 if (!_relationships.TryGetValue(relationshipId, out var relationship))
                     return false;
 
-                // 只有被邀请者可以拒绝
+                
                 if (relationship.Player2Id != rejecterId)
                     return false;
 
-                // 检查关系是否还在等待状态
+                
                 if (relationship.Status != RelationshipStatus.Pending)
                     return false;
 
@@ -343,9 +343,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解除关系
-        /// </summary>
+        
+        
+        
         public bool BreakRelationship(uint relationshipId, uint breakerId)
         {
             lock (_lock)
@@ -353,22 +353,22 @@ namespace GameServer
                 if (!_relationships.TryGetValue(relationshipId, out var relationship))
                     return false;
 
-                // 检查权限：只有关系双方可以解除关系
+                
                 if (relationship.Player1Id != breakerId && relationship.Player2Id != breakerId)
                     return false;
 
-                // 检查关系是否活跃
+                
                 if (relationship.Status != RelationshipStatus.Active)
                     return false;
 
                 relationship.Break();
                 
-                // 如果是师徒关系，更新师徒信息
+                
                 if (relationship.Type == RelationshipType.MasterApprentice)
                 {
                     RemoveFromMasterApprenticeInfo(relationship);
                 }
-                // 如果是夫妻关系，更新夫妻信息
+                
                 else if (relationship.Type == RelationshipType.Married)
                 {
                     RemoveMarriageInfo(relationship);
@@ -379,9 +379,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取玩家关系
-        /// </summary>
+        
+        
+        
         public List<Relationship> GetPlayerRelationships(uint playerId, RelationshipType? type = null, RelationshipStatus? status = null)
         {
             lock (_lock)
@@ -395,13 +395,13 @@ namespace GameServer
                     .Cast<Relationship>()
                     .ToList();
 
-                // 按类型过滤
+                
                 if (type.HasValue)
                 {
                     relationships = relationships.Where(r => r.Type == type.Value).ToList();
                 }
 
-                // 按状态过滤
+                
                 if (status.HasValue)
                 {
                     relationships = relationships.Where(r => r.Status == status.Value).ToList();
@@ -411,27 +411,27 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取活跃关系
-        /// </summary>
+        
+        
+        
         public Relationship? GetActiveRelationship(uint playerId, RelationshipType type)
         {
             var relationships = GetPlayerRelationships(playerId, type, RelationshipStatus.Active);
             return relationships.FirstOrDefault();
         }
 
-        /// <summary>
-        /// 检查是否有关系
-        /// </summary>
+        
+        
+        
         public bool HasRelationship(RelationshipType type, uint player1Id, uint player2Id)
         {
             var relationships = GetPlayerRelationships(player1Id, type, RelationshipStatus.Active);
             return relationships.Any(r => (r.Player1Id == player2Id || r.Player2Id == player2Id));
         }
 
-        /// <summary>
-        /// 增加关系经验
-        /// </summary>
+        
+        
+        
         public void AddRelationshipExperience(uint relationshipId, uint amount)
         {
             lock (_lock)
@@ -443,9 +443,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取关系加成
-        /// </summary>
+        
+        
+        
         public RelationshipBonus GetRelationshipBonus(uint playerId)
         {
             var bonus = new RelationshipBonus();
@@ -463,9 +463,9 @@ namespace GameServer
             return bonus;
         }
 
-        /// <summary>
-        /// 获取师徒信息
-        /// </summary>
+        
+        
+        
         public MasterApprenticeInfo? GetMasterApprenticeInfo(uint masterId)
         {
             lock (_lock)
@@ -475,72 +475,72 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取夫妻信息
-        /// </summary>
+        
+        
+        
         public MarriageInfo? GetMarriageInfo(uint playerId)
         {
             lock (_lock)
             {
-                // 查找玩家是丈夫还是妻子
+                
                 return _marriageInfo.Values.FirstOrDefault(m => m.HusbandId == playerId || m.WifeId == playerId);
             }
         }
 
-        /// <summary>
-        /// 检查是否可以建立关系
-        /// </summary>
+        
+        
+        
         private bool CanHaveRelationship(RelationshipType type, uint player1Id, uint player2Id)
         {
-            // 检查是否已有相同类型的关系
+            
             if (HasRelationship(type, player1Id, player2Id))
                 return false;
 
-            // 类型特定的限制
+            
             switch (type)
             {
                 case RelationshipType.MasterApprentice:
-                    // 检查师徒限制
+                    
                     var masterInfo = GetMasterApprenticeInfo(player1Id);
                     if (masterInfo != null && masterInfo.ApprenticeIds.Count >= masterInfo.MaxApprentices)
                         return false;
                     
-                    // 徒弟不能同时有多个师傅
+                    
                     var apprenticeRelationships = GetPlayerRelationships(player2Id, RelationshipType.MasterApprentice, RelationshipStatus.Active);
                     if (apprenticeRelationships.Count > 0)
                         return false;
                     break;
                     
                 case RelationshipType.Married:
-                    // 检查是否已结婚
+                    
                     var marriage1 = GetActiveRelationship(player1Id, RelationshipType.Married);
                     var marriage2 = GetActiveRelationship(player2Id, RelationshipType.Married);
                     if (marriage1 != null || marriage2 != null)
                         return false;
                     
-                    // 检查性别：夫妻需要不同性别
+                    
                     var player1 = HumanPlayerMgr.Instance.FindById(player1Id);
                     var player2 = HumanPlayerMgr.Instance.FindById(player2Id);
                     
                     if (player1 == null || player2 == null)
-                        return false; // 玩家不存在
+                        return false; 
                     
                     if (player1.Sex == player2.Sex)
-                        return false; // 同性不能结婚
+                        return false; 
                     
                     break;
                     
                 case RelationshipType.SwornBrother:
-                    // 结拜兄弟数量限制
+                    
                     var brotherRelationships = GetPlayerRelationships(player1Id, RelationshipType.SwornBrother, RelationshipStatus.Active);
-                    if (brotherRelationships.Count >= 5) // 最多5个结拜兄弟
+                    if (brotherRelationships.Count >= 5) 
                         return false;
                     break;
                     
                 case RelationshipType.Friend:
-                    // 好友数量限制
+                    
                     var friendRelationships = GetPlayerRelationships(player1Id, RelationshipType.Friend, RelationshipStatus.Active);
-                    if (friendRelationships.Count >= 100) // 最多100个好友
+                    if (friendRelationships.Count >= 100) 
                         return false;
                     break;
             }
@@ -548,9 +548,9 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 更新师徒信息
-        /// </summary>
+        
+        
+        
         private void UpdateMasterApprenticeInfo(Relationship relationship)
         {
             if (relationship.Type != RelationshipType.MasterApprentice)
@@ -568,7 +568,7 @@ namespace GameServer
                     _masterInfo[relationship.Player1Id] = masterInfo;
                 }
 
-                // 添加徒弟
+                
                 if (!masterInfo.ApprenticeIds.Contains(relationship.Player2Id))
                 {
                     masterInfo.ApprenticeIds.Add(relationship.Player2Id);
@@ -576,9 +576,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 从师徒信息中移除
-        /// </summary>
+        
+        
+        
         private void RemoveFromMasterApprenticeInfo(Relationship relationship)
         {
             if (relationship.Type != RelationshipType.MasterApprentice)
@@ -590,7 +590,7 @@ namespace GameServer
                 {
                     masterInfo.ApprenticeIds.Remove(relationship.Player2Id);
                     
-                    // 如果没有徒弟了，移除师傅信息
+                    
                     if (masterInfo.ApprenticeIds.Count == 0)
                     {
                         _masterInfo.Remove(relationship.Player1Id);
@@ -599,9 +599,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 更新夫妻信息
-        /// </summary>
+        
+        
+        
         private void UpdateMarriageInfo(Relationship relationship)
         {
             if (relationship.Type != RelationshipType.Married)
@@ -609,7 +609,7 @@ namespace GameServer
 
             lock (_lock)
             {
-                // 确定丈夫和妻子
+                
                 var marriageInfo = new MarriageInfo
                 {
                     HusbandId = relationship.Player1Id,
@@ -624,9 +624,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 移除夫妻信息
-        /// </summary>
+        
+        
+        
         private void RemoveMarriageInfo(Relationship relationship)
         {
             if (relationship.Type != RelationshipType.Married)
@@ -638,9 +638,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 添加到玩家关系映射
-        /// </summary>
+        
+        
+        
         private void AddToPlayerRelationships(uint playerId, uint relationshipId)
         {
             if (!_playerRelationships.TryGetValue(playerId, out var relationships))
@@ -655,9 +655,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取关系类型名称
-        /// </summary>
+        
+        
+        
         private string GetTypeName(RelationshipType type)
         {
             return type switch
@@ -670,20 +670,20 @@ namespace GameServer
             };
         }
 
-        /// <summary>
-        /// 获取玩家名称
-        /// </summary>
+        
+        
+        
         private string GetPlayerName(uint playerId)
         {
-            // 从HumanPlayerMgr获取玩家名称
+            
             var player = HumanPlayerMgr.Instance.FindById(playerId);
             if (player != null)
                 return player.Name;
             
-            // 如果找不到玩家，尝试从关系缓存中查找
+            
             lock (_lock)
             {
-                // 查找玩家参与的关系
+                
                 foreach (var relationship in _relationships.Values)
                 {
                     if (relationship.Player1Id == playerId)
@@ -693,13 +693,13 @@ namespace GameServer
                 }
             }
             
-            // 如果都找不到，返回默认名称
+            
             return $"玩家{playerId}";
         }
 
-        /// <summary>
-        /// 获取关系中的另一个玩家名称
-        /// </summary>
+        
+        
+        
         private string GetOtherPlayerName(Relationship relationship, uint playerId)
         {
             if (relationship.Player1Id == playerId)
@@ -708,9 +708,9 @@ namespace GameServer
                 return relationship.Player1Name;
         }
 
-        /// <summary>
-        /// 获取关系统计信息
-        /// </summary>
+        
+        
+        
         public (int totalRelationships, int activeRelationships, int pendingRelationships) GetStatistics()
         {
             lock (_lock)
@@ -723,9 +723,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 清理过期关系
-        /// </summary>
+        
+        
+        
         public void CleanupExpiredRelationships()
         {
             lock (_lock)
@@ -733,7 +733,7 @@ namespace GameServer
                 var now = DateTime.Now;
                 var expiredRelationships = _relationships.Values
                     .Where(r => r.Status == RelationshipStatus.Pending && 
-                               (now - r.CreateTime).TotalDays > 7) // 7天未确认的关系过期
+                               (now - r.CreateTime).TotalDays > 7) 
                     .ToList();
                 
                 foreach (var relationship in expiredRelationships)

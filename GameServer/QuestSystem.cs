@@ -5,65 +5,65 @@ using System.Linq;
 using MirCommon;
 using MirCommon.Utils;
 
-// 类型别名：Player = HumanPlayer
+
 using Player = GameServer.HumanPlayer;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 任务类型
-    /// </summary>
+    
+    
+    
     public enum QuestType
     {
-        Main = 0,           // 主线任务
-        Side = 1,           // 支线任务
-        Daily = 2,          // 每日任务
-        Weekly = 3,         // 周常任务
-        Repeatable = 4,     // 可重复任务
-        Achievement = 5     // 成就任务
+        Main = 0,           
+        Side = 1,           
+        Daily = 2,          
+        Weekly = 3,         
+        Repeatable = 4,     
+        Achievement = 5     
     }
 
-    /// <summary>
-    /// 任务目标类型
-    /// </summary>
+    
+    
+    
     public enum QuestObjectiveType
     {
-        KillMonster = 0,    // 击杀怪物
-        CollectItem = 1,    // 收集物品
-        TalkToNPC = 2,      // 对话NPC
-        ReachLevel = 3,     // 达到等级
-        ReachLocation = 4,  // 到达地点
-        UseItem = 5,        // 使用物品
-        LearnSkill = 6,     // 学习技能
-        EquipItem = 7,      // 装备物品
-        KillPlayer = 8,     // 击杀玩家
-        CompleteQuest = 9   // 完成其他任务
+        KillMonster = 0,    
+        CollectItem = 1,    
+        TalkToNPC = 2,      
+        ReachLevel = 3,     
+        ReachLocation = 4,  
+        UseItem = 5,        
+        LearnSkill = 6,     
+        EquipItem = 7,      
+        KillPlayer = 8,     
+        CompleteQuest = 9   
     }
 
-    /// <summary>
-    /// 任务状态
-    /// </summary>
+    
+    
+    
     public enum QuestStatus
     {
-        NotStarted = 0,     // 未开始
-        InProgress = 1,     // 进行中
-        Completed = 2,      // 已完成
-        Failed = 3,         // 失败
-        Abandoned = 4       // 已放弃
+        NotStarted = 0,     
+        InProgress = 1,     
+        Completed = 2,      
+        Failed = 3,         
+        Abandoned = 4       
     }
 
-    /// <summary>
-    /// 任务目标
-    /// </summary>
+    
+    
+    
     public class QuestObjective
     {
         public int ObjectiveId { get; set; }
         public QuestObjectiveType Type { get; set; }
         public string Description { get; set; } = string.Empty;
-        public int TargetId { get; set; }       // 目标ID（怪物ID/物品ID/NPC ID等）
-        public int RequiredCount { get; set; }  // 需要数量
-        public int MapId { get; set; }          // 地图限制（0表示不限）
-        public bool Optional { get; set; }      // 是否可选
+        public int TargetId { get; set; }       
+        public int RequiredCount { get; set; }  
+        public int MapId { get; set; }          
+        public bool Optional { get; set; }      
 
         public QuestObjective(int id, QuestObjectiveType type, string description, int targetId, int count)
         {
@@ -75,20 +75,20 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 任务奖励
-    /// </summary>
+    
+    
+    
     public class QuestReward
     {
-        public uint Exp { get; set; }           // 经验
-        public uint Gold { get; set; }          // 金币
+        public uint Exp { get; set; }           
+        public uint Gold { get; set; }          
         public List<QuestItemReward> Items { get; set; } = new();
 
         public class QuestItemReward
         {
             public int ItemId { get; set; }
             public int Count { get; set; }
-            public bool Optional { get; set; }  // 可选奖励
+            public bool Optional { get; set; }  
 
             public QuestItemReward(int itemId, int count, bool optional = false)
             {
@@ -99,9 +99,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 任务定义
-    /// </summary>
+    
+    
+    
     public class QuestDefinition
     {
         public int QuestId { get; set; }
@@ -109,28 +109,28 @@ namespace GameServer
         public string Description { get; set; } = string.Empty;
         public QuestType Type { get; set; }
         
-        // 需求
-        public int RequireLevel { get; set; }
-        public int RequireJob { get; set; } = -1;   // -1表示所有职业
-        public List<int> RequireQuests { get; set; } = new();  // 前置任务
         
-        // 接取和提交
+        public int RequireLevel { get; set; }
+        public int RequireJob { get; set; } = -1;   
+        public List<int> RequireQuests { get; set; } = new();  
+        
+        
         public int StartNPCId { get; set; }
         public int EndNPCId { get; set; }
         
-        // 目标
+        
         public List<QuestObjective> Objectives { get; set; } = new();
         
-        // 奖励
+        
         public QuestReward Reward { get; set; } = new();
         
-        // 时间限制
-        public int TimeLimit { get; set; }      // 时间限制（秒）0表示无限制
         
-        // 其他
-        public bool AutoComplete { get; set; }  // 是否自动完成
-        public bool Repeatable { get; set; }    // 是否可重复
-        public int RepeatInterval { get; set; } // 重复间隔（秒）
+        public int TimeLimit { get; set; }      
+        
+        
+        public bool AutoComplete { get; set; }  
+        public bool Repeatable { get; set; }    
+        public int RepeatInterval { get; set; } 
 
         public QuestDefinition(int questId, string name, QuestType type)
         {
@@ -141,15 +141,15 @@ namespace GameServer
 
         public bool CanAccept(Player player)
         {
-            // 检查等级
+            
             if (player.Level < RequireLevel)
                 return false;
 
-            // 检查职业
+            
             if (RequireJob != -1 && player.Job != RequireJob)
                 return false;
 
-            // 检查前置任务
+            
             foreach (var questId in RequireQuests)
             {
                 if (!player.QuestManager.HasCompletedQuest(questId))
@@ -160,9 +160,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 任务进度
-    /// </summary>
+    
+    
+    
     public class QuestProgress
     {
         public int QuestId { get; set; }
@@ -171,7 +171,7 @@ namespace GameServer
         public DateTime AcceptTime { get; set; }
         public DateTime? CompleteTime { get; set; }
         
-        // 目标进度
+        
         public Dictionary<int, int> ObjectiveProgress { get; set; } = new();
 
         public QuestProgress(QuestDefinition definition)
@@ -181,7 +181,7 @@ namespace GameServer
             Status = QuestStatus.InProgress;
             AcceptTime = DateTime.Now;
 
-            // 初始化目标进度
+            
             foreach (var objective in definition.Objectives)
             {
                 ObjectiveProgress[objective.ObjectiveId] = 0;
@@ -194,7 +194,7 @@ namespace GameServer
             {
                 ObjectiveProgress[objectiveId] += count;
                 
-                // 检查是否完成
+                
                 var objective = Definition.Objectives.FirstOrDefault(o => o.ObjectiveId == objectiveId);
                 if (objective != null)
                 {
@@ -258,9 +258,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 玩家任务管理器
-    /// </summary>
+    
+    
+    
     public class PlayerQuestManager
     {
         private readonly Player _player;
@@ -284,26 +284,26 @@ namespace GameServer
                 if (definition == null)
                     return false;
 
-                // 检查是否已接取
+                
                 if (_activeQuests.ContainsKey(questId))
                     return false;
 
-                // 检查任务上限
+                
                 if (_activeQuests.Count >= MaxActiveQuests)
                     return false;
 
-                // 检查是否可接取
+                
                 if (!definition.CanAccept(_player))
                     return false;
 
-                // 检查冷却
+                
                 if (_questCooldowns.TryGetValue(questId, out var cooldownEnd))
                 {
                     if (DateTime.Now < cooldownEnd)
                         return false;
                 }
 
-                // 创建任务进度
+                
                 var progress = new QuestProgress(definition);
                 _activeQuests[questId] = progress;
 
@@ -338,16 +338,16 @@ namespace GameServer
                 if (!progress.IsQuestComplete())
                     return false;
 
-                // 给予奖励
+                
                 GiveRewards(progress.Definition);
 
-                // 标记完成
+                
                 progress.Status = QuestStatus.Completed;
                 progress.CompleteTime = DateTime.Now;
                 _completedQuests.Add(questId);
                 _activeQuests.Remove(questId);
 
-                // 设置冷却
+                
                 if (progress.Definition.Repeatable && progress.Definition.RepeatInterval > 0)
                 {
                     _questCooldowns[questId] = DateTime.Now.AddSeconds(progress.Definition.RepeatInterval);
@@ -362,21 +362,21 @@ namespace GameServer
         {
             var reward = definition.Reward;
 
-            // 经验
+            
             if (reward.Exp > 0)
             {
                 _player.AddExp(reward.Exp);
                 LogManager.Default.Debug($"{_player.Name} 获得经验: {reward.Exp}");
             }
 
-            // 金币
+            
             if (reward.Gold > 0)
             {
                 _player.Gold += reward.Gold;
                 LogManager.Default.Debug($"{_player.Name} 获得金币: {reward.Gold}");
             }
 
-            // 物品奖励
+            
             if (reward.Items.Count > 0)
             {
                 var itemManager = ItemManager.Instance;
@@ -386,19 +386,20 @@ namespace GameServer
                 {
                     if (itemReward.Optional)
                     {
-                        // 可选奖励，先收集起来
+                        
                         optionalItems.Add(itemReward);
                         continue;
                     }
 
-                    // 必得奖励
+                    
                     GiveItemReward(itemReward);
                 }
 
-                // 处理可选奖励（如果有的话）
+                
                 if (optionalItems.Count > 0)
                 {
-                    // 这里可以添加逻辑让玩家选择可选奖励
+                    
+                    
                     var random = new Random();
                     var selectedReward = optionalItems[random.Next(optionalItems.Count)];
                     GiveItemReward(selectedReward);
@@ -408,14 +409,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 给予物品奖励
-        /// </summary>
+        
+        
+        
         private void GiveItemReward(QuestReward.QuestItemReward itemReward)
         {
             var itemManager = ItemManager.Instance;
             
-            // 获取物品定义
+            
             var itemDef = itemManager.GetDefinition(itemReward.ItemId);
             if (itemDef == null)
             {
@@ -423,15 +424,15 @@ namespace GameServer
                 return;
             }
 
-            // 检查背包空间
+            
             if (!HasSpaceForItem(itemDef, itemReward.Count))
             {
-                // 如果背包空间不足，尝试发送邮件
+                
                 SendRewardByMail(itemReward);
                 return;
             }
 
-            // 添加物品到背包
+            
             for (int i = 0; i < itemReward.Count; i++)
             {
                 var item = itemManager.CreateItem(itemReward.ItemId);
@@ -439,7 +440,7 @@ namespace GameServer
                 {
                     if (!_player.Inventory.AddItem(item))
                     {
-                        // 如果添加失败，尝试发送邮件
+                        
                         SendRewardByMail(itemReward);
                         break;
                     }
@@ -449,18 +450,18 @@ namespace GameServer
             LogManager.Default.Debug($"{_player.Name} 获得物品奖励: {itemDef.Name} x{itemReward.Count}");
         }
 
-        /// <summary>
-        /// 检查背包是否有足够空间
-        /// </summary>
+        
+        
+        
         private bool HasSpaceForItem(ItemDefinition itemDef, int count)
         {
-            // 如果是可堆叠物品，检查是否有堆叠空间
+            
             if (itemDef.MaxStack > 1)
             {
                 int currentCount = _player.Inventory.GetItemCount(itemDef.ItemId);
                 int maxStackable = itemDef.MaxStack;
                 
-                // 计算现有堆叠中还能放多少
+                
                 int existingSpace = 0;
                 var allItems = _player.Inventory.GetAllItems();
                 foreach (var kvp in allItems)
@@ -475,29 +476,30 @@ namespace GameServer
                 if (existingSpace >= count)
                     return true;
                 
-                // 还需要新的格子
+                
                 int neededSlots = (int)Math.Ceiling((double)(count - existingSpace) / itemDef.MaxStack);
                 int freeSlots = _player.Inventory.MaxSlots - allItems.Count;
                 return freeSlots >= neededSlots;
             }
             else
             {
-                // 不可堆叠物品，需要足够的空位
+                
                 int freeSlots = _player.Inventory.MaxSlots - _player.Inventory.GetUsedSlots();
                 return freeSlots >= count;
             }
         }
 
-        /// <summary>
-        /// 通过邮件发送奖励
-        /// </summary>
+        
+        
+        
         private void SendRewardByMail(QuestReward.QuestItemReward itemReward)
         {
-            // 这里应该实现邮件系统
+            
+            
             LogManager.Default.Warning($"{_player.Name} 背包空间不足，无法获得任务奖励物品: {itemReward.ItemId} x{itemReward.Count}");
             
-            // 这里应该发送邮件给玩家
-            // MailSystem.Instance.SendItemMail(_player.PlayerId, "任务奖励", $"任务奖励物品: {itemReward.ItemId} x{itemReward.Count}", itemReward.ItemId, itemReward.Count);
+            
+            
         }
 
         public void UpdateProgress(QuestObjectiveType type, int targetId, int count = 1)
@@ -522,7 +524,7 @@ namespace GameServer
                                 );
                             }
 
-                            // 检查自动完成
+                            
                             if (progress.IsQuestComplete() && progress.Definition.AutoComplete)
                             {
                                 CompleteQuest(progress.QuestId);
@@ -533,61 +535,61 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 当拾取物品时更新任务进度
-        /// </summary>
+        
+        
+        
         public void OnItemPickup(int itemId, int count = 1)
         {
             UpdateProgress(QuestObjectiveType.CollectItem, itemId, count);
         }
 
-        /// <summary>
-        /// 当击杀怪物时更新任务进度
-        /// </summary>
+        
+        
+        
         public void OnMonsterKill(int monsterId)
         {
             UpdateProgress(QuestObjectiveType.KillMonster, monsterId, 1);
         }
 
-        /// <summary>
-        /// 当攻击怪物时更新任务进度（用于攻击事件）
-        /// </summary>
+        
+        
+        
         public void OnAttackMonster(AliveObject target, int damage)
         {
             if (target is Monster monster)
             {
-                // 这里可以记录攻击事件，但任务进度通常是在击杀时更新
-                // 如果需要攻击事件，可以在这里添加逻辑
+                
+                
             }
         }
 
-        /// <summary>
-        /// 当装备物品时更新任务进度
-        /// </summary>
+        
+        
+        
         public void OnItemEquip(int itemId)
         {
             UpdateProgress(QuestObjectiveType.EquipItem, itemId, 1);
         }
 
-        /// <summary>
-        /// 当学习技能时更新任务进度
-        /// </summary>
+        
+        
+        
         public void OnSkillLearn(int skillId)
         {
             UpdateProgress(QuestObjectiveType.LearnSkill, skillId, 1);
         }
 
-        /// <summary>
-        /// 当与NPC对话时更新任务进度
-        /// </summary>
+        
+        
+        
         public void OnNPCTalk(int npcId)
         {
             UpdateProgress(QuestObjectiveType.TalkToNPC, npcId, 1);
         }
 
-        /// <summary>
-        /// 当等级提升时更新任务进度
-        /// </summary>
+        
+        
+        
         public void OnLevelUp(int level)
         {
             UpdateProgress(QuestObjectiveType.ReachLevel, level, 1);
@@ -599,7 +601,7 @@ namespace GameServer
             {
                 var expiredQuests = new List<int>();
 
-                // 检查过期任务
+                
                 foreach (var kvp in _activeQuests)
                 {
                     if (kvp.Value.IsExpired())
@@ -609,7 +611,7 @@ namespace GameServer
                     }
                 }
 
-                // 移除过期任务
+                
                 foreach (var questId in expiredQuests)
                 {
                     _activeQuests.Remove(questId);
@@ -668,38 +670,38 @@ namespace GameServer
                 .ToList();
         }
 
-        /// <summary>
-        /// 更新任务
-        /// </summary>
+        
+        
+        
         public void UpdateTask(int taskId, int state, int param1 = 0, int param2 = 0, int param3 = 0)
         {
             lock (_lock)
             {
                 LogManager.Default.Info($"更新任务: 任务ID={taskId}, 状态={state}, 参数1={param1}, 参数2={param2}, 参数3={param3}");
                 
-                // 检查任务是否存在
+                
                 if (!_activeQuests.TryGetValue(taskId, out var progress))
                 {
                     LogManager.Default.Warning($"任务不存在: {taskId}");
                     return;
                 }
 
-                // 更新任务状态
+                
                 if (state >= 0)
                 {
                     progress.Status = (QuestStatus)state;
                     LogManager.Default.Debug($"更新任务状态: {progress.Status}");
                 }
 
-                // 更新任务参数（如果有）
-                // 这里可以根据param1, param2, param3更新任务进度
+                
+                
                 if (param1 > 0 || param2 > 0 || param3 > 0)
                 {
-                    // 更新任务目标进度
+                    
                     UpdateTaskProgress(progress, param1, param2, param3);
                 }
 
-                // 检查任务是否完成
+                
                 if (progress.IsQuestComplete())
                 {
                     LogManager.Default.Info($"任务完成: {progress.Definition.Name}");
@@ -714,26 +716,26 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 删除任务
-        /// </summary>
+        
+        
+        
         public bool DeleteTask(int taskId)
         {
             lock (_lock)
             {
                 LogManager.Default.Info($"删除任务: 任务ID={taskId}");
                 
-                // 检查任务是否存在
+                
                 if (!_activeQuests.TryGetValue(taskId, out var progress))
                 {
                     LogManager.Default.Warning($"任务不存在: {taskId}");
                     return false;
                 }
 
-                // 从活动任务中移除
+                
                 _activeQuests.Remove(taskId);
                 
-                // 添加到已完成任务列表（标记为已放弃）
+                
                 _completedQuests.Add(taskId);
                 
                 LogManager.Default.Info($"已删除任务: {progress.Definition.Name}");
@@ -741,29 +743,30 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 更新任务进度
-        /// </summary>
+        
+        
+        
         private void UpdateTaskProgress(QuestProgress progress, int param1, int param2, int param3)
         {
-            // 根据任务类型更新进度
+            
+            
             foreach (var objective in progress.Definition.Objectives)
             {
-                // 如果参数1大于0，更新第一个目标
+                
                 if (param1 > 0 && objective.ObjectiveId == 1)
                 {
                     progress.UpdateProgress(objective.ObjectiveId, param1);
                     LogManager.Default.Debug($"更新目标1进度: +{param1}");
                 }
                 
-                // 如果参数2大于0，更新第二个目标
+                
                 if (param2 > 0 && objective.ObjectiveId == 2)
                 {
                     progress.UpdateProgress(objective.ObjectiveId, param2);
                     LogManager.Default.Debug($"更新目标2进度: +{param2}");
                 }
                 
-                // 如果参数3大于0，更新第三个目标
+                
                 if (param3 > 0 && objective.ObjectiveId == 3)
                 {
                     progress.UpdateProgress(objective.ObjectiveId, param3);
@@ -772,15 +775,15 @@ namespace GameServer
             }
         }
 
-        //internal object GetQuestByItemId(int itemId)
-        //{
-        //    throw new NotImplementedException();
-        //}
+        
+        
+        
+        
     }
 
-    /// <summary>
-    /// 任务定义管理器
-    /// </summary>
+    
+    
+    
     public class QuestDefinitionManager
     {
         private static QuestDefinitionManager? _instance;
@@ -795,7 +798,7 @@ namespace GameServer
 
         private void InitializeDefaultQuests()
         {
-            // 新手任务1
+            
             var quest1 = new QuestDefinition(1001, "初入江湖", QuestType.Main)
             {
                 Description = "与村长对话，了解这个世界",
@@ -810,7 +813,7 @@ namespace GameServer
             quest1.Reward.Gold = 50;
             AddDefinition(quest1);
 
-            // 新手任务2
+            
             var quest2 = new QuestDefinition(1002, "清理害虫", QuestType.Main)
             {
                 Description = "击杀5只骷髅",
@@ -824,10 +827,10 @@ namespace GameServer
             ));
             quest2.Reward.Exp = 200;
             quest2.Reward.Gold = 100;
-            quest2.Reward.Items.Add(new QuestReward.QuestItemReward(3001, 10)); // 10个小红药
+            quest2.Reward.Items.Add(new QuestReward.QuestItemReward(3001, 10)); 
             AddDefinition(quest2);
 
-            // 新手任务3
+            
             var quest3 = new QuestDefinition(1003, "装备自己", QuestType.Main)
             {
                 Description = "装备一把武器",
@@ -844,7 +847,7 @@ namespace GameServer
             quest3.Reward.Gold = 200;
             AddDefinition(quest3);
 
-            // 新手任务4
+            
             var quest4 = new QuestDefinition(1004, "学习技能", QuestType.Main)
             {
                 Description = "学习一个技能",
@@ -861,7 +864,7 @@ namespace GameServer
             quest4.Reward.Gold = 500;
             AddDefinition(quest4);
 
-            // 每日任务
+            
             var dailyQuest = new QuestDefinition(2001, "每日清理", QuestType.Daily)
             {
                 Description = "每日击杀10只怪物",
@@ -869,7 +872,7 @@ namespace GameServer
                 StartNPCId = 1001,
                 EndNPCId = 1001,
                 Repeatable = true,
-                RepeatInterval = 86400 // 24小时
+                RepeatInterval = 86400 
             };
             dailyQuest.Objectives.Add(new QuestObjective(
                 1, QuestObjectiveType.KillMonster, "击杀任意怪物", 0, 10
@@ -878,7 +881,7 @@ namespace GameServer
             dailyQuest.Reward.Gold = 1000;
             AddDefinition(dailyQuest);
 
-            // 收集任务
+            
             var collectQuest = new QuestDefinition(3001, "收集材料", QuestType.Side)
             {
                 Description = "收集10个铁矿石",
@@ -893,7 +896,7 @@ namespace GameServer
             collectQuest.Reward.Gold = 500;
             AddDefinition(collectQuest);
 
-            // 等级任务
+            
             var levelQuest = new QuestDefinition(4001, "成长之路", QuestType.Achievement)
             {
                 Description = "达到10级",

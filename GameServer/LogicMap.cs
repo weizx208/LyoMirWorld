@@ -6,189 +6,195 @@ using MirCommon.Utils;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 逻辑地图类
-    /// </summary>
+    
+    
+    
     public class LogicMap : MapObject
     {
-        /// <summary>
-        /// 地图ID
-        /// </summary>
+        
+        
+        
         public uint MapId { get; set; }
         
-        /// <summary>
-        /// 地图名称
-        /// </summary>
-        public string MapName { get; set; } = string.Empty;
         
-        /// <summary>
-        /// 地图宽度
-        /// </summary>
+        
+        
+        public string MapName { get; set; } = string.Empty;
+
+        
+        
+        
+        public string MapFile { get; set; } = string.Empty;
+        
+        
+        
+        
         public int Width { get; set; }
         
-        /// <summary>
-        /// 地图高度
-        /// </summary>
+        
+        
+        
         public int Height { get; set; }
         
-        /// <summary>
-        /// 最小等级限制
-        /// </summary>
+        
+        
+        
         public int MinLevel { get; set; }
         
-        /// <summary>
-        /// 最大等级限制
-        /// </summary>
+        
+        
+        
         public int MaxLevel { get; set; }
         
-        /// <summary>
-        /// 需要物品
-        /// </summary>
+        
+        
+        
         public string NeedItem { get; set; } = string.Empty;
         
-        /// <summary>
-        /// 需要任务
-        /// </summary>
+        
+        
+        
         public string NeedQuest { get; set; } = string.Empty;
         
-        /// <summary>
-        /// 脚本文件
-        /// </summary>
+        
+        
+        
         public string ScriptFile { get; set; } = string.Empty;
         
-        /// <summary>
-        /// 地图上的对象
-        /// </summary>
+        
+        
+        
         private readonly Dictionary<uint, MapObject> _objects = new();
         
-        /// <summary>
-        /// 地图上的玩家
-        /// </summary>
+        
+        
+        
         private readonly Dictionary<uint, HumanPlayer> _players = new();
         
-        /// <summary>
-        /// 地图上的怪物
-        /// </summary>
-        private readonly Dictionary<uint, Monster> _monsters = new();
         
-        /// <summary>
-        /// 地图上的NPC
-        /// </summary>
+        
+        
+        private readonly Dictionary<uint, AliveObject> _monsters = new();
+        
+        
+        
+        
         private readonly Dictionary<uint, Npc> _npcs = new();
         
-        /// <summary>
-        /// 地图上的物品
-        /// </summary>
+        
+        
+        
         private readonly Dictionary<uint, MapItem> _items = new();
         
-        /// <summary>
-        /// 地图单元格信息数组
-        /// </summary>
+        
+        
+        
+        
         private MapCellInfo[,]? _mapCellInfo;
         
-        /// <summary>
-        /// 地图经验倍率
-        /// </summary>
+        
+        
+        
         public float ExpFactor { get; set; } = 1.0f;
         
-        /// <summary>
-        /// 地图掉落倍率
-        /// </summary>
+        
+        
+        
         public float DropFactor { get; set; } = 1.0f;
         
-        /// <summary>
-        /// 地图是否安全区
-        /// </summary>
+        
+        
+        
         public bool IsSafeZone { get; set; }
         
-        /// <summary>
-        /// 地图是否可以PK
-        /// </summary>
+        
+        
+        
         public bool AllowPK { get; set; }
         
-        /// <summary>
-        /// 地图是否可以召唤宠物
-        /// </summary>
+        
+        
+        
         public bool AllowPets { get; set; }
         
-        /// <summary>
-        /// 地图是否可以骑马
-        /// </summary>
+        
+        
+        
         public bool AllowMounts { get; set; }
         
-        /// <summary>
-        /// 地图是否可以传送
-        /// </summary>
+        
+        
+        
         public bool AllowTeleport { get; set; }
         
-        /// <summary>
-        /// 地图是否可以回城
-        /// </summary>
+        
+        
+        
         public bool AllowRecall { get; set; }
         
-        /// <summary>
-        /// 地图标志位
-        /// </summary>
+        
+        
+        
         public MapFlag MapFlags { get; set; }
         
-        /// <summary>
-        /// 地图标志参数存储
-        /// 用于存储带参数的标志，如levelbelow(22,16)、noreconnect(16)、mine(300)
-        /// </summary>
+        
+        
+        
+        
         private readonly Dictionary<MapFlag, List<uint>> _flagParams = new();
         
-        /// <summary>
-        /// 地图天气
-        /// </summary>
+        
+        
+        
         public MapWeather Weather { get; set; }
         
-        /// <summary>
-        /// 地图时间
-        /// </summary>
+        
+        
+        
         public MapTime Time { get; set; }
         
-        /// <summary>
-        /// 地图音乐
-        /// </summary>
+        
+        
+        
         public string Music { get; set; } = string.Empty;
         
-        /// <summary>
-        /// 地图背景
-        /// </summary>
+        
+        
+        
         public string Background { get; set; } = string.Empty;
         public object TownX { get; internal set; }
         public object TownY { get; internal set; }
         public object GuildX { get; internal set; }
         public object GuildY { get; internal set; }
 
-        /// <summary>
-        /// 矿石列表
-        /// </summary>
+        
+        
+        
         private readonly List<MineItem> _mineItems = new();
         
-        /// <summary>
-        /// 最大矿石率
-        /// </summary>
+        
+        
+        
         private uint _mineRateMax = 0;
         
-        /// <summary>
-        /// 关联的物理地图
-        /// </summary>
+        
+        
+        
         private PhysicsMap? _physicsMap;
         
-        /// <summary>
-        /// 小地图ID
-        /// </summary>
+        
+        
+        
         private int _miniMapId;
         
-        /// <summary>
-        /// 链接数量
-        /// </summary>
+        
+        
+        
         private int _linkCount;
         
-        /// <summary>
-        /// 构造函数
-        /// </summary>
+        
+        
+        
         public LogicMap(uint mapId, string mapName, int width, int height)
         {
             MapId = mapId;
@@ -196,7 +202,7 @@ namespace GameServer
             Width = width;
             Height = height;
             
-            // 初始化地图单元格信息数组
+            
             if (width > 0 && height > 0)
             {
                 _mapCellInfo = new MapCellInfo[width, height];
@@ -210,83 +216,82 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 获取经验倍率
-        /// </summary>
+        
+        
+        
         public float GetExpFactor()
         {
             return ExpFactor;
         }
         
-        /// <summary>
-        /// 获取掉落倍率
-        /// </summary>
+        
+        
+        
         public float GetDropFactor()
         {
             return DropFactor;
         }
         
-        /// <summary>
-        /// 获取对象
-        /// </summary>
+        
+        
+        
         public MapObject? GetObject(uint objectId)
         {
             return _objects.TryGetValue(objectId, out var obj) ? obj : null;
         }
         
-        /// <summary>
-        /// 获取玩家
-        /// </summary>
+        
+        
+        
         public HumanPlayer? GetPlayer(uint playerId)
         {
             return _players.TryGetValue(playerId, out var player) ? player : null;
         }
         
-        /// <summary>
-        /// 获取怪物
-        /// </summary>
-        public Monster? GetMonster(uint monsterId)
+        
+        
+        
+        public AliveObject? GetMonster(uint monsterId)
         {
             return _monsters.TryGetValue(monsterId, out var monster) ? monster : null;
         }
         
-        /// <summary>
-        /// 获取NPC
-        /// </summary>
+        
+        
+        
         public Npc? GetNPC(uint npcId)
         {
             return _npcs.TryGetValue(npcId, out var npc) ? npc : null;
         }
         
-        /// <summary>
-        /// 获取物品
-        /// </summary>
+        
+        
+        
         public MapItem? GetItem(uint itemId)
         {
             return _items.TryGetValue(itemId, out var item) ? item : null;
         }
 
-        /// <summary>
-        /// 添加对象到地图
-        /// </summary>
+        
+        
+        
         public bool AddObject(MapObject obj, int x, int y)
         {
             if (obj == null || x < 0 || x >= Width || y < 0 || y >= Height)
                 return false;
-                
-            obj.X = (ushort)x;
-            obj.Y = (ushort)y;
-            obj.CurrentMap = this;
+
             
+            obj.EnterMap(this, (ushort)x, (ushort)y);
+
             _objects[obj.ObjectId] = obj;
             
-            // 添加到地图单元格
+            
             if (_mapCellInfo != null)
             {
                 _mapCellInfo[x, y].AddObject(obj);
             }
             
-            // 根据对象类型添加到相应的字典
+            
             switch (obj.GetObjectType())
             {
                 case ObjectType.Player:
@@ -294,7 +299,7 @@ namespace GameServer
                         _players[obj.ObjectId] = player;
                     break;
                 case ObjectType.Monster:
-                    if (obj is Monster monster)
+                    if (obj is AliveObject monster)
                         _monsters[obj.ObjectId] = monster;
                     break;
                 case ObjectType.NPC:
@@ -306,27 +311,39 @@ namespace GameServer
                         _items[obj.ObjectId] = item;
                     break;
             }
+
+            
+            foreach (var player in GetPlayersInRange(x, y, 18))
+            {
+                if (player.ObjectId == obj.ObjectId)
+                    continue;
+                player.AddVisibleObject(obj);
+            }
             
             return true;
         }
         
-        /// <summary>
-        /// 从地图移除对象
-        /// </summary>
+        
+        
+        
         public bool RemoveObject(MapObject obj)
         {
             if (obj == null || !_objects.ContainsKey(obj.ObjectId))
                 return false;
                 
+            
+            int oldX = obj.X;
+            int oldY = obj.Y;
+
             _objects.Remove(obj.ObjectId);
             
-            // 从地图单元格移除
-            if (_mapCellInfo != null && obj.X < Width && obj.Y < Height)
+            
+            if (_mapCellInfo != null && oldX < Width && oldY < Height)
             {
-                _mapCellInfo[obj.X, obj.Y].RemoveObject(obj);
+                _mapCellInfo[oldX, oldY].RemoveObject(obj);
             }
             
-            // 根据对象类型从相应的字典中移除
+            
             switch (obj.GetObjectType())
             {
                 case ObjectType.Player:
@@ -342,14 +359,22 @@ namespace GameServer
                     _items.Remove(obj.ObjectId);
                     break;
             }
+
+            
+            foreach (var player in GetPlayersInRange(oldX, oldY, 18))
+            {
+                if (player.ObjectId == obj.ObjectId)
+                    continue;
+                player.RemoveVisibleObject(obj);
+            }
             
             obj.CurrentMap = null;
             return true;
         }
         
-        /// <summary>
-        /// 移除对象（通过ID）
-        /// </summary>
+        
+        
+        
         public bool RemoveObject(uint objectId)
         {
             if (!_objects.TryGetValue(objectId, out var obj))
@@ -358,29 +383,30 @@ namespace GameServer
             return RemoveObject(obj);
         }
         
-        /// <summary>
-        /// 检查是否可以移动到指定位置
-        /// </summary>
+        
+        
+        
         public bool CanMoveTo(int x, int y)
         {
             if (x < 0 || x >= Width || y < 0 || y >= Height)
                 return false;
                 
-            // 这里应该检查地图障碍物、其他对象等
+            
+            
             return true;
         }
         
-        /// <summary>
-        /// 验证坐标是否在地图范围内
-        /// </summary>
+        
+        
+        
         public bool VerifyPos(int x, int y)
         {
             return x >= 0 && x < Width && y >= 0 && y < Height;
         }
         
-        /// <summary>
-        /// 检查位置是否被阻挡
-        /// </summary>
+        
+        
+        
         public bool IsBlocked(int x, int y)
         {
             if (!VerifyPos(x, y))
@@ -389,41 +415,43 @@ namespace GameServer
             if (IsLocked(x, y))
                 return true;
                 
-            // 检查物理地图是否阻挡
+            
             return IsPhysicsBlocked(x, y);
         }
         
-        /// <summary>
-        /// 检查物理地图是否阻挡
-        /// </summary>
+        
+        
+        
         public bool IsPhysicsBlocked(int x, int y)
         {
-            // 检查关联的物理地图
+            
             if (_physicsMap == null)
                 return false;
                 
-            // 调用物理地图的IsBlocked方法
+            
             return _physicsMap.IsBlocked(x, y);
         }
         
-        /// <summary>
-        /// 检查位置是否被锁定
-        /// </summary>
+        
+        
+        
         public bool IsLocked(int x, int y)
         {
+            
+            
             return false;
         }
         
-        /// <summary>
-        /// 获取有效点
-        /// 在指定位置周围搜索可移动的点
-        /// </summary>
+        
+        
+        
+        
         public int GetValidPoint(int x, int y, Point[] ptArray, int arraySize)
         {
             if (ptArray == null || arraySize <= 0)
                 return 0;
                 
-            // 搜索点数组
+            
             Point[] searchPoints = new Point[]
             {
                 new Point(-1, -1), new Point(0, -1), new Point(1, -1), new Point(1, 0),
@@ -464,16 +492,16 @@ namespace GameServer
             return count;
         }
         
-        /// <summary>
-        /// 获取掉落物品点
-        /// 在指定位置周围搜索适合掉落物品的点
-        /// </summary>
+        
+        
+        
+        
         public int GetDropItemPoint(int x, int y, Point[] ptArray, int arraySize)
         {
             if (ptArray == null || arraySize <= 0)
                 return 0;
                 
-            // 搜索点数组
+            
             Point[] searchPoints = new Point[]
             {
                 new Point(-1, -1), new Point(0, -1), new Point(1, -1), new Point(1, 0),
@@ -501,7 +529,7 @@ namespace GameServer
             int[] drops = new int[searchPoints.Length];
             for (int i = 0; i < drops.Length; i++)
             {
-                drops[i] = -1; // 初始化为-1，表示未检查
+                drops[i] = -1; 
             }
             
             int dropPointCount = 0;
@@ -521,15 +549,15 @@ namespace GameServer
                         
                         if (IsBlocked(newX, newY))
                         {
-                            drops[j] = -2; // 标记为阻挡
+                            drops[j] = -2; 
                             continue;
                         }
                         
-                        // 计算该位置的掉落物品数量
-                        drops[j] = GetDupCount(newX, newY, ObjectType.Item);
+                        
+                        drops[j] = GetDupCount(newX, newY, ObjectType.DownItem);
                     }
                     
-                    if (drops[j] == -2) // 阻挡位置
+                    if (drops[j] == -2) 
                     {
                         continue;
                     }
@@ -562,9 +590,9 @@ namespace GameServer
             return dropPointCount;
         }
         
-        /// <summary>
-        /// 获取指定位置的对象重复数量
-        /// </summary>
+        
+        
+        
         public int GetDupCount(int x, int y)
         {
             int dupCount = 0;
@@ -587,12 +615,12 @@ namespace GameServer
             return dupCount;
         }
         
-        /// <summary>
-        /// 获取指定位置和类型的对象重复数量
-        /// </summary>
+        
+        
+        
         public int GetDupCount(int x, int y, ObjectType type)
         {
-            // 如果是阻挡位置，返回-1
+            
             if (IsPhysicsBlocked(x, y))
                 return -1;
                 
@@ -609,46 +637,102 @@ namespace GameServer
             return dupCount;
         }
         
-        /// <summary>
-        /// 检查是否可以行走（CanWalk方法）
-        /// </summary>
+        
+        
+        
         public bool CanWalk(int x, int y)
         {
             return CanMoveTo(x, y);
         }
         
-        /// <summary>
-        /// 移动对象（MoveObject方法）
-        /// </summary>
+        
+        
+        
         public bool MoveObject(MapObject obj, int newX, int newY)
         {
             if (obj == null || !CanMoveTo(newX, newY))
                 return false;
-                
-            obj.X = (ushort)newX;
-            obj.Y = (ushort)newY;
+
+            
+            int oldX = obj.X;
+            int oldY = obj.Y;
+
+            if (oldX == newX && oldY == newY)
+                return true;
+
+            MapCellInfo? oldCell = null;
+            MapCellInfo? newCell = null;
+            if (_mapCellInfo != null)
+            {
+                if (oldX >= 0 && oldX < Width && oldY >= 0 && oldY < Height)
+                    oldCell = _mapCellInfo[oldX, oldY];
+                if (newX >= 0 && newX < Width && newY >= 0 && newY < Height)
+                    newCell = _mapCellInfo[newX, newY];
+            }
+
+            
+            var leaveEvents = oldCell?.GetEventObjectsSnapshot();
+
+            if (_mapCellInfo != null && oldX >= 0 && oldX < Width && oldY >= 0 && oldY < Height)
+            {
+                _mapCellInfo[oldX, oldY].RemoveObject(obj);
+            }
+
+            obj.SetPosition((ushort)newX, (ushort)newY);
+
+            if (_mapCellInfo != null)
+            {
+                _mapCellInfo[newX, newY].AddObject(obj);
+            }
+
+            
+            if (leaveEvents != null)
+            {
+                foreach (var ev in leaveEvents)
+                {
+                    if (ReferenceEquals(ev, obj))
+                        continue;
+                    if (ev.IsDisabled())
+                        continue;
+                    ev.OnLeave(obj);
+                }
+            }
+
+            var enterEvents = newCell?.GetEventObjectsSnapshot();
+            if (enterEvents != null)
+            {
+                foreach (var ev in enterEvents)
+                {
+                    if (ReferenceEquals(ev, obj))
+                        continue;
+                    if (ev.IsDisabled())
+                        continue;
+                    ev.OnEnter(obj);
+                }
+            }
+
             return true;
         }
         
-        /// <summary>
-        /// 广播消息给范围内的玩家（BroadcastMessageInRange方法）
-        /// </summary>
+        
+        
+        
         public void BroadcastMessageInRange(int centerX, int centerY, int range, byte[] message)
         {
             SendToNearbyPlayers(centerX, centerY, range, message);
         }
         
-        /// <summary>
-        /// 广播消息给所有玩家（BroadcastMessage方法）
-        /// </summary>
+        
+        
+        
         public void BroadcastMessage(byte[] message)
         {
             SendToAllPlayers(message);
         }
         
-        /// <summary>
-        /// 获取指定范围内的对象
-        /// </summary>
+        
+        
+        
         public List<MapObject> GetObjectsInRange(int centerX, int centerY, int range)
         {
             var result = new List<MapObject>();
@@ -667,9 +751,9 @@ namespace GameServer
             return result;
         }
         
-        /// <summary>
-        /// 获取指定范围内的玩家
-        /// </summary>
+        
+        
+        
         public List<HumanPlayer> GetPlayersInRange(int centerX, int centerY, int range)
         {
             var result = new List<HumanPlayer>();
@@ -688,12 +772,12 @@ namespace GameServer
             return result;
         }
         
-        /// <summary>
-        /// 获取指定范围内的怪物
-        /// </summary>
-        public List<Monster> GetMonstersInRange(int centerX, int centerY, int range)
+        
+        
+        
+        public List<AliveObject> GetMonstersInRange(int centerX, int centerY, int range)
         {
-            var result = new List<Monster>();
+            var result = new List<AliveObject>();
             
             foreach (var monster in _monsters.Values)
             {
@@ -709,9 +793,9 @@ namespace GameServer
             return result;
         }
         
-        /// <summary>
-        /// 获取指定范围内的NPC
-        /// </summary>
+        
+        
+        
         public List<Npc> GetNPCsInRange(int centerX, int centerY, int range)
         {
             var result = new List<Npc>();
@@ -730,9 +814,9 @@ namespace GameServer
             return result;
         }
         
-        /// <summary>
-        /// 获取指定范围内的物品
-        /// </summary>
+        
+        
+        
         public List<MapItem> GetItemsInRange(int centerX, int centerY, int range)
         {
             var result = new List<MapItem>();
@@ -751,9 +835,9 @@ namespace GameServer
             return result;
         }
         
-        /// <summary>
-        /// 获取指定位置的对象
-        /// </summary>
+        
+        
+        
         public MapObject? GetObjectAt(int x, int y)
         {
             foreach (var obj in _objects.Values)
@@ -766,9 +850,10 @@ namespace GameServer
             return null;
         }
 
-        /// <summary>
-        /// 获取地图单元格信息
-        /// </summary>
+        
+        
+        
+        
         public MapCellInfo? GetMapCellInfo(int x, int y)
         {
             if (_mapCellInfo == null || x < 0 || x >= Width || y < 0 || y >= Height)
@@ -777,29 +862,30 @@ namespace GameServer
             return _mapCellInfo[x, y];
         }
         
-        /// <summary>
-        /// 检查是否是战斗地图
-        /// </summary>
+        
+        
+        
         public bool IsFightMap()
         {
-            // 战斗地图通常不是安全区且允许PK
+            
             return !IsSafeZone && AllowPK;
         }
 
-        /// <summary>
-        /// 查找指定位置和视野的事件对象
-        /// </summary>
+        
+        
+        
+        
         public MapObject? FindEventObject(int x, int y, uint view)
         {
             foreach (var obj in _objects.Values)
             {
-                // 检查对象是否是事件类型
+                
                 if (obj.GetObjectType() == ObjectType.Event || obj.GetObjectType() == ObjectType.VisibleEvent)
                 {
-                    // 检查位置是否相同
+                    
                     if (obj.X == x && obj.Y == y)
                     {
-                        // 如果是可见事件，检查视野是否相同
+                        
                         if (obj is VisibleEvent visibleEvent)
                         {
                             if (visibleEvent.GetView() == view)
@@ -809,7 +895,7 @@ namespace GameServer
                         }
                         else
                         {
-                            // 普通事件对象，不需要检查视野
+                            
                             return obj;
                         }
                     }
@@ -819,30 +905,40 @@ namespace GameServer
             return null;
         }
         
-        /// <summary>
-        /// 发送消息给范围内的所有玩家
-        /// </summary>
-        public void SendToNearbyPlayers(int centerX, int centerY, int range, byte[] message)
+        
+        
+        
+        public void SendToNearbyPlayers(int centerX, int centerY, int range, byte[] message, uint excludeObjectId = 0)
         {
             var players = GetPlayersInRange(centerX, centerY, range);
             foreach (var player in players)
             {
+                if (player.ObjectId == excludeObjectId)
+                    continue;
                 player.SendMessage(message);
             }
         }
         
-        /// <summary>
-        /// 发送消息给范围内的所有玩家（带默认范围）
-        /// </summary>
+        
+        
+        
+        public void SendToNearbyPlayers(int centerX, int centerY, int range, byte[] message)
+        {
+            SendToNearbyPlayers(centerX, centerY, range, message, 0);
+        }
+        
+        
+        
+        
         public void SendToNearbyPlayers(int centerX, int centerY, byte[] message)
         {
-            // 默认范围设为10
+            
             SendToNearbyPlayers(centerX, centerY, 10, message);
         }
         
-        /// <summary>
-        /// 发送消息给地图上的所有玩家
-        /// </summary>
+        
+        
+        
         public void SendToAllPlayers(byte[] message)
         {
             foreach (var player in _players.Values)
@@ -851,64 +947,64 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 获取地图上的玩家数量
-        /// </summary>
+        
+        
+        
         public int GetPlayerCount()
         {
             return _players.Count;
         }
         
-        /// <summary>
-        /// 获取地图上的怪物数量
-        /// </summary>
+        
+        
+        
         public int GetMonsterCount()
         {
             return _monsters.Count;
         }
         
-        /// <summary>
-        /// 获取地图上的NPC数量
-        /// </summary>
+        
+        
+        
         public int GetNPCCount()
         {
             return _npcs.Count;
         }
         
-        /// <summary>
-        /// 获取地图上的物品数量
-        /// </summary>
+        
+        
+        
         public int GetItemCount()
         {
             return _items.Count;
         }
         
-        /// <summary>
-        /// 获取地图上的总对象数量
-        /// </summary>
+        
+        
+        
         public int GetTotalObjectCount()
         {
             return _objects.Count;
         }
         
-        /// <summary>
-        /// 更新地图
-        /// </summary>
+        
+        
+        
         public void Update()
         {
-            // 更新所有怪物
+            
             foreach (var monster in _monsters.Values.ToList())
             {
                 monster.Update();
             }
             
-            // 更新所有NPC
+            
             foreach (var npc in _npcs.Values.ToList())
             {
                 npc.Update();
             }
             
-            // 检查过期的物品
+            
             var now = DateTime.Now;
             var expiredItems = _items.Values.Where(item => item.ExpireTime.HasValue && item.ExpireTime.Value < now).ToList();
             foreach (var item in expiredItems)
@@ -917,9 +1013,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 添加矿石物品
-        /// </summary>
+        
+        
+        
         public void AddMineItem(string name, ushort duraMin, ushort duraMax, ushort rate)
         {
             var mineItem = new MineItem
@@ -934,15 +1030,15 @@ namespace GameServer
             _mineRateMax += rate;
         }
         
-        /// <summary>
-        /// 获取矿石物品
-        /// </summary>
+        
+        
+        
         public bool GotMineItem(HumanPlayer player)
         {
             if (_mineItems.Count == 0 || _mineRateMax == 0)
                 return false;
                 
-            // 随机选择一个矿石
+            
             uint randomValue = (uint)new Random().Next((int)_mineRateMax);
             uint currentRate = 0;
             
@@ -951,7 +1047,8 @@ namespace GameServer
                 currentRate += mineItem.Rate;
                 if (randomValue < currentRate)
                 {
-                    // 这里应该给玩家添加矿石物品
+                    
+                    
                     LogManager.Default.Info($"玩家 {player.Name} 在地图 {MapName} 挖到矿石: {mineItem.Name}");
                     return true;
                 }
@@ -960,35 +1057,35 @@ namespace GameServer
             return false;
         }
         
-        /// <summary>
-        /// 检查地图标志是否设置
-        /// </summary>
+        
+        
+        
         public bool IsFlagSeted(MapFlag flag)
         {
             return (MapFlags & flag) != 0;
         }
         
-        /// <summary>
-        /// 设置地图标志
-        /// 支持带参数的标志，如levelbelow(22,16)、noreconnect(16)、mine(300)
-        /// </summary>
+        
+        
+        
+        
         public void SetFlag(MapFlag flag)
         {
             MapFlags |= flag;
         }
         
-        /// <summary>
-        /// 设置带参数的地图标志
-        /// </summary>
+        
+        
+        
         public void SetFlag(string flagStr)
         {
-            // 解析标志字符串，支持带参数的标志
+            
             ParseAndSetFlag(flagStr);
         }
         
-        /// <summary>
-        /// 设置带参数的地图标志
-        /// </summary>
+        
+        
+        
         public void SetFlag(MapFlag flag, params uint[] parameters)
         {
             MapFlags |= flag;
@@ -999,26 +1096,26 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 清除地图标志
-        /// </summary>
+        
+        
+        
         public void ClearFlag(MapFlag flag)
         {
             MapFlags &= ~flag;
             _flagParams.Remove(flag);
         }
         
-        /// <summary>
-        /// 获取标志参数
-        /// </summary>
+        
+        
+        
         public List<uint>? GetFlagParams(MapFlag flag)
         {
             return _flagParams.TryGetValue(flag, out var parameters) ? parameters : null;
         }
         
-        /// <summary>
-        /// 获取标志参数（单个参数）
-        /// </summary>
+        
+        
+        
         public uint GetFlagParam(MapFlag flag, int index = 0)
         {
             if (_flagParams.TryGetValue(flag, out var parameters) && index >= 0 && index < parameters.Count)
@@ -1028,9 +1125,9 @@ namespace GameServer
             return 0;
         }
         
-        /// <summary>
-        /// 检查标志是否设置（带参数检查）
-        /// </summary>
+        
+        
+        
         public bool IsFlagSeted(MapFlag flag, uint paramValue = 0)
         {
             if (!IsFlagSeted(flag))
@@ -1046,9 +1143,10 @@ namespace GameServer
             return parameters.Contains(paramValue);
         }
         
-        /// <summary>
-        /// 解析并设置标志字符串
-        /// </summary>
+        
+        
+        
+        
         private void ParseAndSetFlag(string flagStr)
         {
             if (string.IsNullOrEmpty(flagStr))
@@ -1056,17 +1154,17 @@ namespace GameServer
                 
             string upperFlagStr = flagStr.ToUpper();
             
-            // 检查是否带参数
+            
             int paramStart = upperFlagStr.IndexOf('(');
             int paramEnd = upperFlagStr.IndexOf(')');
             
             if (paramStart > 0 && paramEnd > paramStart)
             {
-                // 带参数的标志
+                
                 string flagName = upperFlagStr.Substring(0, paramStart).Trim();
                 string paramStr = upperFlagStr.Substring(paramStart + 1, paramEnd - paramStart - 1);
                 
-                // 解析参数
+                
                 List<uint> parameters = new List<uint>();
                 string[] paramParts = paramStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
                 foreach (string param in paramParts)
@@ -1077,32 +1175,33 @@ namespace GameServer
                     }
                 }
                 
-                // 根据标志名称设置标志
+                
                 MapFlag flag = GetMapFlagFromName(flagName);
                 if (flag != MapFlag.MF_NONE)
                 {
                     SetFlag(flag, parameters.ToArray());
-                    LogManager.Default.Debug($"设置带参数的地图标志: {flagName}({paramStr}) -> {flag}");
+                    
                 }
             }
             else
             {
-                // 不带参数的标志
+                
                 MapFlag flag = GetMapFlagFromName(upperFlagStr);
                 if (flag != MapFlag.MF_NONE)
                 {
                     SetFlag(flag);
-                    LogManager.Default.Debug($"设置地图标志: {upperFlagStr} -> {flag}");
+                    
                 }
             }
         }
         
-        /// <summary>
-        /// 根据标志名称获取MapFlag枚举
-        /// </summary>
+        
+        
+        
         private MapFlag GetMapFlagFromName(string flagName)
         {
-            // 这里需要与LogicMapMgr中的GetMapFlagFromString方法保持一致
+            
+            
             switch (flagName)
             {
                 case "SABUKPALACE":
@@ -1112,17 +1211,17 @@ namespace GameServer
                 case "NORANDOMMOVE":
                     return MapFlag.MF_NORUN;
                 case "NORECONNECT":
-                    return MapFlag.MF_NONE; // 需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "RIDEHORSE":
                     return MapFlag.MF_NOMOUNT;
                 case "LEVELABOVE":
                 case "LEVELBELOW":
-                    return MapFlag.MF_NONE; // 等级限制，需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "LIMITJOB":
-                    return MapFlag.MF_NONE; // 职业限制，需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "PKPOINTABOVE":
                 case "PKPOINTBELOW":
-                    return MapFlag.MF_NONE; // PK值限制，需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "NOESCAPE":
                     return MapFlag.MF_NOTELEPORT;
                 case "NOHOME":
@@ -1132,11 +1231,11 @@ namespace GameServer
                 case "WEATHER":
                 case "DAY":
                 case "NIGHT":
-                    return MapFlag.MF_NONE; // 需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "NOGROUPMOVE":
-                    return MapFlag.MF_NONE; // 禁止组队移动，需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "SANDCITYHOME":
-                    return MapFlag.MF_NONE; // 沙城回城点，需要特殊处理
+                    return MapFlag.MF_NONE; 
                 case "NODMOVE":
                     return MapFlag.MF_NOWALK;
                 case "NOFLASHMOVE":
@@ -1145,7 +1244,7 @@ namespace GameServer
                 case "USERDEFINE2":
                 case "USERDEFINE3":
                 case "USERDEFINE4":
-                    return MapFlag.MF_NONE; // 用户自定义标志
+                    return MapFlag.MF_NONE; 
                 case "SAFE":
                     return MapFlag.MF_SAFE;
                 case "NOPK":
@@ -1202,106 +1301,108 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 获取对象类型
-        /// </summary>
+        
+        
+        
         public override ObjectType GetObjectType()
         {
             return ObjectType.Map;
         }
         
-        /// <summary>
-        /// 获取可视消息
-        /// </summary>
+        
+        
+        
         public override bool GetViewMsg(out byte[] msg, MapObject? viewer = null)
         {
-            // 地图不需要发送可视消息
+            
             msg = Array.Empty<byte>();
             return false;
         }
 
-        /// <summary>
-        /// 设置物理地图关联
-        /// </summary>
+        
+        
+        
         public void SetPhysicsMap(PhysicsMap physicsMap)
         {
             _physicsMap = physicsMap;
             
-            // 调用物理地图的AddRefMap方法
+            
             if (_physicsMap != null)
             {
                 _physicsMap.AddRefMap(this);
             }
         }
 
-        /// <summary>
-        /// 设置小地图ID
-        /// </summary>
+        
+        
+        
         public void SetMiniMap(int miniMapId)
         {
             _miniMapId = miniMapId;
         }
 
-        /// <summary>
-        /// 设置链接数量
-        /// </summary>
+        
+        
+        
         public void SetLinkCount(int linkCount)
         {
             _linkCount = linkCount;
         }
 
 
-        /// <summary>
-        /// 获取小地图ID
-        /// </summary>
+        
+        
+        
         public int GetMiniMapId()
         {
             return _miniMapId;
         }
 
-        /// <summary>
-        /// 获取链接数量
-        /// </summary>
+        
+        
+        
         public int GetLinkCount()
         {
             return _linkCount;
         }
 
-        /// <summary>
-        /// 获取关联的物理地图
-        /// </summary>
+        
+        
+        
         public PhysicsMap? GetPhysicsMap()
         {
             return _physicsMap;
         }
 
-        /// <summary>
-        /// 初始化地图单元格
-        /// </summary>
+        
+        
+        
+        
         public void InitMapCells()
         {
             try
             {
+                
                 if (_physicsMap == null)
                 {
                     LogManager.Default.Error($"地图 {MapName} 没有关联的物理地图，无法初始化单元格");
                     return;
                 }
 
-                // 确保宽度和高度有效
+                
                 if (Width <= 0 || Height <= 0)
                 {
                     LogManager.Default.Error($"地图 {MapName} 尺寸无效: {Width}x{Height}");
                     return;
                 }
 
-                // 如果已经初始化过，先清理
+                
                 if (_mapCellInfo != null)
                 {
                     _mapCellInfo = null;
                 }
 
-                // 创建地图单元格信息数组
+                
                 _mapCellInfo = new MapCellInfo[Width, Height];
                 for (int x = 0; x < Width; x++)
                 {
@@ -1311,7 +1412,7 @@ namespace GameServer
                     }
                 }
 
-                LogManager.Default.Debug($"地图 {MapName} 初始化了 {Width}x{Height} 个单元格");
+                
             }
             catch (Exception ex)
             {
@@ -1319,9 +1420,12 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 初始化链接
-        /// </summary>
+        
+        
+        
+        
+        
+        
         public void InitLinks()
         {
             if (_linkCount <= 0)
@@ -1330,12 +1434,24 @@ namespace GameServer
             try
             {
                 
-                LogManager.Default.Info($"地图 {MapName} 有 {_linkCount} 个链接点需要初始化");
                 
-                for (int i = 0; i < _linkCount; i++)
-                {
-                    LogManager.Default.Debug($"地图 {MapName} 链接点 {i+1}: 需要从INI文件读取配置");
-                }
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+                
+
+                
+                
+                
+                
             }
             catch (Exception ex)
             {
@@ -1344,33 +1460,33 @@ namespace GameServer
         }
     }
     
-    /// <summary>
-    /// 地图天气
-    /// </summary>
+    
+    
+    
     public enum MapWeather
     {
-        Clear = 0,          // 晴朗
-        Rain = 1,           // 下雨
-        Snow = 2,           // 下雪
-        Fog = 3,            // 雾
-        Storm = 4,          // 暴风雨
-        Sandstorm = 5       // 沙尘暴
+        Clear = 0,          
+        Rain = 1,           
+        Snow = 2,           
+        Fog = 3,            
+        Storm = 4,          
+        Sandstorm = 5       
     }
     
-    /// <summary>
-    /// 地图时间
-    /// </summary>
+    
+    
+    
     public enum MapTime
     {
-        Day = 0,            // 白天
-        Night = 1,          // 夜晚
-        Dawn = 2,           // 黎明
-        Dusk = 3            // 黄昏
+        Day = 0,            
+        Night = 1,          
+        Dawn = 2,           
+        Dusk = 3            
     }
     
-    /// <summary>
-    /// 矿石物品定义
-    /// </summary>
+    
+    
+    
     public class MineItem
     {
         public string Name { get; set; } = string.Empty;
@@ -1379,10 +1495,10 @@ namespace GameServer
         public ushort Rate { get; set; }
     }
     
-    /// <summary>
-    /// 链接点定义
-    /// 用于地图之间的传送
-    /// </summary>
+    
+    
+    
+    
     public class LinkPoint
     {
         public uint LinkId { get; set; }
@@ -1398,17 +1514,17 @@ namespace GameServer
         public string ScriptFile { get; set; } = string.Empty;
     }
     
-    /// <summary>
-    /// 地形类型
-    /// </summary>
+    
+    
+    
     public enum TerrainType
     {
-        Normal = 0,     // 普通地形
-        Water = 1,      // 水域
-        Mountain = 2,   // 山脉
-        Forest = 3,     // 森林
-        Desert = 4,     // 沙漠
-        Snow = 5,       // 雪地
-        Lava = 6        // 岩浆
+        Normal = 0,     
+        Water = 1,      
+        Mountain = 2,   
+        Forest = 3,     
+        Desert = 4,     
+        Snow = 5,       
+        Lava = 6        
     }
 }

@@ -8,29 +8,24 @@ using MirCommon.Utils;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 配置文件加载管理器 - 负责加载所有游戏配置文件
-    /// </summary>
     public class ConfigLoader
     {
         private static ConfigLoader? _instance;
         public static ConfigLoader Instance => _instance ??= new ConfigLoader();
 
-        // 配置文件路径常量
-        private const string DATA_PATH = "./data";
-        private const string MAPS_PATH = "./data/maps";
-        private const string SCRIPT_PATH = "./data/script";
-        private const string MARKET_PATH = "./data/Market";
-        private const string GAMEMASTER_PATH = "./data/GameMaster";
-        private const string GUILD_PATH = "./data/guildbase/guilds";
-        private const string FIGURE_PATH = "./data/figure";
-        private const string VARIABLES_PATH = "./data/Variables";
-        private const string STRINGLIST_PATH = "./data/stringlist";
-        private const string MONITEMS_PATH = "./data/MonItems";
-        private const string MONGENS_PATH = "./data/MonGens";
-        private const string TASK_PATH = "./data/task";
+        private static readonly string DATA_PATH = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "data"));
+        private static readonly string MAPS_PATH = Path.Combine(DATA_PATH, "maps");
+        private static readonly string SCRIPT_PATH = Path.Combine(DATA_PATH, "script");
+        private static readonly string MARKET_PATH = Path.Combine(DATA_PATH, "Market");
+        private static readonly string GAMEMASTER_PATH = Path.Combine(DATA_PATH, "GameMaster");
+        private static readonly string GUILD_PATH = Path.Combine(DATA_PATH, "guildbase", "guilds");
+        private static readonly string FIGURE_PATH = Path.Combine(DATA_PATH, "figure");
+        private static readonly string VARIABLES_PATH = Path.Combine(DATA_PATH, "Variables");
+        private static readonly string STRINGLIST_PATH = Path.Combine(DATA_PATH, "stringlist");
+        private static readonly string MONITEMS_PATH = Path.Combine(DATA_PATH, "MonItems");
+        private static readonly string MONGENS_PATH = Path.Combine(DATA_PATH, "MonGens");
+        private static readonly string TASK_PATH = Path.Combine(DATA_PATH, "task");
 
-        // 内存缓存数据结构
         private readonly Dictionary<int, Dictionary<int, HumanDataDesc>> _humanDataDescs = new();
         private readonly Dictionary<int, StartPoint> _startPoints = new();
         private readonly Dictionary<string, int> _startPointNameToIndex = new();
@@ -39,20 +34,17 @@ namespace GameServer
         private readonly Dictionary<int, float> _gameVars = new();
         private readonly Dictionary<int, int> _channelWaitTimes = new();
         
-        // 配置解析器实例
         private readonly Parsers.ItemDataParser _itemDataParser = new();
         private readonly Parsers.MagicDataParser _magicDataParser = new();
         private readonly Parsers.NpcConfigParser _npcConfigParser = new();
         private readonly Parsers.MonsterDataParser _monsterDataParser = new();
 
-        // 管理器实例
         private readonly MarketManager _marketManager = MarketManager.Instance;
         private readonly AutoScriptManager _autoScriptManager = AutoScriptManager.Instance;
         private readonly TitleManager _titleManager = TitleManager.Instance;
         private readonly TopManager _topManager = TopManager.Instance;
         private readonly TaskManager _taskManager = TaskManager.Instance;
         
-        // 新实现的管理器实例
         private readonly PhysicsMapMgr _physicsMapMgr = PhysicsMapMgr.Instance;
         private readonly MagicManager _magicManager = MagicManager.Instance;
         private readonly NpcManagerEx _npcManagerEx = NpcManagerEx.Instance;
@@ -62,115 +54,79 @@ namespace GameServer
         private readonly MonItemsMgr _monItemsMgr = MonItemsMgr.Instance;
         private readonly SpecialEquipmentManager _specialEquipmentManager = SpecialEquipmentManager.Instance;
         
-        // 公告数据
         private string _notice = string.Empty;
         private readonly List<string> _lineNotices = new();
 
         private ConfigLoader() { }
 
-        /// <summary>
-        /// 加载所有配置文件（同步版本，保持向后兼容）
-        /// </summary>
         public bool LoadAllConfigs()
         {
             return LoadAllConfigsAsync().GetAwaiter().GetResult();
         }
 
-        /// <summary>
-        /// 加载所有配置文件
-        /// </summary>
         public async Task<bool> LoadAllConfigsAsync()
         {
             try
             {
                 LogManager.Default.Info("开始加载游戏配置文件（异步）...");
-
-                // 1. 脚本系统首先读取
                 await Task.Run(() => LoadScriptSystemOptimized());
 
-                // 2. 加载服务器基础配置
                 if (!LoadServerConfig())
                 {
                     LogManager.Default.Error("加载服务器配置失败");
                     return false;
                 }
 
-                // 3. 地图系统
                 await Task.Run(() => LoadMapSystem());
 
-                // 4. 和地图密切相关的东西（安全区、出生点、公告）
                 await Task.Run(() => LoadMapRelatedConfigs());
 
-                // 5. 物品系统
                 await Task.Run(() => LoadItemSystem());
 
-                // 6. 技能/魔法配置
                 await Task.Run(() => LoadMagicSystem());
 
-                // 7. 称号配置
                 await Task.Run(() => LoadTitles());
 
-                // 8. 捆绑物品配置
                 await Task.Run(() => LoadBundleItem());
 
-                // 9. NPC配置（必须等待ScriptObjectMgr.Load()加载完成后才能加载）
                 await Task.Run(() => LoadNpcConfigs());
 
-                // 10. GM配置
                 await Task.Run(() => LoadGMConfigs());
 
-                // 11. 行会配置
                 await Task.Run(() => LoadGuildConfigs());
 
-                // 12. 怪物掉落配置
-                await Task.Run(() => LoadMonsterItems());
+                await Task.Run(() => LoadMonItemsMgr());
 
-                // 13. 怪物配置
-                await Task.Run(() => LoadMonsterConfigs());
+                await Task.Run(() => LoadMonsterManagerEx());
 
-                // 14. 怪物生成配置
-                await Task.Run(() => LoadMonsterGen());
+                await Task.Run(() => LoadMonsterGenManager());
 
-                // 15. 初始化玩家管理器
                 await Task.Run(() => LoadHumanPlayerMgr());
 
-                // 16. 初始化怪物生成点
                 await Task.Run(() => _monsterGenManager.InitAllGen());
 
-                // 17. 特殊协议初始化
                 InitSpecialProtocol();
 
-                // 18. 沙城初始化
                 await LoadSandCityAsync();
 
-                // 19. 排行榜系统
                 await Task.Run(() => LoadTopList());
 
-                // 20. 特殊装备配置
                 await Task.Run(() => LoadSpecialItem());
 
-                // 21. 矿石列表（需要地图已加载）
                 await Task.Run(() => LoadMineList());
 
-                // 22. 市场系统
                 await Task.Run(() => LoadMarket());
 
-                // 23. 自动脚本
                 await Task.Run(() => LoadAutoScript());
 
-                // 24. 地图脚本
                 await Task.Run(() => LoadMapScript());
 
-                // 25. 任务系统
                 await Task.Run(() => LoadTasks());
 
-                // 26. 加载人物数据描述（在LoadServerConfig中已加载，这里确保正确性）
                 await Task.Run(() => EnsureHumanDataDescsLoaded());
 
-                // 27. 加载出生点配置（在LoadMapRelatedConfigs中已加载，这里确保正确性）
                 await Task.Run(() => EnsureStartPointsLoaded());
 
-                // 28. 加载首次登录信息（在LoadServerConfig中已加载，这里确保正确性）
                 await Task.Run(() => EnsureFirstLoginInfoLoaded());
 
                 LogManager.Default.Info("所有配置文件加载完成");
@@ -183,11 +139,6 @@ namespace GameServer
             }
         }
 
-        // ========== 异步方法实现 ==========
-
-        /// <summary>
-        /// 加载地图相关配置（安全区、出生点、公告）
-        /// </summary>
         private void LoadMapRelatedConfigs()
         {
             LoadSafeArea();
@@ -195,9 +146,6 @@ namespace GameServer
             LoadNotice();
         }
 
-        /// <summary>
-        /// 加载服务器基础配置
-        /// </summary>
         private bool LoadServerConfig()
         {
             LogManager.Default.Info("加载服务器配置...");
@@ -211,29 +159,21 @@ namespace GameServer
                     return false;
                 }
 
-                // 使用IniFile解析配置文件
                 var iniFile = new IniFile(serverConfigFile);
                 
-                // 加载经验因子
                 float expFactor = iniFile.GetInteger("setting", "expfactor", 100) / 100.0f;
                 GameWorld.Instance.SetExpFactor(expFactor);
                 
-                // 加载速度配置
                 LoadSpeedConfigFromIni(iniFile);
                 
-                // 加载名称配置
                 LoadNameConfigFromIni(iniFile);
                 
-                // 加载变量配置
                 LoadVarConfigFromIni(iniFile);
                 
-                // 加载聊天等待时间配置
                 LoadChatWaitConfigFromIni(iniFile);
                 
-                // 加载人物数据描述
                 LoadHumanDataDescsFromIni(iniFile);
                 
-                // 加载首次登录信息
                 LoadFirstLoginInfoFromIni(iniFile);
                 
                 LogManager.Default.Info("服务器配置加载完成");
@@ -246,9 +186,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 从INI文件加载速度配置
-        /// </summary>
         private void LoadSpeedConfigFromIni(IniFile iniFile)
         {
             int walkSpeed = iniFile.GetInteger("speed", "walk", 600);
@@ -266,9 +203,6 @@ namespace GameServer
             LogManager.Default.Debug($"速度配置 - 行走:{walkSpeed} 跑步:{runSpeed} 攻击:{attackSpeed}");
         }
 
-        /// <summary>
-        /// 从INI文件加载名称配置
-        /// </summary>
         private void LoadNameConfigFromIni(IniFile iniFile)
         {
             string goldName = iniFile.GetString("name", "goldname", "金币");
@@ -312,9 +246,6 @@ namespace GameServer
             LogManager.Default.Debug($"职业名称 - 战士:{warrName} 法师:{magicanName} 道士:{taoshiName}");
         }
 
-        /// <summary>
-        /// 从INI文件加载变量配置
-        /// </summary>
         private void LoadVarConfigFromIni(IniFile iniFile)
         {
             int maxGold = iniFile.GetInteger("var", "maxgold", 5000000);
@@ -405,16 +336,12 @@ namespace GameServer
             SetGameVar(GameVarConstants.BodyTime, bodyTime);
             SetGameVar(GameVarConstants.ItemUpdateTime, itemUpdateTime);
 
-            // 设置大背包标志
             bool useBigBag = iniFile.GetInteger("setting", "enable60slots", 0) != 0;
             GameWorld.Instance.SetUseBigBag(useBigBag);
 
             LogManager.Default.Debug($"游戏变量 - 最大金币:{maxGold} 最大元宝:{maxYuanbao} 最大组队人数:{maxGroupMember}");
         }
 
-        /// <summary>
-        /// 从INI文件加载聊天等待时间配置
-        /// </summary>
         private void LoadChatWaitConfigFromIni(IniFile iniFile)
         {
             int normalWait = iniFile.GetInteger("chatwait", "normal", 1);
@@ -438,14 +365,24 @@ namespace GameServer
             LogManager.Default.Debug($"聊天等待 - 普通:{normalWait}秒 喊话:{cryWait}秒");
         }
 
-        /// <summary>
-        /// 从INI文件加载人物数据描述
-        /// </summary>
         private void LoadHumanDataDescsFromIni(IniFile iniFile)
         {
             string warriorFile = iniFile.GetString("humandata", "warrior", null);
             string magicianFile = iniFile.GetString("humandata", "magician", null);
             string taoshiFile = iniFile.GetString("humandata", "taoshi", null);
+
+            if (warriorFile.ToLower().StartsWith(".\\data\\"))
+            {
+                warriorFile = warriorFile.Remove(0, 7);
+            }
+            if (magicianFile.ToLower().StartsWith(".\\data\\"))
+            {
+                magicianFile = magicianFile.Remove(0, 7);
+            }
+            if (taoshiFile.ToLower().StartsWith(".\\data\\"))
+            {
+                taoshiFile = taoshiFile.Remove(0, 7);
+            }
 
             if (!string.IsNullOrEmpty(warriorFile))
             {
@@ -487,22 +424,16 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 从INI文件加载首次登录信息
-        /// </summary>
         private void LoadFirstLoginInfoFromIni(IniFile iniFile)
         {
             try
             {
                 var firstLoginInfo = new FirstLoginInfo();
                 
-                // 加载首次登录等级
                 firstLoginInfo.Level = iniFile.GetInteger("firstlogin", "startlevel", 1);
                 
-                // 加载首次登录金币
                 firstLoginInfo.Gold = (uint)iniFile.GetInteger("firstlogin", "startgold", 0);
                 
-                // 加载首次登录物品
                 string startItem = iniFile.GetString("firstlogin", "startitem", null);
                 if (!string.IsNullOrEmpty(startItem))
                 {
@@ -522,11 +453,9 @@ namespace GameServer
                     }
                 }
                 
-                // 存储到本地缓存（向后兼容）
                 _firstLoginInfos.Clear();
                 _firstLoginInfos.Add(firstLoginInfo);
                 
-                // 存储到GameWorld实例
                 GameWorld.Instance.SetFirstLoginInfo(firstLoginInfo);
                 
                 LogManager.Default.Info($"首次登录信息加载完成: 等级={firstLoginInfo.Level}, 金币={firstLoginInfo.Gold}, 物品数={firstLoginInfo.Items.Count}");
@@ -537,17 +466,12 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 初始化特殊协议
-        /// </summary>
         private void InitSpecialProtocol()
         {
             LogManager.Default.Info("初始化特殊协议...");
             
             try
             {
-                // 这里实现特殊协议初始化逻辑
-                
                 LogManager.Default.Info("特殊协议初始化完成");
             }
             catch (Exception ex)
@@ -556,9 +480,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载沙城配置
-        /// </summary>
         private async Task LoadSandCityAsync()
         {
             LogManager.Default.Info("加载沙城配置...");
@@ -567,7 +488,6 @@ namespace GameServer
             {
                 try
                 {
-                    // 使用SandCity单例初始化
                     var sandCity = SandCity.Instance;
                     sandCity.Init();
                     
@@ -580,26 +500,19 @@ namespace GameServer
             });
         }
 
-        /// <summary>
-        /// 加载技能系统
-        /// </summary>
         private void LoadMagicSystem()
         {
             LogManager.Default.Info("加载技能系统...");
 
-            // 1. 基础技能
+            LoadMagicManager();
+
             LoadBaseMagic();
 
-            // 2. 技能扩展
             LoadMagicExt();
         }
 
-        /// <summary>
-        /// 确保人物数据描述已加载
-        /// </summary>
         private void EnsureHumanDataDescsLoaded()
         {
-            // 在LoadServerConfig中已加载，这里只做验证
             if (_humanDataDescs.Count == 0)
             {
                 LogManager.Default.Warning("人物数据描述未加载，尝试重新加载");
@@ -611,12 +524,8 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 确保出生点配置已加载
-        /// </summary>
         private void EnsureStartPointsLoaded()
         {
-            // 在LoadMapRelatedConfigs中已加载，这里只做验证
             if (_startPoints.Count == 0)
             {
                 LogManager.Default.Warning("出生点配置未加载，尝试重新加载");
@@ -628,12 +537,8 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 确保首次登录信息已加载
-        /// </summary>
         private void EnsureFirstLoginInfoLoaded()
         {
-            // 在LoadServerConfig中已加载，这里只做验证
             if (_firstLoginInfos.Count == 0)
             {
                 LogManager.Default.Warning("首次登录信息未加载，尝试重新加载");
@@ -645,15 +550,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 优化脚本系统加载，避免重复
-        /// </summary>
         private void LoadScriptSystemOptimized()
         {
             LogManager.Default.Info("加载脚本系统...");
 
-            // 只使用ScriptObjectMgr加载脚本系统，避免重复
-            // 检查是否已经加载过
             bool isLoaded = _scriptObjectMgr.GetScriptObjectCount() > 0;
             if (!isLoaded)
             {
@@ -674,16 +574,11 @@ namespace GameServer
                 LogManager.Default.Debug("脚本系统已加载，跳过重复加载");
             }
 
-            // 初始化SystemScript
             LoadSystemScript();
         }
 
-        /// <summary>
-        /// 加载速度配置
-        /// </summary>
         private void LoadSpeedConfig(Dictionary<string, string> config)
         {
-            // 行走、跑步、攻击等速度配置
             int walkSpeed = GetConfigInt(config, "speed.walk", 600);
             int runSpeed = GetConfigInt(config, "speed.run", 300);
             int attackSpeed = GetConfigInt(config, "speed.attack", 800);
@@ -699,9 +594,6 @@ namespace GameServer
             LogManager.Default.Debug($"速度配置 - 行走:{walkSpeed} 跑步:{runSpeed} 攻击:{attackSpeed}");
         }
 
-        /// <summary>
-        /// 加载名称配置
-        /// </summary>
         private void LoadNameConfig(Dictionary<string, string> config)
         {
             string goldName = GetConfigString(config, "name.goldname", "金币");
@@ -721,9 +613,6 @@ namespace GameServer
             LogManager.Default.Debug($"职业名称 - 战士:{warrName} 法师:{magicanName} 道士:{taoshiName}");
         }
 
-        /// <summary>
-        /// 加载变量配置
-        /// </summary>
         private void LoadVarConfig(Dictionary<string, string> config)
         {
             int maxGold = GetConfigInt(config, "var.maxgold", 5000000);
@@ -757,9 +646,6 @@ namespace GameServer
             LogManager.Default.Debug($"游戏变量 - 最大金币:{maxGold} 最大元宝:{maxYuanbao} 最大组队人数:{maxGroupMember}");
         }
 
-        /// <summary>
-        /// 加载聊天等待时间配置
-        /// </summary>
         private void LoadChatWaitConfig(Dictionary<string, string> config)
         {
             int normalWait = GetConfigInt(config, "chatwait.normal", 1);
@@ -777,17 +663,12 @@ namespace GameServer
             LogManager.Default.Debug($"聊天等待 - 普通:{normalWait}秒 喊话:{cryWait}秒");
         }
 
-        /// <summary>
-        /// 加载脚本系统
-        /// </summary>
         private void LoadScriptSystem()
         {
             LogManager.Default.Info("加载脚本系统...");
 
-            // 使用ScriptObjectMgr加载脚本系统
             LoadScriptObjectMgr();
 
-            // 加载脚本对象（保持向后兼容）
             string scriptPath = SCRIPT_PATH;
             if (Directory.Exists(scriptPath))
             {
@@ -795,7 +676,6 @@ namespace GameServer
                 LoadScriptObjects(scriptPath);
             }
 
-            // 加载脚本变量（保持向后兼容）
             string varsPath = VARIABLES_PATH;
             if (Directory.Exists(varsPath))
             {
@@ -803,7 +683,6 @@ namespace GameServer
                 LoadScriptVariables(varsPath);
             }
 
-            // 加载字符串列表（保持向后兼容）
             string stringListPath = STRINGLIST_PATH;
             if (Directory.Exists(stringListPath))
             {
@@ -812,9 +691,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载脚本对象
-        /// </summary>
         private void LoadScriptObjects(string scriptPath)
         {
             try
@@ -841,9 +717,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载脚本变量
-        /// </summary>
         private void LoadScriptVariables(string varsPath)
         {
             try
@@ -870,9 +743,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载字符串列表
-        /// </summary>
         private void LoadStringList(string stringListPath)
         {
             try
@@ -899,32 +769,21 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载地图相关配置
-        /// </summary>
         private void LoadMapConfigs()
         {
             LogManager.Default.Info("加载地图配置...");
 
-            // 加载物理地图
             LoadPhysicsMaps();
 
-            // 加载逻辑地图
             LoadLogicMaps();
 
-            // 加载安全区配置
             LoadSafeArea();
 
-            // 加载出生点配置
             LoadStartPoint();
 
-            // 加载地图脚本
             LoadMapScript();
         }
 
-        /// <summary>
-        /// 加载物理地图
-        /// </summary>
         private void LoadPhysicsMaps()
         {
             string physicsPath = Path.Combine(MAPS_PATH, "physics");
@@ -937,19 +796,16 @@ namespace GameServer
                 
                 try
                 {
-                    // 使用PhysicsMapMgr加载物理地图
                     _physicsMapMgr.Init(physicsPath, cachePath);
                     int mapCount = _physicsMapMgr.LoadedMapCount;
                     LogManager.Default.Info($"成功加载 {mapCount} 个物理地图");
                     
-                    // 同时使用旧的解析器保持向后兼容
                     var mapParser = new Parsers.MapFileParser();
                     var mapFiles = Directory.GetFiles(physicsPath, "*.map", SearchOption.AllDirectories);
                     int oldLoadedCount = 0;
                     
                     foreach (var mapFile in mapFiles)
                     {
-                        // 检查是否有缓存
                         string cacheFile = Path.Combine(cachePath, Path.GetFileNameWithoutExtension(mapFile) + ".pmc");
                         Parsers.MapFileParser.MapData? mapData = null;
                         
@@ -963,7 +819,6 @@ namespace GameServer
                             mapData = mapParser.LoadMapFile(mapFile);
                             if (mapData != null)
                             {
-                                // 保存缓存
                                 mapParser.SaveMapCache(mapData, cacheFile);
                             }
                         }
@@ -984,9 +839,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载逻辑地图
-        /// </summary>
         private void LoadLogicMaps()
         {
             string logicPath = Path.Combine(MAPS_PATH, "logic");
@@ -996,12 +848,10 @@ namespace GameServer
                 LogManager.Default.Info($"加载逻辑地图: {logicPath}");
                 try
                 {
-                    // 使用LogicMapMgr加载逻辑地图
                     LogicMapMgr.Instance.Load(logicPath);
                     int mapCount = LogicMapMgr.Instance.GetMapCount();
                     LogManager.Default.Info($"成功加载 {mapCount} 个逻辑地图配置");
                     
-                    // 同时使用旧的解析器保持向后兼容
                     var logicParser = new Parsers.LogicMapConfigParser();
                     if (logicParser.LoadMapConfigs(logicPath))
                     {
@@ -1021,9 +871,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载安全区配置 (safearea.csv)
-        /// </summary>
         private void LoadSafeArea()
         {
             string safeAreaFile = Path.Combine(DATA_PATH, "safearea.csv");
@@ -1043,14 +890,12 @@ namespace GameServer
                         var parts = line.Split(',');
                         if (parts.Length >= 4)
                         {
-                            // 格式: MapID, CenterX, CenterY, Radius
                             if (int.TryParse(parts[0], out int mapId) &&
                                 int.TryParse(parts[1], out int centerX) &&
                                 int.TryParse(parts[2], out int centerY) &&
                                 int.TryParse(parts[3], out int radius))
                             {
                                 count++;
-                                LogManager.Default.Debug($"安全区 - 地图:{mapId} 中心:({centerX},{centerY}) 半径:{radius}");
                             }
                         }
                     }
@@ -1063,9 +908,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载出生点配置 (startpoint.csv)
-        /// </summary>
         private void LoadStartPoint()
         {
             string startPointFile = Path.Combine(DATA_PATH, "startpoint.csv");
@@ -1085,7 +927,6 @@ namespace GameServer
                         var parts = line.Split(',');
                         if (parts.Length >= 7)
                         {
-                            // 格式: Name, MapID, X, Y, Range, Fighter, Magician, Taoshi
                             string name = parts[0].Trim();
                             if (int.TryParse(parts[1], out int mapId) &&
                                 int.TryParse(parts[2], out int x) &&
@@ -1093,7 +934,6 @@ namespace GameServer
                                 int.TryParse(parts[4], out int range))
                             {
                                 count++;
-                                LogManager.Default.Debug($"出生点 - {name} 地图:{mapId} 位置:({x},{y}) 范围:{range}");
                             }
                         }
                     }
@@ -1106,9 +946,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载地图脚本 (mapscript.txt)
-        /// </summary>
         private void LoadMapScript()
         {
             string mapScriptFile = Path.Combine(DATA_PATH, "mapscript.txt");
@@ -1151,32 +988,21 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载物品配置
-        /// </summary>
         private void LoadItemConfigs()
         {
             LogManager.Default.Info("加载物品配置...");
 
-            // 加载基础物品数据
             LoadBaseItem();
 
-            // 加载物品限制
             LoadItemLimit();
 
-            // 加载物品脚本链接
             LoadItemScript();
 
-            // 加载捆绑物品
             LoadBundleItem();
 
-            // 加载特殊装备
             LoadSpecialItem();
         }
 
-        /// <summary>
-        /// 加载基础物品数据 (baseitem.txt)
-        /// </summary>
         private void LoadBaseItem()
         {
             string itemFile = Path.Combine(DATA_PATH, "baseitem.txt");
@@ -1185,7 +1011,6 @@ namespace GameServer
             {
                 LogManager.Default.Info($"加载基础物品: {itemFile}");
                 
-                // 使用ItemManager加载物品数据
                 if (ItemManager.Instance.Load(itemFile))
                 {
                     LogManager.Default.Info("基础物品数据加载成功");
@@ -1195,7 +1020,6 @@ namespace GameServer
                     LogManager.Default.Warning("加载基础物品数据失败");
                 }
                 
-                // 同时使用ItemDataParser保持向后兼容
                 if (_itemDataParser.Load(itemFile))
                 {
                     LogManager.Default.Debug("ItemDataParser加载物品数据成功");
@@ -1207,9 +1031,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载物品限制 (itemlimit.txt)
-        /// </summary>
         private void LoadItemLimit()
         {
             string limitFile = Path.Combine(DATA_PATH, "itemlimit.txt");
@@ -1217,34 +1038,8 @@ namespace GameServer
             if (File.Exists(limitFile))
             {
                 LogManager.Default.Info($"加载物品限制: {limitFile}");
-                try
-                {
-                    var parser = new Parsers.TextFileParser();
-                    var lines = parser.LoadLines(limitFile);
-                    int count = 0;
-                    
-                    foreach (var line in lines)
-                    {
-                        if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
-                            continue;
-                        
-                        var parts = line.Split('=');
-                        if (parts.Length == 2)
-                        {
-                            string itemName = parts[0].Trim();
-                            string limitValue = parts[1].Trim();
-                            
-                            LogManager.Default.Debug($"物品限制: {itemName} -> {limitValue}");
-                            count++;
-                        }
-                    }
-                    
-                    LogManager.Default.Info($"加载了 {count} 个物品限制配置");
-                }
-                catch (Exception ex)
-                {
-                    LogManager.Default.Error($"加载物品限制失败: {limitFile}", exception: ex);
-                }
+                if (!ItemManager.Instance.LoadLimit(limitFile))
+                    LogManager.Default.Warning("加载物品限制失败");
             }
             else
             {
@@ -1252,9 +1047,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载物品脚本链接 (itemscript.txt)
-        /// </summary>
         private void LoadItemScript()
         {
             string scriptFile = Path.Combine(DATA_PATH, "itemscript.txt");
@@ -1262,14 +1054,8 @@ namespace GameServer
             if (File.Exists(scriptFile))
             {
                 LogManager.Default.Info($"加载物品脚本链接: {scriptFile}");
-                if (_itemDataParser.LoadItemScript(scriptFile))
-                {
-                    LogManager.Default.Info("物品脚本链接加载成功");
-                }
-                else
-                {
+                if (!ItemManager.Instance.LoadScriptLink(scriptFile))
                     LogManager.Default.Warning("加载物品脚本链接失败");
-                }
             }
             else
             {
@@ -1277,9 +1063,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载捆绑物品 (bundleitem.csv)
-        /// </summary>
         private void LoadBundleItem()
         {
             string bundleFile = Path.Combine(DATA_PATH, "bundleitem.csv");
@@ -1289,12 +1072,10 @@ namespace GameServer
                 LogManager.Default.Info($"加载捆绑物品: {bundleFile}");
                 try
                 {
-                    // 使用BundleManager加载捆绑物品配置
-                    BundleManager.Instance.LoadBundle(bundleFile, true); // true表示CSV格式
+                    BundleManager.Instance.LoadBundle(bundleFile, true); 
                     int bundleManagerCount = BundleManager.Instance.GetBundleCount();
                     LogManager.Default.Info($"成功加载 {bundleManagerCount} 个捆绑物品配置");
                     
-                    // 同时使用旧的解析器保持向后兼容
                     var parser = new Parsers.CSVParser();
                     var bundleData = parser.Parse(bundleFile, false);
                     int oldCount = 0;
@@ -1306,8 +1087,7 @@ namespace GameServer
                             string itemName = row["Column0"];
                             string bundleName = row["Column1"];
                             int itemCount = int.Parse(row["Column2"]);
-                            
-                            LogManager.Default.Debug($"捆绑物品: {itemName} -> {bundleName} x{itemCount}");
+
                             oldCount++;
                         }
                     }
@@ -1325,9 +1105,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载特殊装备 (specialitem.txt)
-        /// </summary>
         private void LoadSpecialItem()
         {
             string specialFile = Path.Combine(DATA_PATH, "specialitem.txt");
@@ -1337,7 +1114,6 @@ namespace GameServer
                 LogManager.Default.Info($"加载特殊装备: {specialFile}");
                 try
                 {
-                    // 使用SpecialEquipmentManager加载特殊装备配置
                     if (_specialEquipmentManager.LoadSpecialEquipmentFunction(specialFile))
                     {
                         int count = _specialEquipmentManager.GetSpecialEquipmentCount();
@@ -1359,26 +1135,17 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载技能/魔法配置
-        /// </summary>
         private void LoadMagicConfigs()
         {
             LogManager.Default.Info("加载技能配置...");
 
-            // 使用MagicManager加载魔法技能配置
             LoadMagicManager();
 
-            // 加载基础技能（保持向后兼容）
             LoadBaseMagic();
 
-            // 加载技能扩展（保持向后兼容）
             LoadMagicExt();
         }
 
-        /// <summary>
-        /// 加载基础技能 (basemagic.txt)
-        /// </summary>
         private void LoadBaseMagic()
         {
             string magicFile = Path.Combine(DATA_PATH, "basemagic.txt");
@@ -1401,9 +1168,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载技能扩展 (magicext.csv)
-        /// </summary>
         private void LoadMagicExt()
         {
             string magicExtFile = Path.Combine(DATA_PATH, "magicext.csv");
@@ -1442,23 +1206,15 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载NPC配置
-        /// </summary>
         private void LoadNpcConfigs()
         {
             LogManager.Default.Info("加载NPC配置...");
 
-            // 使用NpcManagerEx加载NPC配置
             LoadNpcManagerEx();
 
-            // 加载NPC生成配置（保持向后兼容）
             LoadNpcGen();
         }
 
-        /// <summary>
-        /// 加载NPC生成配置 (npcgen.txt)
-        /// </summary>
         private void LoadNpcGen()
         {
             string npcGenFile = Path.Combine(DATA_PATH, "npcgen.txt");
@@ -1486,29 +1242,19 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载怪物配置
-        /// </summary>
         private void LoadMonsterConfigs()
         {
             LogManager.Default.Info("加载怪物配置...");
 
-            // 加载基础怪物数据
             LoadBaseMonster();
 
-            // 加载怪物脚本
             LoadMonsterScript();
 
-            // 加载怪物生成配置
             LoadMonsterGen();
 
-            // 加载怪物掉落
             LoadMonsterItems();
         }
 
-        /// <summary>
-        /// 加载基础怪物数据 (BaseMonsterEx.txt)
-        /// </summary>
         private void LoadBaseMonster()
         {
             string monsterFile = Path.Combine(DATA_PATH, "BaseMonsterEx.txt");
@@ -1536,9 +1282,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载怪物脚本 (monsterscript.txt)
-        /// </summary>
         private void LoadMonsterScript()
         {
             string scriptFile = Path.Combine(DATA_PATH, "monsterscript.txt");
@@ -1578,9 +1321,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载怪物生成配置 (MonGens目录)
-        /// </summary>
         private void LoadMonsterGen()
         {
             string monGenPath = MONGENS_PATH;
@@ -1607,13 +1347,11 @@ namespace GameServer
                             var parts = line.Split(',');
                             if (parts.Length >= 5)
                             {
-                                // 格式: MapID, X, Y, Range, MonsterName, Count, Interval
                                 string monsterName = parts[4].Trim();
                                 fileCount++;
                             }
                         }
-                        
-                        LogManager.Default.Debug($"怪物生成文件: {Path.GetFileName(file)} ({fileCount} 个生成点)");
+
                         totalCount += fileCount;
                     }
                     
@@ -1630,9 +1368,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载怪物掉落 (MonItems目录)
-        /// </summary>
         private void LoadMonsterItems()
         {
             string monItemsPath = MONITEMS_PATH;
@@ -1659,7 +1394,6 @@ namespace GameServer
                             var parts = line.Split(',');
                             if (parts.Length >= 3)
                             {
-                                // 格式: MonsterName, ItemName, DropRate
                                 string monsterName = parts[0].Trim();
                                 string itemName = parts[1].Trim();
                                 float dropRate = float.Parse(parts[2].Trim());
@@ -1685,9 +1419,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载行会配置
-        /// </summary>
         private void LoadGuildConfigs()
         {
             LogManager.Default.Info("加载行会配置...");
@@ -1709,7 +1440,6 @@ namespace GameServer
                         
                         foreach (var line in lines)
                         {
-                            // 解析行会数据格式: 行会名称=会长名称,成员数,等级,...
                             var parts = line.Split('=');
                             if (parts.Length == 2)
                             {
@@ -1734,23 +1464,15 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载GM配置
-        /// </summary>
         private void LoadGMConfigs()
         {
             LogManager.Default.Info("加载GM配置...");
 
-            // 加载GM列表
             LoadGMList();
 
-            // 加载GM命令定义
             LoadGMCommandDef();
         }
 
-        /// <summary>
-        /// 加载GM列表 (gmlist.txt)
-        /// </summary>
         private void LoadGMList()
         {
             string gmListFile = Path.Combine(DATA_PATH, "gmlist.txt");
@@ -1760,23 +1482,7 @@ namespace GameServer
                 LogManager.Default.Info($"加载GM列表: {gmListFile}");
                 try
                 {
-                    var parser = new Parsers.TextFileParser();
-                    var lines = parser.LoadLines(gmListFile);
-                    int count = 0;
-                    
-                    foreach (var line in lines)
-                    {
-                        // 格式: 角色名=GM等级
-                        var parts = line.Split('=');
-                        if (parts.Length == 2)
-                        {
-                            string playerName = parts[0].Trim();
-                            string gmLevel = parts[1].Trim();
-                            count++;
-                            LogManager.Default.Debug($"GM列表: {playerName} -> 等级{gmLevel}");
-                        }
-                    }
-                    
+                    int count = GmManager.Instance.LoadGmList(gmListFile);
                     LogManager.Default.Info($"加载了 {count} 个GM账号");
                 }
                 catch (Exception ex)
@@ -1790,9 +1496,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载GM命令定义 (cmdlist.txt)
-        /// </summary>
         private void LoadGMCommandDef()
         {
             string cmdListFile = Path.Combine(GAMEMASTER_PATH, "cmdlist.txt");
@@ -1802,23 +1505,7 @@ namespace GameServer
                 LogManager.Default.Info($"加载GM命令定义: {cmdListFile}");
                 try
                 {
-                    var parser = new Parsers.TextFileParser();
-                    var lines = parser.LoadLines(cmdListFile);
-                    int count = 0;
-                    
-                    foreach (var line in lines)
-                    {
-                        // 格式: 命令名=描述|权限等级|参数格式
-                        var parts = line.Split('=');
-                        if (parts.Length == 2)
-                        {
-                            string commandName = parts[0].Trim();
-                            string commandDef = parts[1].Trim();
-                            count++;
-                            LogManager.Default.Debug($"GM命令: {commandName} -> {commandDef}");
-                        }
-                    }
-                    
+                    int count = GmManager.Instance.LoadCommandDef(cmdListFile);
                     LogManager.Default.Info($"加载了 {count} 个GM命令定义");
                 }
                 catch (Exception ex)
@@ -1832,12 +1519,8 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载公告 (notice.txt, linenotice.txt)
-        /// </summary>
         private void LoadNotice()
         {
-            // 加载主公告
             string noticeFile = Path.Combine(DATA_PATH, "notice.txt");
             if (File.Exists(noticeFile))
             {
@@ -1847,7 +1530,6 @@ namespace GameServer
                     _notice = SmartReader.ReadTextFile(noticeFile);
                     LogManager.Default.Info($"公告内容长度: {_notice.Length}");
                     
-                    // 存储到GameWorld
                     GameWorld.Instance.SetNotice(_notice);
                 }
                 catch (Exception ex)
@@ -1856,7 +1538,6 @@ namespace GameServer
                 }
             }
 
-            // 加载滚动公告
             string lineNoticeFile = Path.Combine(DATA_PATH, "linenotice.txt");
             if (File.Exists(lineNoticeFile))
             {
@@ -1874,7 +1555,6 @@ namespace GameServer
                     }
                     LogManager.Default.Info($"加载了 {_lineNotices.Count} 条滚动公告");
                     
-                    // 存储到GameWorld
                     GameWorld.Instance.SetLineNotices(_lineNotices);
                 }
                 catch (Exception ex)
@@ -1884,19 +1564,10 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 获取公告
-        /// </summary>
         public string GetNotice() => _notice;
         
-        /// <summary>
-        /// 获取滚动公告
-        /// </summary>
         public List<string> GetLineNotices() => _lineNotices;
 
-        /// <summary>
-        /// 加载称号 (titles.csv)
-        /// </summary>
         private void LoadTitles()
         {
             string titlesFile = Path.Combine(DATA_PATH, "titles.csv");
@@ -1926,12 +1597,8 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载排行榜 (toplist.txt, topnpc.txt)
-        /// </summary>
         private void LoadTopList()
         {
-            // 加载排行榜NPC
             string topNpcFile = Path.Combine(FIGURE_PATH, "topnpc.txt");
             if (File.Exists(topNpcFile))
             {
@@ -1953,7 +1620,6 @@ namespace GameServer
                 }
             }
 
-            // 加载排行榜数据配置
             string topListFile = Path.Combine(FIGURE_PATH, "toplist.txt");
             if (File.Exists(topListFile))
             {
@@ -1975,10 +1641,6 @@ namespace GameServer
                 }
             }
         }
-
-        /// <summary>
-        /// 加载矿石列表 (minelist.txt)
-        /// </summary>
         private void LoadMineList()
         {
             string mineListFile = Path.Combine(DATA_PATH, "minelist.txt");
@@ -1994,7 +1656,6 @@ namespace GameServer
                     
                     foreach (var line in lines)
                     {
-                        // 格式: 地图ID,矿石名称,最小耐久,最大耐久,出现率
                         var parts = line.Split(',');
                         if (parts.Length >= 5)
                         {
@@ -2005,14 +1666,11 @@ namespace GameServer
                             {
                                 string oreName = parts[1].Trim();
                                 
-                                // 获取地图对象
-                                var map = MapManager.Instance.GetMap(mapId);
+                                var map = LogicMapMgr.Instance.GetLogicMapById(mapId);
                                 if (map != null)
                                 {
-                                    // 添加矿石到地图
                                     map.AddMineItem(oreName, duraMin, duraMax, rate);
                                     count++;
-                                    LogManager.Default.Debug($"地图 {mapId} 添加矿石: {oreName} (耐久:{duraMin}-{duraMax}, 率:{rate})");
                                 }
                                 else
                                 {
@@ -2035,12 +1693,8 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载市场配置 (Market目录)
-        /// </summary>
         private void LoadMarket()
         {
-            // 加载市场滚动文字
             string scrollTextFile = Path.Combine(MARKET_PATH, "scrolltext.txt");
             if (File.Exists(scrollTextFile))
             {
@@ -2056,7 +1710,6 @@ namespace GameServer
                 }
             }
 
-            // 加载市场主目录
             string mainDirFile = Path.Combine(MARKET_PATH, "MainDir.txt");
             if (File.Exists(mainDirFile))
             {
@@ -2079,9 +1732,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载自动脚本 (autoscript.txt)
-        /// </summary>
         private void LoadAutoScript()
         {
             string autoScriptFile = Path.Combine(DATA_PATH, "autoscript.txt");
@@ -2105,9 +1755,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载任务系统 (task目录)
-        /// </summary>
         private void LoadTasks()
         {
             string taskPath = TASK_PATH;
@@ -2137,26 +1784,17 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载人物数据描述
-        /// </summary>
         private void LoadHumanDataDescs()
         {
             LogManager.Default.Info("加载人物数据描述...");
 
-            // 加载战士数据
             LoadHumanDataDesc(0, Path.Combine(DATA_PATH, "humandata_warr.txt"));
             
-            // 加载法师数据
             LoadHumanDataDesc(1, Path.Combine(DATA_PATH, "humandata_magican.txt"));
             
-            // 加载道士数据
             LoadHumanDataDesc(2, Path.Combine(DATA_PATH, "humandata_taoshi.txt"));
         }
 
-        /// <summary>
-        /// 加载出生点配置
-        /// </summary>
         private void LoadStartPoints()
         {
             LogManager.Default.Info("加载出生点配置...");
@@ -2198,18 +1836,15 @@ namespace GameServer
                                 Range = range
                             };
 
-                            // 存储到本地缓存（向后兼容）
                             _startPoints[index] = startPoint;
                             _startPointNameToIndex[name] = index;
                             
-                            // 存储到GameWorld实例
                             startPoints[index] = startPoint;
                             index++;
                         }
                     }
                 }
 
-                // 批量设置到GameWorld
                 GameWorld.Instance.SetStartPoints(startPoints);
                 LogManager.Default.Info($"加载了 {_startPoints.Count} 个出生点配置");
             }
@@ -2219,9 +1854,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载首次登录信息
-        /// </summary>
         private void LoadFirstLoginInfo()
         {
             LogManager.Default.Info("加载首次登录信息...");
@@ -2260,7 +1892,6 @@ namespace GameServer
                                     currentInfo.Gold = gold;
                                 break;
                             case "item":
-                                // 处理物品信息
                                 var itemParts = value.Split('*');
                                 if (itemParts.Length == 2 && 
                                     int.TryParse(itemParts[1], out int count))
@@ -2276,10 +1907,8 @@ namespace GameServer
                     }
                 }
 
-                // 存储到本地缓存（向后兼容）
                 _firstLoginInfos.Add(currentInfo);
                 
-                // 存储到GameWorld实例
                 GameWorld.Instance.SetFirstLoginInfo(currentInfo);
                 
                 LogManager.Default.Info($"加载首次登录信息: 等级={currentInfo.Level}, 金币={currentInfo.Gold}, 物品数={currentInfo.Items.Count}");
@@ -2290,15 +1919,11 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载HumanPlayerMgr
-        /// </summary>
         private void LoadHumanPlayerMgr()
         {
             LogManager.Default.Info("初始化玩家管理器...");
             try
             {
-                // HumanPlayerMgr是单例，在首次访问时自动初始化
                 var playerMgr = HumanPlayerMgr.Instance;
                 LogManager.Default.Info("玩家管理器初始化完成");
             }
@@ -2308,15 +1933,11 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载MagicManager
-        /// </summary>
         private void LoadMagicManager()
         {
             LogManager.Default.Info("加载魔法技能管理器...");
             try
             {
-                // 使用MagicManager加载所有魔法技能配置
                 _magicManager.LoadAll();
                 int magicCount = _magicManager.GetMagicCount();
                 LogManager.Default.Info($"成功加载 {magicCount} 个魔法技能配置");
@@ -2327,15 +1948,11 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载NpcManagerEx
-        /// </summary>
         private void LoadNpcManagerEx()
         {
             LogManager.Default.Info("加载NPC管理器扩展...");
             try
             {
-                // 加载NPC配置文件
                 string npcGenFile = Path.Combine(DATA_PATH, "npcgen.txt");
                 if (File.Exists(npcGenFile))
                 {
@@ -2353,15 +1970,11 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载ScriptObjectMgr
-        /// </summary>
         private void LoadScriptObjectMgr()
         {
             LogManager.Default.Info("加载脚本对象管理器...");
             try
             {
-                // 加载脚本目录
                 string scriptPath = SCRIPT_PATH;
                 if (Directory.Exists(scriptPath))
                 {
@@ -2381,15 +1994,11 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载MonsterManagerEx
-        /// </summary>
         private void LoadMonsterManagerEx()
         {
             LogManager.Default.Info("加载怪物管理器扩展...");
             try
             {
-                // 加载怪物定义文件
                 string monsterFile = Path.Combine(DATA_PATH, "BaseMonsterEx.txt");
                 if (File.Exists(monsterFile))
                 {
@@ -2407,7 +2016,6 @@ namespace GameServer
                     LogManager.Default.Warning($"怪物定义文件不存在: {monsterFile}");
                 }
 
-                // 加载怪物脚本文件
                 string monsterScriptFile = Path.Combine(DATA_PATH, "monsterscript.txt");
                 if (File.Exists(monsterScriptFile))
                 {
@@ -2425,15 +2033,11 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载MonsterGenManager
-        /// </summary>
         private void LoadMonsterGenManager()
         {
             LogManager.Default.Info("加载怪物生成管理器...");
             try
             {
-                // 加载怪物生成配置
                 string monGenPath = MONGENS_PATH;
                 if (Directory.Exists(monGenPath))
                 {
@@ -2442,7 +2046,6 @@ namespace GameServer
                         int genCount = _monsterGenManager.GetGenCount();
                         LogManager.Default.Info($"成功加载 {genCount} 个怪物生成点");
                         
-                        // 初始化所有生成点
                         _monsterGenManager.InitAllGen();
                         LogManager.Default.Info("怪物生成点初始化完成");
                     }
@@ -2462,15 +2065,11 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载MonItemsMgr
-        /// </summary>
         private void LoadMonItemsMgr()
         {
             LogManager.Default.Info("加载怪物掉落管理器...");
             try
             {
-                // 加载怪物掉落配置
                 string monItemsPath = MONITEMS_PATH;
                 if (Directory.Exists(monItemsPath))
                 {
@@ -2495,19 +2094,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载TimeSystem
-        /// </summary>
         private void LoadTimeSystem()
         {
             LogManager.Default.Info("初始化时间系统...");
             try
             {
-                // TimeSystem是单例，在首次访问时自动初始化
                 var timeSystem = TimeSystem.Instance;
                 LogManager.Default.Info("时间系统初始化完成");
                 
-                // 记录启动时间和当前游戏时间
                 var startupTime = timeSystem.GetStartupTime();
                 var currentGameTime = timeSystem.GetCurrentTime();
                 LogManager.Default.Info($"服务器启动时间: {startupTime:yyyy-MM-dd HH:mm:ss}");
@@ -2519,23 +2113,17 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载SystemScript
-        /// </summary>
         private void LoadSystemScript()
         {
             LogManager.Default.Info("初始化系统脚本...");
             try
             {
-                // 获取系统脚本对象
                 var systemScriptObject = ScriptObjectMgr.Instance.GetScriptObject("system");
                 if (systemScriptObject != null)
                 {
-                    // 初始化SystemScript
                     SystemScript.Instance.Init(systemScriptObject);
                     LogManager.Default.Info("系统脚本初始化完成");
                     
-                    // 记录系统脚本信息
                     var scriptObj = SystemScript.Instance.GetScriptObject();
                     if (scriptObj != null)
                     {
@@ -2545,7 +2133,6 @@ namespace GameServer
                 else
                 {
                     LogManager.Default.Warning("系统脚本对象不存在，创建空脚本对象");
-                    // 创建空脚本对象
                     var emptyScriptObject = new ScriptObject();
                     SystemScript.Instance.Init(emptyScriptObject);
                     LogManager.Default.Info("使用空脚本对象初始化系统脚本");
@@ -2557,19 +2144,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载SpecialEquipmentManager
-        /// </summary>
         private void LoadSpecialEquipmentManager()
         {
             LogManager.Default.Info("初始化特殊装备管理器...");
             try
             {
-                // SpecialEquipmentManager是单例，在首次访问时自动初始化
                 var specialEquipmentManager = SpecialEquipmentManager.Instance;
                 LogManager.Default.Info("特殊装备管理器初始化完成");
                 
-                // 记录特殊装备管理器信息
                 int equipmentCount = specialEquipmentManager.GetSpecialEquipmentCount();
                 LogManager.Default.Info($"特殊装备管理器已加载 {equipmentCount} 个装备配置");
             }
@@ -2579,15 +2161,11 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载MapManager
-        /// </summary>
         private void LoadMapManager()
         {
             LogManager.Default.Info("初始化地图管理器...");
             try
             {
-                // 使用MapManager加载地图数据
                 if (MapManager.Instance.Load())
                 {
                     int mapCount = MapManager.Instance.GetMapCount();
@@ -2604,7 +2182,6 @@ namespace GameServer
             }
         }
 
-        // 辅助方法
         private int GetConfigInt(Dictionary<string, string> config, string key, int defaultValue)
         {
             if (config.TryGetValue(key, out var value) && int.TryParse(value, out int result))
@@ -2629,15 +2206,12 @@ namespace GameServer
             return defaultValue;
         }
 
-        // 公共接口方法
         public HumanDataDesc? GetHumanDataDesc(int profession, int level)
         {
-            // 优先从GameWorld实例获取
             var desc = GameWorld.Instance.GetHumanDataDesc(profession, level);
             if (desc != null)
                 return desc;
             
-            // 向后兼容：从本地缓存获取
             if (_humanDataDescs.TryGetValue(profession, out var levelDict) &&
                 levelDict.TryGetValue(level, out var localDesc))
             {
@@ -2648,23 +2222,19 @@ namespace GameServer
 
         public StartPoint? GetStartPoint(int index)
         {
-            // 优先从GameWorld实例获取
             var point = GameWorld.Instance.GetStartPoint(index);
             if (point != null)
                 return point;
             
-            // 向后兼容：从本地缓存获取
             return _startPoints.TryGetValue(index, out var localPoint) ? localPoint : null;
         }
 
         public StartPoint? GetStartPoint(string name)
         {
-            // 优先从GameWorld实例获取
             var point = GameWorld.Instance.GetStartPoint(name);
             if (point != null)
                 return point;
             
-            // 向后兼容：从本地缓存获取
             if (_startPointNameToIndex.TryGetValue(name, out int index))
             {
                 return GetStartPoint(index);
@@ -2674,81 +2244,63 @@ namespace GameServer
 
         public bool GetBornPoint(int profession, out int mapId, out int x, out int y, string? startPointName = null)
         {
-            // 使用GameWorld实例的GetBornPoint方法
             return GameWorld.Instance.GetBornPoint(profession, out mapId, out x, out y, startPointName);
         }
 
         public FirstLoginInfo? GetFirstLoginInfo()
         {
-            // 优先从GameWorld实例获取
             var info = GameWorld.Instance.GetFirstLoginInfo();
             if (info != null)
                 return info;
             
-            // 向后兼容：从本地缓存获取
             return _firstLoginInfos.Count > 0 ? _firstLoginInfos[0] : null;
         }
 
         public string GetGameName(string nameKey)
         {
-            // 优先从GameWorld实例获取
             var name = GameWorld.Instance.GetGameName(nameKey);
-            if (name != nameKey) // 如果GameWorld中有定义，返回该值
+            if (name != nameKey) 
                 return name;
             
-            // 向后兼容：从本地缓存获取
             return _gameNames.TryGetValue(nameKey, out var localName) ? localName : nameKey;
         }
 
         public float GetGameVar(int varKey)
         {
-            // 优先从GameWorld实例获取
             var value = GameWorld.Instance.GetGameVar(varKey);
-            if (value != 0f) // 如果GameWorld中有定义，返回该值
+            if (value != 0f) 
                 return value;
             
-            // 向后兼容：从本地缓存获取
             return _gameVars.TryGetValue(varKey, out var localValue) ? localValue : 0f;
         }
 
         public int GetChannelWaitTime(int channel)
         {
-            // 优先从GameWorld实例获取
             var time = GameWorld.Instance.GetChannelWaitTime(channel);
-            if (time != 1) // 如果GameWorld中有定义，返回该值
+            if (time != 1) 
                 return time;
             
-            // 向后兼容：从本地缓存获取
             return _channelWaitTimes.TryGetValue(channel, out var localTime) ? localTime : 1;
         }
 
         private void SetGameName(string key, string value)
         {
-            // 存储到本地缓存（向后兼容）
             _gameNames[key] = value;
-            // 存储到GameWorld实例
             GameWorld.Instance.SetGameName(key, value);
         }
 
         private void SetGameVar(int key, float value)
         {
-            // 存储到本地缓存（向后兼容）
             _gameVars[key] = value;
-            // 存储到GameWorld实例
             GameWorld.Instance.SetGameVar(key, value);
         }
 
         private void SetChannelWaitTime(int channel, int seconds)
         {
-            // 存储到本地缓存（向后兼容）
             _channelWaitTimes[channel] = seconds;
-            // 存储到GameWorld实例
             GameWorld.Instance.SetChannelWaitTime(channel, seconds);
         }
 
-        /// <summary>
-        /// 加载人物数据描述文件
-        /// </summary>
         public bool LoadHumanDataDesc(int profession, string filePath)
         {
             if (!File.Exists(filePath))
@@ -2779,47 +2331,43 @@ namespace GameServer
                     var parts = line.Split(',');
                     if (parts.Length >= 24)
                     {
-                        // 解析等级数据
-                        if (int.TryParse(parts[0], out int level))
+                        if (int.TryParse(parts[0].Trim(), out int level))
                         {
                             var desc = new HumanDataDesc
                             {
                                 Level = level,
-                                Hp = ushort.Parse(parts[1]),
-                                Mp = ushort.Parse(parts[2]),
-                                LevelupExp = uint.Parse(parts[3]),
-                                MinAc = ushort.Parse(parts[4]),
-                                MaxAc = ushort.Parse(parts[5]),
-                                MinMac = ushort.Parse(parts[6]),
-                                MaxMac = ushort.Parse(parts[7]),
-                                MinDc = ushort.Parse(parts[8]),
-                                MaxDc = ushort.Parse(parts[9]),
-                                MinMc = ushort.Parse(parts[10]),
-                                MaxMc = ushort.Parse(parts[11]),
-                                MinSc = ushort.Parse(parts[12]),
-                                MaxSc = ushort.Parse(parts[13]),
-                                HandWeight = ushort.Parse(parts[14]),
-                                BagWeight = ushort.Parse(parts[15]),
-                                BodyWeight = ushort.Parse(parts[16]),
-                                HitRate = ushort.Parse(parts[17]),
-                                Escape = ushort.Parse(parts[18]),
-                                MageEscape = ushort.Parse(parts[19]),
-                                PoisonEscape = ushort.Parse(parts[20]),
-                                HpRecover = ushort.Parse(parts[21]),
-                                MagicRecover = ushort.Parse(parts[22])
+                                MinAc = ushort.Parse(parts[1].Trim()),
+                                MaxAc = ushort.Parse(parts[2].Trim()),
+                                MinMac = ushort.Parse(parts[3].Trim()),
+                                MaxMac = ushort.Parse(parts[4].Trim()),
+                                MinDc = ushort.Parse(parts[5].Trim()),
+                                MaxDc = ushort.Parse(parts[6].Trim()),
+                                MinMc = ushort.Parse(parts[7].Trim()),
+                                MaxMc = ushort.Parse(parts[8].Trim()),
+                                MinSc = ushort.Parse(parts[9].Trim()),
+                                MaxSc = ushort.Parse(parts[10].Trim()),
+                                Hp = ushort.Parse(parts[11].Trim()),
+                                Mp = ushort.Parse(parts[12].Trim()),
+                                BagWeight = ushort.Parse(parts[13].Trim()),
+                                BodyWeight = ushort.Parse(parts[14].Trim()),
+                                HandWeight = ushort.Parse(parts[15].Trim()),
+                                HitRate = ushort.Parse(parts[16].Trim()),
+                                Escape = ushort.Parse(parts[17].Trim()),
+                                MagicRecover = ushort.Parse(parts[18].Trim()),
+                                HpRecover = ushort.Parse(parts[19].Trim()),
+                                MageEscape = ushort.Parse(parts[20].Trim()),
+                                PoisonEscape = ushort.Parse(parts[21].Trim()),
+                                LevelupExp = uint.Parse(parts[23].Trim()),
                             };
 
-                            // 存储到本地缓存（向后兼容）
                             levelDict[level] = desc;
                             
-                            // 存储到临时字典，用于批量设置到GameWorld
                             descs[level] = desc;
                             count++;
                         }
                     }
                 }
 
-                // 批量设置到GameWorld
                 GameWorld.Instance.SetHumanDataDescs(profession, descs);
                 
                 LogManager.Default.Info($"加载了职业 {profession} 的 {count} 个等级数据");
@@ -2832,9 +2380,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 重新加载指定的配置
-        /// </summary>
         public void ReloadConfig(string configType)
         {
             try
@@ -2847,7 +2392,10 @@ namespace GameServer
                         break;
 
                     case "monster":
-                        LoadMonsterConfigs();
+                        LoadMonsterManagerEx();
+                        LoadMonItemsMgr();
+                        LoadMonsterGenManager();
+                        _monsterGenManager.InitAllGen();
                         LogManager.Default.Info("怪物配置已重新加载");
                         break;
 
@@ -2908,18 +2456,12 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载地图系统
-        /// </summary>
         private void LoadMapSystem()
         {
             LogManager.Default.Info("加载地图系统...");
             LoadMapConfigs();
         }
 
-        /// <summary>
-        /// 加载物品系统
-        /// </summary>
         private void LoadItemSystem()
         {
             LogManager.Default.Info("加载物品系统...");
@@ -2927,9 +2469,6 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 人物数据描述
-    /// </summary>
     public class HumanDataDesc
     {
         public int Level { get; set; }
@@ -2957,9 +2496,6 @@ namespace GameServer
         public ushort MagicRecover { get; set; }
     }
 
-    /// <summary>
-    /// 出生点配置
-    /// </summary>
     public class StartPoint
     {
         public int Index { get; set; }
@@ -2970,9 +2506,6 @@ namespace GameServer
         public int Range { get; set; }
     }
 
-    /// <summary>
-    /// 首次登录信息
-    /// </summary>
     public class FirstLoginInfo
     {
         public int Level { get; set; } = 1;
@@ -2980,15 +2513,9 @@ namespace GameServer
         public List<FirstLoginItem> Items { get; set; } = new();
     }
 
-    /// <summary>
-    /// 首次登录物品信息
-    /// </summary>
     public class FirstLoginItem
     {
         public string ItemName { get; set; } = string.Empty;
         public int Count { get; set; } = 1;
     }
-
-    // GameVar、GameName、ChatWaitChannel枚举现在在GameWorld.cs中定义
-    // 这里不再重复定义，直接使用GameWorld.cs中的定义
 }

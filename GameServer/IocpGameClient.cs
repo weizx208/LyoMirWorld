@@ -8,14 +8,14 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-// 类型别名
+
 using Player = GameServer.HumanPlayer;
 
 namespace GameServer
 {
-    /// <summary>
-    /// IOCP兼容的游戏客户端
-    /// </summary>
+    
+    
+    
     public class IocpGameClient : IDisposable
     {
         #region 字段
@@ -26,7 +26,7 @@ namespace GameServer
         private readonly int _dbServerPort;
         private Player? _player;
         
-        // 客户端状态管理
+        
         private ClientState _state = ClientState.GSUM_NOTVERIFIED;
         private MirCommon.EnterGameServer _enterInfo = new MirCommon.EnterGameServer();
         private uint _clientKey = 0;
@@ -38,7 +38,7 @@ namespace GameServer
         private bool _competlyQuit = false;
         private readonly System.Diagnostics.Stopwatch _hlTimer = System.Diagnostics.Stopwatch.StartNew();
         
-        // 数据加载状态跟踪
+        
         private bool _bagLoaded = false;
         private bool _equipmentLoaded = false;
         private bool _magicLoaded = false;
@@ -47,48 +47,48 @@ namespace GameServer
         private bool _petBankLoaded = false;
         private bool _bankLoaded = false;
         
-        // 接收缓冲区
+        
         private readonly byte[] _receiveBuffer = new byte[8192];
         private int _receiveOffset = 0;
         private readonly object _receiveLock = new object();
         
-        // 发送队列
+        
         private readonly ConcurrentQueue<byte[]> _sendQueue = new ConcurrentQueue<byte[]>();
         private readonly object _sendLock = new object();
         private bool _isSending = false;
         
-        // 处理标志
+        
         private volatile bool _isProcessing = false;
         private volatile bool _isDisposed = false;
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         #endregion
         
         #region 属性
-        /// <summary>
-        /// 获取客户端ID
-        /// </summary>
+        
+        
+        
         public uint GetId() => _clientKey;
         
-        /// <summary>
-        /// 获取客户端Key
-        /// </summary>
+        
+        
+        
         public uint GetClientKey() => _clientKey;
         
-        /// <summary>
-        /// 获取Socket
-        /// </summary>
+        
+        
+        
         public Socket Socket => _socket;
         
-        /// <summary>
-        /// 获取玩家对象
-        /// </summary>
+        
+        
+        
         public Player? Player => _player;
         #endregion
         
         #region 构造函数
-        /// <summary>
-        /// 创建IOCP兼容的游戏客户端
-        /// </summary>
+        
+        
+        
         public IocpGameClient(Socket socket, IocpGameServerApp server, GameWorld world, string dbServerAddress, int dbServerPort)
         {
             _socket = socket ?? throw new ArgumentNullException(nameof(socket));
@@ -98,7 +98,7 @@ namespace GameServer
             _dbServerPort = dbServerPort;
             _clientKey = Interlocked.Increment(ref _nextClientKey);
             
-            // 配置Socket
+            
             socket.NoDelay = true;
             socket.ReceiveBufferSize = 8192;
             socket.SendBufferSize = 8192;
@@ -108,9 +108,9 @@ namespace GameServer
         #endregion
         
         #region 公共方法
-        /// <summary>
-        /// 开始处理客户端消息
-        /// </summary>
+        
+        
+        
         public async Task ProcessAsync()
         {
             if (_isProcessing) return;
@@ -122,29 +122,29 @@ namespace GameServer
             {
                 LogManager.Default.Info($"开始处理IOCP客户端: ID={_clientKey}");
                 
-                // 启动发送任务
+                
                 var sendTask = Task.Run(() => SendProcessor(token), token);
                 
-                // 处理接收消息
+                
                 while (!token.IsCancellationRequested && _socket.Connected)
                 {
                     try
                     {
-                        // 接收数据
+                        
                         int bytesRead = await ReceiveDataAsync(token);
                         if (bytesRead == 0)
                         {
-                            // 连接关闭
+                            
                             LogManager.Default.Info($"客户端连接关闭: ID={_clientKey}");
                             break;
                         }
                         
-                        // 处理接收到的数据
+                        
                         await ProcessReceivedData(bytesRead);
                     }
                     catch (OperationCanceledException)
                     {
-                        // 任务被取消
+                        
                         break;
                     }
                     catch (SocketException ex)
@@ -159,7 +159,7 @@ namespace GameServer
                     }
                 }
                 
-                // 等待发送任务完成
+                
                 await sendTask;
             }
             finally
@@ -170,9 +170,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 发送消息到客户端
-        /// </summary>
+        
+        
+        
         public void SendMessage(byte[] data)
         {
             if (_isDisposed || !_socket.Connected) return;
@@ -181,7 +181,7 @@ namespace GameServer
             {
                 _sendQueue.Enqueue(data);
                 
-                // 触发发送
+                
                 lock (_sendLock)
                 {
                     if (!_isSending)
@@ -196,9 +196,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 发送游戏消息
-        /// </summary>
+        
+        
+        
         public void SendGameMessage(uint dwFlag, ushort wCmd, ushort w1 = 0, ushort w2 = 0, ushort w3 = 0, byte[]? payload = null)
         {
             try
@@ -217,17 +217,17 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 发送简单游戏消息
-        /// </summary>
+        
+        
+        
         public void SendSimpleMessage(uint dwFlag, ushort wCmd, ushort w1 = 0, ushort w2 = 0, ushort w3 = 0, byte[]? payload = null)
         {
             SendGameMessage(dwFlag, wCmd, w1, w2, w3, payload);
         }
         
-        /// <summary>
-        /// 断开连接
-        /// </summary>
+        
+        
+        
         public void Disconnect()
         {
             try
@@ -248,16 +248,16 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 处理DBServer消息（从GameServerApp分发）
-        /// </summary>
+        
+        
+        
         public void HandleDbServerMessage(MirCommon.MirMsg msg)
         {
             try
             {
                 LogManager.Default.Info($"IOCP客户端收到转发的DBServer消息: Cmd=0x{msg.wCmd:X4}, Flag=0x{msg.dwFlag:X8}");
                 
-                // 调用现有的OnDBMsg方法处理消息
+                
                 _ = OnDBMsg(msg, msg.data?.Length ?? 0);
             }
             catch (Exception ex)
@@ -268,9 +268,9 @@ namespace GameServer
         #endregion
         
         #region 私有方法
-        /// <summary>
-        /// 接收数据
-        /// </summary>
+        
+        
+        
         private async Task<int> ReceiveDataAsync(CancellationToken token)
         {
             try
@@ -278,8 +278,8 @@ namespace GameServer
                 var buffer = new byte[4096];
                 var receiveTask = _socket.ReceiveAsync(buffer, SocketFlags.None, token);
                 
-                // 设置超时
-                var timeoutTask = Task.Delay(30000, token); // 30秒超时
+                
+                var timeoutTask = Task.Delay(30000, token); 
                 var completedTask = await Task.WhenAny(receiveTask.AsTask(), timeoutTask);
                 
                 if (completedTask == timeoutTask)
@@ -294,10 +294,10 @@ namespace GameServer
                 {
                     lock (_receiveLock)
                     {
-                        // 确保缓冲区足够大
+                        
                         if (_receiveOffset + bytesRead > _receiveBuffer.Length)
                         {
-                            // 扩展缓冲区
+                            
                             byte[] newBuffer = new byte[Math.Max(_receiveBuffer.Length * 2, _receiveOffset + bytesRead)];
                             Array.Copy(_receiveBuffer, 0, newBuffer, 0, _receiveOffset);
                             Array.Copy(buffer, 0, newBuffer, _receiveOffset, bytesRead);
@@ -325,20 +325,20 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 处理接收到的数据
-        /// </summary>
+        
+        
+        
         private async Task ProcessReceivedData(int bytesRead)
         {
             lock (_receiveLock)
             {
                 if (_receiveOffset == 0) return;
                 
-                // 处理缓冲区中的数据
+                
                 int processed = 0;
                 while (processed < _receiveOffset)
                 {
-                    // 查找消息边界（以'#'开头，以'!'结尾）
+                    
                     int startIndex = -1;
                     int endIndex = -1;
                     
@@ -357,22 +357,22 @@ namespace GameServer
                     
                     if (startIndex == -1 || endIndex == -1)
                     {
-                        // 没有完整的消息，等待更多数据
+                        
                         break;
                     }
                     
-                    // 提取完整消息
+                    
                     int messageLength = endIndex - startIndex + 1;
                     byte[] message = new byte[messageLength];
                     Array.Copy(_receiveBuffer, startIndex, message, 0, messageLength);
                     
-                    // 处理消息
+                    
                     _ = ProcessSingleMessage(message);
                     
                     processed = endIndex + 1;
                 }
                 
-                // 移动剩余数据到缓冲区开头
+                
                 if (processed > 0)
                 {
                     int remaining = _receiveOffset - processed;
@@ -387,9 +387,9 @@ namespace GameServer
             await Task.CompletedTask;
         }
         
-        /// <summary>
-        /// 处理单个消息
-        /// </summary>
+        
+        
+        
         private async Task ProcessSingleMessage(byte[] message)
         {
             try
@@ -404,7 +404,7 @@ namespace GameServer
                 
                 LogManager.Default.Debug($"处理消息 (ID={_clientKey}): Cmd=0x{msg.wCmd:X4}");
                 
-                // 根据客户端状态处理消息
+                
                 if (_state != ClientState.GSUM_VERIFIED)
                 {
                     await HandlePreVerifiedMessage(msg, payload);
@@ -420,9 +420,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 处理验证前的消息
-        /// </summary>
+        
+        
+        
         private async Task HandlePreVerifiedMessage(MirMsgOrign msg, byte[] payload)
         {
             switch (_state)
@@ -432,7 +432,7 @@ namespace GameServer
                     break;
                     
                 case ClientState.GSUM_WAITINGDBINFO:
-                    // 等待数据库信息，忽略其他消息
+                    
                     LogManager.Default.Debug($"等待数据库信息状态，忽略消息 (ID={_clientKey})");
                     break;
                     
@@ -442,20 +442,20 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 处理验证字符串
-        /// </summary>
+        
+        
+        
         private async Task HandleVerifyString(MirMsgOrign msg, byte[] payload)
         {
             try
             {
-                // 将消息数据转换为字符串
+                
                 string verifyString = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
                 LogManager.Default.Info($"处理验证字符串 (ID={_clientKey}): {verifyString}");
                 
                 _state = ClientState.GSUM_WAITINGDBINFO;
                 
-                // 模拟查询数据库
+                
                 await SimulateQueryDatabase();
             }
             catch (Exception ex)
@@ -464,9 +464,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 处理等待确认消息
-        /// </summary>
+        
+        
+        
         private async Task HandleWaitingConfirmMessage(MirMsgOrign msg, byte[] payload)
         {
             if (msg.wCmd == GameMessageHandler.ClientCommands.CM_CONFIRMFIRSTDIALOG)
@@ -480,22 +480,22 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 处理确认第一个对话框
-        /// </summary>
+        
+        
+        
         private async Task HandleConfirmFirstDialog(MirMsgOrign msg, byte[] payload)
         {
             try
             {
                 LogManager.Default.Info($"处理确认第一个对话框 (ID={_clientKey})");
                 
-                // 设置状态为已验证
+                
                 _state = ClientState.GSUM_VERIFIED;
                 
-                // 创建玩家对象
+                
                 await CreatePlayer();
                 
-                // 发送进入游戏成功消息
+                
                 SendEnterGameOk();
                 
                 LogManager.Default.Info($"客户端已验证并进入游戏 (ID={_clientKey})");
@@ -506,28 +506,28 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 模拟查询数据库
-        /// </summary>
+        
+        
+        
         private async Task SimulateQueryDatabase()
         {
             try
             {
                 LogManager.Default.Info($"模拟查询数据库 (ID={_clientKey})");
                 
-                // 模拟数据库查询延迟
+                
                 await Task.Delay(100);
                 
-                // 设置进入信息
+                
                 _enterInfo.nLoginId = _clientKey;
                 _enterInfo.nSelCharId = _clientKey;
                 _enterInfo.SetName($"Player_{_clientKey}");
                 _enterInfo.SetAccount($"Account_{_clientKey}");
                 
-                // 发送第一个对话框
+                
                 SendFirstDlg("欢迎来到游戏服务器！");
                 
-                // 设置状态为等待确认
+                
                 _state = ClientState.GSUM_WAITINGCONFIRM;
                 
                 LogManager.Default.Info($"数据库查询完成，等待客户端确认 (ID={_clientKey})");
@@ -538,16 +538,16 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 创建玩家对象
-        /// </summary>
+        
+        
+        
         private async Task CreatePlayer()
         {
             try
             {
                 LogManager.Default.Info($"创建玩家对象 (ID={_clientKey})");
                 
-                // 创建玩家
+                
                 string account = _enterInfo.GetAccount();
                 string playerName = _enterInfo.GetName();
                 uint charId = _enterInfo.nSelCharId;
@@ -560,7 +560,7 @@ namespace GameServer
                     return;
                 }
                 
-                // 设置发送消息委托
+                
                 _player.SetSendMessageDelegate((uint dwFlag, ushort wCmd, ushort w1, ushort w2, ushort w3, byte[]? payload) =>
                 {
                     try
@@ -575,14 +575,14 @@ namespace GameServer
 
 
 
-                // lyo：创建一个空玩家对象
+                
                 var createDesc = new CREATEHUMANDESC
                 {
                     dbinfo = new CHARDBINFO(),
                     pClientObj = IntPtr.Zero
                 };
 
-                // 初始化玩家
+                
                 if (!_player.Init(createDesc))
                 {
                     LogManager.Default.Error($"初始化玩家失败 (ID={_clientKey})");
@@ -591,7 +591,7 @@ namespace GameServer
                     return;
                 }
                 
-                // 添加到游戏世界
+                
                 _world.AddPlayer(_player);
                 
                 LogManager.Default.Info($"玩家创建成功 (ID={_clientKey}): {playerName}");
@@ -602,16 +602,16 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 处理游戏消息
-        /// </summary>
+        
+        
+        
         private async Task HandleGameMessage(MirMsgOrign msg, byte[] payload)
         {
             try
             {
                 LogManager.Default.Debug($"处理游戏消息 (ID={_clientKey}): Cmd=0x{msg.wCmd:X4}");
                 
-                // 根据消息命令处理
+                
                 switch (msg.wCmd)
                 {
                     case GameMessageHandler.ClientCommands.CM_WALK:
@@ -726,9 +726,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 发送第一个对话框
-        /// </summary>
+        
+        
+        
         private void SendFirstDlg(string message)
         {
             try
@@ -743,9 +743,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 发送进入游戏成功消息
-        /// </summary>
+        
+        
+        
         private void SendEnterGameOk()
         {
             try
@@ -773,9 +773,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 发送未知命令响应
-        /// </summary>
+        
+        
+        
         private void SendUnknownCommandResponse(ushort command)
         {
             try
@@ -789,9 +789,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 发送处理器
-        /// </summary>
+        
+        
+        
         private void SendProcessor(CancellationToken token)
         {
             try
@@ -799,12 +799,12 @@ namespace GameServer
                 while (!token.IsCancellationRequested && _socket.Connected)
                 {
                     SendFromQueue();
-                    Thread.Sleep(10); // 避免CPU占用过高
+                    Thread.Sleep(10); 
                 }
             }
             catch (OperationCanceledException)
             {
-                // 任务被取消
+                
             }
             catch (Exception ex)
             {
@@ -812,9 +812,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 从队列发送消息
-        /// </summary>
+        
+        
+        
         private void SendFromQueue()
         {
             lock (_sendLock)
@@ -849,9 +849,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 处理数据库消息
-        /// </summary>
+        
+        
+        
         private async Task OnDBMsg(MirCommon.MirMsg pMsg, int datasize)
         {
             try
@@ -861,19 +861,19 @@ namespace GameServer
                 switch (pMsg.wCmd)
                 {
                     case (ushort)DbMsg.DM_GETCHARDBINFO:
-                        // 处理角色数据库信息
+                        
                         LogManager.Default.Info($"收到角色数据库信息 (ID={_clientKey})");
                         break;
                     case (ushort)DbMsg.DM_QUERYITEMS:
-                        // 处理物品查询结果
+                        
                         LogManager.Default.Info($"收到物品查询结果 (ID={_clientKey})");
                         break;
                     case (ushort)DbMsg.DM_QUERYMAGIC:
-                        // 处理技能查询结果
+                        
                         LogManager.Default.Info($"收到技能查询结果 (ID={_clientKey})");
                         break;
                     case (ushort)DbMsg.DM_QUERYTASKINFO:
-                        // 处理任务信息查询结果
+                        
                         LogManager.Default.Info($"收到任务信息查询结果 (ID={_clientKey})");
                         break;
                     default:
@@ -889,25 +889,25 @@ namespace GameServer
             await Task.CompletedTask;
         }
         
-        /// <summary>
-        /// 断开连接处理
-        /// </summary>
+        
+        
+        
         private void OnDisconnect()
         {
             try
             {
-                // 玩家断开，从世界移除
+                
                 if (_player != null)
                 {
                     LogManager.Default.Info($"玩家断开连接 (ID={_clientKey}): {_player.Name}");
                     
-                    // 从地图移除
+                    
                     _world.RemovePlayer(_player.ObjectId);
                     
-                    // 保存数据到数据库
+                    
                     SavePlayerDataToDB();
                     
-                    // 清理资源
+                    
                     CleanupPlayerResources();
                     
                     _player = null;
@@ -921,9 +921,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 保存玩家数据到数据库
-        /// </summary>
+        
+        
+        
         private void SavePlayerDataToDB()
         {
             if (_player == null) return;
@@ -931,7 +931,7 @@ namespace GameServer
             try
             {
                 LogManager.Default.Info($"保存玩家数据 (ID={_clientKey}): {_player.Name}");
-                // 这里实现保存玩家数据到数据库的逻辑
+                
             }
             catch (Exception ex)
             {
@@ -939,9 +939,9 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 清理玩家资源
-        /// </summary>
+        
+        
+        
         private void CleanupPlayerResources()
         {
             if (_player == null) return;
@@ -949,7 +949,7 @@ namespace GameServer
             try
             {
                 LogManager.Default.Info($"清理玩家资源 (ID={_clientKey}): {_player.Name}");
-                // 这里实现清理玩家资源的逻辑
+                
             }
             catch (Exception ex)
             {
@@ -1177,7 +1177,7 @@ namespace GameServer
                 }
                 catch { }
                 
-                // 清理玩家资源
+                
                 if (_player != null)
                 {
                     try

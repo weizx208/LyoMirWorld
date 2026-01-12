@@ -6,9 +6,9 @@ using System.Text;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 简单的INI文件读取器
-    /// </summary>
+    
+    
+    
     public class IniFile
     {
         private readonly Dictionary<string, Dictionary<string, string>> _sections = new();

@@ -3,9 +3,9 @@ using MySql.Data.MySqlClient;
 
 namespace MirCommon.Database
 {
-    /// <summary>
-    /// MySQL数据库实现
-    /// </summary>
+    
+    
+    
     public class MySQLDatabase : BaseDatabase
     {
         public MySQLDatabase(string connectionString) : base(connectionString)
@@ -30,7 +30,7 @@ namespace MirCommon.Database
                 _connection = CreateConnection();
                 _connection.Open();
                 
-                // 检查并创建必要的表
+                
                 CreateTablesIfNotExist();
                 
                 return SERVER_ERROR.SE_OK;
@@ -41,14 +41,14 @@ namespace MirCommon.Database
             }
         }
         
-        /// <summary>
-        /// 创建必要的表（如果不存在）
-        /// </summary>
+        
+        
+        
         private void CreateTablesIfNotExist()
         {
             using var cmd = _connection!.CreateCommand();
             
-            // 创建账号表
+            
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS TBL_ACCOUNT (
                     FLD_ACCOUNT VARCHAR(50) PRIMARY KEY,
@@ -66,7 +66,7 @@ namespace MirCommon.Database
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
             cmd.ExecuteNonQuery();
             
-            // 创建角色表
+            
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS TBL_CHARACTER (
                     FLD_ACCOUNT VARCHAR(50) NOT NULL,
@@ -87,7 +87,7 @@ namespace MirCommon.Database
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
             cmd.ExecuteNonQuery();
             
-            // 创建物品表
+            
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS TBL_ITEMS (
                     FLD_OWNER INT NOT NULL,
@@ -97,7 +97,7 @@ namespace MirCommon.Database
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
             cmd.ExecuteNonQuery();
             
-            // 创建技能表
+            
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS TBL_MAGIC (
                     FLD_OWNER INT NOT NULL PRIMARY KEY,

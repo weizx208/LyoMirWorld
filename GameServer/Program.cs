@@ -10,7 +10,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-// 类型别名
+
 using Player = GameServer.HumanPlayer;
 
 namespace GameServer
@@ -32,14 +32,14 @@ namespace GameServer
 
             try
             {
-                //var configManager = new ConfigManager("gameserver_config.json");
-                //configManager.Load();
+                
+                
 
-                //var logConfig = ServerConfigHelper.LoadLogConfig(configManager);
-                //var logger = new Logger(logConfig.directory, logConfig.writeToConsole, logConfig.writeToFile);
-                //LogManager.SetDefaultLogger(logger);
+                
+                
+                
 
-                // 使用INI配置文件
+                
                 var iniReader = new IniFileReader("config.ini");
                 if (!iniReader.Open())
                 {
@@ -52,14 +52,14 @@ namespace GameServer
                 if (await _server.Initialize())
                 {
                     LogManager.Default.Info("游戏服务器初始化成功");
-                    //启动与传世客户端通讯线程
+                    
                     await _server.Start();
-                    //启动与ServerCenter通讯线程
+                    
                     await _server.StartServerCenterClient();
-                    //启动控制台控制器线程
+                    
                     _ = Task.Run(() => CommandLoop());
                     
-                    //游戏世界逻辑处理循环（主线程）
+                    
                     while (_isRunning)
                     {
                         await Task.Delay(100);

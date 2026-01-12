@@ -9,25 +9,26 @@ using MirCommon.Utils;
 
 namespace GameServer
 {
-    /// <summary>
-    /// NPC管理器扩展
-    /// </summary>
+    
+    
+    
+    
     public class NpcManagerEx
     {
         private static NpcManagerEx? _instance;
         public static NpcManagerEx Instance => _instance ??= new NpcManagerEx();
 
-        // NPC定义缓存
+        
         private readonly Dictionary<int, NpcDefinitionEx> _definitions = new();
         private readonly Dictionary<uint, NpcInstanceEx> _instances = new();
         private readonly Dictionary<int, List<uint>> _mapNpcs = new();
         private readonly Dictionary<uint, NpcInstanceEx> _dynamicNpcs = new();
         
-        // NPC更新队列
+        
         private readonly Queue<NpcInstanceEx> _updateQueue = new();
         private int _updateIndex = 0;
         
-        // 对象池
+        
         private readonly Queue<NpcGoodsListEx> _goodsListPool = new();
         private readonly Queue<NpcGoodsItemListEx> _goodsItemListPool = new();
         
@@ -37,12 +38,13 @@ namespace GameServer
 
         private NpcManagerEx()
         {
-            //InitializeDefaultNpcs();//（必须等待ScriptObjectMgr.Load()加载完成后才能加载）
+            
         }
 
-        /// <summary>
-        /// 加载NPC配置文件（必须等待ScriptObjectMgr.Load()加载完成后才能加载）
-        /// </summary>
+        
+        
+        
+        
         public bool Load(string filename)
         {
             if (!File.Exists(filename))
@@ -75,10 +77,11 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 从字符串添加NPC
-        /// 格式: name/id/view/mapid/x/y/istalk/scriptfile[/buypercent/sellpercent]
-        /// </summary>
+        
+        
+        
+        
+        
         public bool AddNpcFromString(string npcString)
         {
             var parts = npcString.Split('/');
@@ -88,33 +91,51 @@ namespace GameServer
                 return false;
             }
 
-            string name = parts[0];
-            if (!int.TryParse(parts[1], out int dbId) ||
-                !Helper.TryHexToInt(parts[2], out int view) ||      //十六进制，如"0x25"
-                !int.TryParse(parts[3], out int mapId) ||
-                !int.TryParse(parts[4], out int x) ||
-                !int.TryParse(parts[5], out int y) ||
-                !int.TryParse(parts[6], out int canTalk))
+            string name = parts[0].Trim();
+            if (!int.TryParse(parts[1].Trim(), out int dbId) ||
+                !Helper.TryHexToInt(parts[2].Trim(), out int view) ||      
+                !int.TryParse(parts[3].Trim(), out int mapId) ||
+                !int.TryParse(parts[4].Trim(), out int x) ||
+                !int.TryParse(parts[5].Trim(), out int y) ||
+                !int.TryParse(parts[6].Trim(), out int canTalk))
             {
                 LogManager.Default.Warning($"NPC字符串解析失败: {npcString}");
                 return false;
             }
 
-            // 如果不能对话，跳过
+            
             if (canTalk == 0)
                 return false;
 
-            string scriptFile = parts.Length > 7 ? parts[7] : string.Empty;
+            string scriptFile = parts.Length > 7 ? parts[7].Trim() : string.Empty;
 
-            // 获取脚本对象
-            var scriptObject = ScriptObjectMgr.Instance.GetScriptObject(scriptFile);
-            if (scriptObject == null)
+            
+            ScriptObject? scriptObject = null;
+            if (!string.IsNullOrEmpty(scriptFile))
             {
-                LogManager.Default.Warning($"NPC脚本对象不存在: {scriptFile}");
-                return false;
+                string scriptKey = Path.GetFileNameWithoutExtension(scriptFile);
+                scriptObject = ScriptObjectMgr.Instance.GetScriptObject(scriptKey);
+                if (scriptObject == null)
+                {
+                    
+                    var allNames = ScriptObjectMgr.Instance.GetAllScriptObjectNames();
+                    var found = allNames.FirstOrDefault(n => string.Equals(n, scriptKey, StringComparison.OrdinalIgnoreCase));
+                    if (!string.IsNullOrEmpty(found))
+                        scriptObject = ScriptObjectMgr.Instance.GetScriptObject(found);
+                }
+
+                if (scriptObject == null)
+                {
+                    
+                    var available = ScriptObjectMgr.Instance.GetAllScriptObjectNames();
+                    string sample = available.Count > 0 ? string.Join(", ", available.Take(20)) : "(none)";
+                    LogManager.Default.Warning($"NPC脚本对象不存在: '{scriptFile}' (NPC: {name}). 已加载脚本样例: {sample}");
+                    
+                    
+                }
             }
 
-            // 创建NPC定义
+            
             var definition = new NpcDefinitionEx
             {
                 NpcId = dbId,
@@ -124,7 +145,7 @@ namespace GameServer
                 ScriptObject = scriptObject
             };
 
-            // 设置买卖比例
+            
             if (parts.Length > 8)
             {
                 if (int.TryParse(parts[8], out int buyPercent))
@@ -134,21 +155,21 @@ namespace GameServer
                     definition.SellPercent = sellPercent / 100.0f;
             }
 
-            // 添加定义
+            
             AddDefinition(definition);
 
-            // 创建NPC实例
+            
             var npc = CreateNpc(dbId, mapId, x, y);
             if (npc == null)
                 return false;
 
-            LogManager.Default.Debug($"NPC {name} 进入世界在({mapId})({x},{y})");
+            
             return true;
         }
 
-        /// <summary>
-        /// 添加NPC定义
-        /// </summary>
+        
+        
+        
         public void AddDefinition(NpcDefinitionEx definition)
         {
             lock (_lock)
@@ -157,9 +178,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取NPC定义
-        /// </summary>
+        
+        
+        
         public NpcDefinitionEx? GetDefinition(int npcId)
         {
             lock (_lock)
@@ -168,9 +189,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 创建NPC实例
-        /// </summary>
+        
+        
+        
         public NpcInstanceEx? CreateNpc(int npcId, int mapId, int x, int y)
         {
             var definition = GetDefinition(npcId);
@@ -179,18 +200,21 @@ namespace GameServer
 
             lock (_lock)
             {
-                uint instanceId = Interlocked.Increment(ref _nextInstanceId);
-                var npc = new NpcInstanceEx(definition, instanceId, mapId, x, y);
                 
+                uint seq = Interlocked.Increment(ref _nextInstanceId);
+                uint instanceId = ObjectIdUtil.MakeObjectId(MirObjectType.NPC, seq);
+
+                var npc = new NpcInstanceEx(definition, instanceId, mapId, x, y);
+
                 _instances[instanceId] = npc;
 
-                // 添加到地图NPC列表
+                
                 if (!_mapNpcs.ContainsKey(mapId))
                     _mapNpcs[mapId] = new List<uint>();
                 _mapNpcs[mapId].Add(instanceId);
 
-                // 添加到地图
-                var map = MapManager.Instance.GetMap((uint)mapId);
+                
+                var map = LogicMapMgr.Instance.GetLogicMapById((uint)mapId);
                 if (map != null)
                 {
                     map.AddObject(npc, x, y);
@@ -200,9 +224,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取NPC实例
-        /// </summary>
+        
+        
+        
         public NpcInstanceEx? GetNpc(uint instanceId)
         {
             lock (_lock)
@@ -211,9 +235,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取地图上的所有NPC
-        /// </summary>
+        
+        
+        
         public List<NpcInstanceEx> GetMapNpcs(int mapId)
         {
             lock (_lock)
@@ -229,9 +253,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 移除NPC
-        /// </summary>
+        
+        
+        
         public bool RemoveNpc(uint instanceId)
         {
             lock (_lock)
@@ -239,34 +263,35 @@ namespace GameServer
                 if (!_instances.TryGetValue(instanceId, out var npc))
                     return false;
 
-                // 从地图列表中移除
+                
                 if (_mapNpcs.TryGetValue(npc.MapId, out var list))
                     list.Remove(instanceId);
 
-                // 从地图移除
-                var map = MapManager.Instance.GetMap((uint)npc.MapId);
+                
+                var map = LogicMapMgr.Instance.GetLogicMapById((uint)npc.MapId);
                 if (map != null)
                 {
                     map.RemoveObject(npc);
                 }
 
-                // 从实例字典移除
+                
                 _instances.Remove(instanceId);
 
                 return true;
             }
         }
 
-        /// <summary>
-        /// 添加动态NPC
-        /// </summary>
+        
+        
+        
+        
         public bool AddDynamicNpc(uint ident, string name, uint viewId, uint mapId, uint x, uint y, string scriptFile)
         {
             var scriptObject = ScriptObjectMgr.Instance.GetScriptObject(scriptFile);
             if (scriptObject == null)
                 return false;
 
-            var map = MapManager.Instance.GetMap(mapId);
+            var map = LogicMapMgr.Instance.GetLogicMapById(mapId);
             if (map == null)
                 return false;
 
@@ -285,10 +310,10 @@ namespace GameServer
 
                 var npc = new NpcInstanceEx(definition, dynamicId, (int)mapId, (int)x, (int)y);
                 
-                // 添加到动态NPC列表
+                
                 _dynamicNpcs[dynamicId] = npc;
                 
-                // 添加到地图
+                
                 if (!map.AddObject(npc, (int)x, (int)y))
                 {
                     _dynamicNpcs.Remove(dynamicId);
@@ -300,9 +325,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 移除动态NPC
-        /// </summary>
+        
+        
+        
+        
         public bool RemoveDynamicNpc(uint ident)
         {
             lock (_lock)
@@ -311,23 +337,24 @@ namespace GameServer
                 if (!_dynamicNpcs.TryGetValue(dynamicId, out var npc))
                     return false;
 
-                // 从地图移除
+                
                 if (npc.CurrentMap != null)
                     npc.CurrentMap.RemoveObject(npc);
 
-                // 保存物品
+                
                 npc.SaveItems();
 
-                // 从动态列表移除
+                
                 _dynamicNpcs.Remove(dynamicId);
 
                 return true;
             }
         }
 
-        /// <summary>
-        /// 获取动态NPC
-        /// </summary>
+        
+        
+        
+        
         public NpcInstanceEx? GetDynamicNpc(uint ident)
         {
             lock (_lock)
@@ -337,15 +364,16 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 更新NPC
-        /// 使用队列轮流更新NPC，每次Update只更新一个NPC
-        /// </summary>
+        
+        
+        
+        
+        
         public void Update()
         {
             lock (_lock)
             {
-                // 如果队列为空，重新填充队列
+                
                 if (_updateQueue.Count == 0)
                 {
                     foreach (var npc in _instances.Values)
@@ -358,23 +386,24 @@ namespace GameServer
                     }
                 }
                 
-                // 从队列中取出一个NPC进行更新
+                
                 if (_updateQueue.Count > 0)
                 {
                     var npc = _updateQueue.Dequeue();
                     if (npc != null && npc.IsActive)
                     {
                         npc.Update();
-                        // 更新后将NPC放回队列尾部
+                        
                         _updateQueue.Enqueue(npc);
                     }
                 }
             }
         }
 
-        /// <summary>
-        /// 获取NPC数量
-        /// </summary>
+        
+        
+        
+        
         public int GetCount()
         {
             lock (_lock)
@@ -383,9 +412,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 分配商品列表
-        /// </summary>
+        
+        
+        
+        
         public NpcGoodsListEx AllocGoodsList()
         {
             lock (_lock)
@@ -397,9 +427,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 释放商品列表
-        /// </summary>
+        
+        
+        
+        
         public void FreeGoodsList(NpcGoodsListEx goodsList)
         {
             lock (_lock)
@@ -409,9 +440,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 分配商品项列表
-        /// </summary>
+        
+        
+        
+        
         public NpcGoodsItemListEx AllocGoodsItemList()
         {
             lock (_lock)
@@ -423,9 +455,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 释放商品项列表
-        /// </summary>
+        
+        
+        
+        
         public void FreeGoodsItemList(NpcGoodsItemListEx goodsItemList)
         {
             lock (_lock)
@@ -435,30 +468,30 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 初始化默认NPC
-        /// </summary>
-        //private void InitializeDefaultNpcs()
-        //{
-        //    // 加载NPC配置文件
-        //    string npcFile = Path.Combine("./data", "npcgen.txt");
-        //    if (File.Exists(npcFile))
-        //    {
-        //        Load(npcFile);
-        //    }
-        //    else
-        //    {
-        //        LogManager.Default.Warning($"NPC配置文件不存在: {npcFile}，创建默认NPC");
-        //        CreateDefaultNpcs();
-        //    }
-        //}
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
-        /// <summary>
-        /// 创建默认NPC
-        /// </summary>
+        
+        
+        
         private void CreateDefaultNpcs()
         {
-            // 创建一些基本NPC
+            
             var defaultNpcs = new[]
             {
                 new NpcDefinitionEx { NpcId = 1001, Name = "武器商人", ViewId = 100, ScriptFile = "weaponshop" },
@@ -479,9 +512,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// NPC定义扩展
-    /// </summary>
+    
+    
+    
     public class NpcDefinitionEx
     {
         public int NpcId { get; set; }
@@ -490,13 +523,13 @@ namespace GameServer
         public string ScriptFile { get; set; } = string.Empty;
         public ScriptObject? ScriptObject { get; set; }
         public float BuyPercent { get; set; } = 1.0f;
-        public float SellPercent { get; set; } = 1.0f;
+        public float SellPercent { get; set; } = 0.5f; 
         public bool IsDynamic { get; set; }
     }
 
-    /// <summary>
-    /// NPC实例扩展
-    /// </summary>
+    
+    
+    
     public class NpcInstanceEx : Npc
     {
         public uint InstanceId { get; set; }
@@ -508,15 +541,21 @@ namespace GameServer
         {
             Definition = definition;
             InstanceId = instanceId;
+            ObjectId = instanceId;
             MapId = mapId;
             X = (ushort)x;
             Y = (ushort)y;
             ScriptFile = definition.ScriptFile;
+            ImageIndex = definition.ViewId; 
         }
 
         private static NpcType ConvertToNpcType(NpcDefinitionEx definition)
         {
-            // 根据脚本文件或名称判断NPC类型
+            
+            if (!string.IsNullOrEmpty(definition.ScriptFile))
+                return NpcType.Script;
+
+            
             if (definition.ScriptFile.Contains("shop", StringComparison.OrdinalIgnoreCase))
                 return NpcType.Merchant;
             if (definition.ScriptFile.Contains("storage", StringComparison.OrdinalIgnoreCase))
@@ -529,22 +568,23 @@ namespace GameServer
             return NpcType.Normal;
         }
 
-        /// <summary>
-        /// 更新NPC状态
-        /// </summary>
+        
+        
+        
+        
         public new void Update()
         {
-            // 检查定时器是否超时
+            
             long currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            if (currentTime - _lastUpdateTime > 10000) // 10秒
+            if (currentTime - _lastUpdateTime > 10000) 
             {
                 _lastUpdateTime = currentTime;
                 
-                // 遍历商品列表，补充库存
-                // 注意：这里需要访问商品列表，但当前NpcInstanceEx没有商品列表字段
-                // 需要从父类或定义中获取商品列表
                 
-                // 如果有商品变化，保存物品
+                
+                
+                
+                
                 if (_hasChanged)
                 {
                     SaveItems();
@@ -552,13 +592,14 @@ namespace GameServer
                 }
             }
             
-            // 调用父类的Update方法
+            
             base.Update();
         }
 
-        /// <summary>
-        /// 保存物品
-        /// </summary>
+        
+        
+        
+        
         public void SaveItems()
         {
             if (!_hasChanged)
@@ -566,18 +607,18 @@ namespace GameServer
                 
             try
             {
-                // 创建保存目录
+                
                 string saveDir = Path.Combine(".", "data", "Market_Save");
                 if (!Directory.Exists(saveDir))
                 {
                     Directory.CreateDirectory(saveDir);
                 }
                 
-                // 生成文件名：market_{StoreId}.dat
+                
                 string filename = Path.Combine(saveDir, $"market_{Definition.NpcId:X8}.dat");
                 
-                // 这里需要保存商品列表到文件
-                // 由于当前结构中没有商品列表，这里只创建空文件作为占位
+                
+                
                 File.WriteAllText(filename, $"NPC {Definition.Name} 的商品数据 - 保存时间: {DateTime.Now}", Encoding.GetEncoding("GBK"));
                 
                 LogManager.Default.Debug($"保存NPC {Definition.Name} 的商品数据到 {filename}");
@@ -588,14 +629,14 @@ namespace GameServer
             }
         }
         
-        // 私有字段
+        
         private long _lastUpdateTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         private bool _hasChanged = false;
     }
 
-    /// <summary>
-    /// NPC商品列表扩展
-    /// </summary>
+    
+    
+    
     public class NpcGoodsListEx
     {
         public List<int> ItemIds { get; set; } = new();
@@ -606,9 +647,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// NPC商品项列表扩展
-    /// </summary>
+    
+    
+    
     public class NpcGoodsItemListEx
     {
         public List<NpcGoodsItemEx> Items { get; set; } = new();
@@ -619,9 +660,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// NPC商品项扩展
-    /// </summary>
+    
+    
+    
     public class NpcGoodsItemEx
     {
         public int ItemId { get; set; }

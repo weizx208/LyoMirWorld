@@ -1,9 +1,9 @@
 namespace GameServer
 {
-    /// <summary>
-    /// 游戏变量常量枚举
-    /// 这些是游戏变量的键，不是值
-    /// </summary>
+    
+    
+    
+    
     public static class GameVarConstants
     {
         public const int MaxGold = 1;
@@ -25,6 +25,7 @@ namespace GameServer
         public const int BeAttackSpeed = 17;
         public const int SpellSkillSpeed = 18;
         public const int ExpFactor = 19;
+        
         
         public const int PrivateShopLevel = 20;
         public const int InitDressColor = 21;
@@ -49,17 +50,17 @@ namespace GameServer
         public const int StartGuildMemberCount = 40;
         public const int DropTargetTime = 41;
         
-        // 沙城相关变量
+        
         public const int SandCityTakeTime = 42;
         public const int WarTimeLong = 43;
         public const int WarStartTime = 44;
         
-        // 战争颜色相关变量
+        
         public const int WarEnemyColor = 45;
         public const int WarAllyColor = 46;
         public const int WarNormalColor = 47;
         
-        // 其他变量
+        
         public const int BodyTime = 48;
         public const int ItemUpdateTime = 49;
     }

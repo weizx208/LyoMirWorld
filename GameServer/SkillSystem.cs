@@ -7,55 +7,55 @@ namespace GameServer
     using MirCommon;
     using MirCommon.Utils;
 
-    // 类型别名：Player = HumanPlayer
+    
     using Player = HumanPlayer;
-    /// <summary>
-    /// 技能类型
-    /// </summary>
+    
+    
+    
     public enum SkillType
     {
-        Passive = 0,        // 被动技能
-        Active = 1,         // 主动技能
-        Buff = 2,           // 增益技能
-        Debuff = 3,         // 减益技能
-        Summon = 4,         // 召唤技能
-        Teleport = 5,       // 传送技能
-        Attack = 6,         // 攻击技能
-        Heal = 7            // 治疗技能
+        Passive = 0,        
+        Active = 1,         
+        Buff = 2,           
+        Debuff = 3,         
+        Summon = 4,         
+        Teleport = 5,       
+        Attack = 6,         
+        Heal = 7            
     }
 
-    /// <summary>
-    /// 技能目标类型
-    /// </summary>
+    
+    
+    
     public enum SkillTargetType
     {
-        Self = 0,           // 自己
-        Enemy = 1,          // 敌人
-        Friend = 2,         // 友方
-        Ground = 3,         // 地面位置
-        Area = 4            // 范围
+        Self = 0,           
+        Enemy = 1,          
+        Friend = 2,         
+        Ground = 3,         
+        Area = 4            
     }
 
-    /// <summary>
-    /// 技能效果类型
-    /// </summary>
+    
+    
+    
     public enum SkillEffectType
     {
-        Damage = 0,         // 伤害
-        Heal = 1,           // 治疗
-        Buff = 2,           // 增益
-        Debuff = 3,         // 减益
-        Stun = 4,           // 眩晕
-        Slow = 5,           // 减速
-        Poison = 6,         // 中毒
-        Shield = 7,         // 护盾
-        Teleport = 8,       // 传送
-        Summon = 9          // 召唤
+        Damage = 0,         
+        Heal = 1,           
+        Buff = 2,           
+        Debuff = 3,         
+        Stun = 4,           
+        Slow = 5,           
+        Poison = 6,         
+        Shield = 7,         
+        Teleport = 8,       
+        Summon = 9          
     }
 
-    /// <summary>
-    /// 技能定义
-    /// </summary>
+    
+    
+    
     public class SkillDefinition
     {
         public int SkillId { get; set; }
@@ -64,28 +64,28 @@ namespace GameServer
         public SkillType Type { get; set; }
         public SkillTargetType TargetType { get; set; }
         
-        // 需求
-        public int RequireLevel { get; set; }
-        public int RequireJob { get; set; } = -1;  // -1表示所有职业
-        public int RequireSkill { get; set; }      // 前置技能
         
-        // 消耗
+        public int RequireLevel { get; set; }
+        public int RequireJob { get; set; } = -1;  
+        public int RequireSkill { get; set; }      
+        
+        
         public int MPCost { get; set; }
         public int HPCost { get; set; }
         public uint GoldCost { get; set; }
         
-        // 冷却
-        public int Cooldown { get; set; }          // 冷却时间(毫秒)
-        public int CastTime { get; set; }          // 施法时间(毫秒)
         
-        // 范围
-        public int Range { get; set; }             // 施法距离
-        public int Radius { get; set; }            // 效果半径
+        public int Cooldown { get; set; }          
+        public int CastTime { get; set; }          
         
-        // 效果
+        
+        public int Range { get; set; }             
+        public int Radius { get; set; }            
+        
+        
         public List<SkillEffect> Effects { get; set; } = new();
         
-        // 升级
+        
         public int MaxLevel { get; set; } = 3;
         public Dictionary<int, SkillLevelData> LevelData { get; set; } = new();
 
@@ -104,18 +104,18 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 技能等级数据
-    /// </summary>
+    
+    
+    
     public class SkillLevelData
     {
         public int Level { get; set; }
         public int MPCost { get; set; }
-        public int Power { get; set; }          // 威力
-        public int Duration { get; set; }       // 持续时间(毫秒)
-        public int Cooldown { get; set; }       // 冷却时间
-        public int Range { get; set; }          // 范围
-        public uint LearnCost { get; set; }     // 学习费用
+        public int Power { get; set; }          
+        public int Duration { get; set; }       
+        public int Cooldown { get; set; }       
+        public int Range { get; set; }          
+        public uint LearnCost { get; set; }     
 
         public SkillLevelData(int level)
         {
@@ -123,15 +123,15 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 技能效果
-    /// </summary>
+    
+    
+    
     public class SkillEffect
     {
         public SkillEffectType Type { get; set; }
         public int Value { get; set; }
         public int Duration { get; set; }
-        public float Chance { get; set; } = 1.0f;   // 触发概率
+        public float Chance { get; set; } = 1.0f;   
 
         public SkillEffect(SkillEffectType type, int value, int duration = 0)
         {
@@ -141,33 +141,62 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 玩家已学技能
-    /// </summary>
+    
+    
+    
     public class PlayerSkill
     {
         public int SkillId { get; set; }
         public SkillDefinition Definition { get; set; }
+        
+        
+        
         public int Level { get; set; }
         public DateTime LearnTime { get; set; }
         public DateTime LastUseTime { get; set; }
+        
+        
+        
         public int UseCount { get; set; }
-        public byte Key { get; set; } // 快捷键（0-9，0表示未设置）
+        public byte Key { get; set; } 
+
+        
+        public int AutoAddPower { get; set; } = 0;  
+        public bool Activated { get; set; } = false; 
 
         public PlayerSkill(SkillDefinition definition)
         {
             Definition = definition;
             SkillId = definition.SkillId;
-            Level = 1;
+            
+            Level = 0;
             LearnTime = DateTime.Now;
             LastUseTime = DateTime.MinValue;
-            Key = 0; // 默认未设置快捷键
+            Key = 0; 
+        }
+
+        
+        
+        
+        public SkillLevelData? GetCurrentLevelData()
+        {
+            if (Definition.LevelData.Count == 0)
+                return null;
+
+            
+            int wanted = Definition.LevelData.ContainsKey(0) ? Level : Level + 1;
+            if (Definition.LevelData.TryGetValue(wanted, out var data))
+                return data;
+
+            
+            int fallbackKey = Definition.LevelData.Keys.Min();
+            return Definition.LevelData.TryGetValue(fallbackKey, out var fallback) ? fallback : null;
         }
 
         public bool CanUse()
         {
-            var levelData = Definition.GetLevelData(Level);
-            if (levelData == null) return false;
+            var levelData = GetCurrentLevelData();
+            if (levelData == null) return true;
 
             var cooldownMs = (DateTime.Now - LastUseTime).TotalMilliseconds;
             return cooldownMs >= levelData.Cooldown;
@@ -175,7 +204,7 @@ namespace GameServer
 
         public TimeSpan GetRemainingCooldown()
         {
-            var levelData = Definition.GetLevelData(Level);
+            var levelData = GetCurrentLevelData();
             if (levelData == null) return TimeSpan.Zero;
 
             var elapsed = (DateTime.Now - LastUseTime).TotalMilliseconds;
@@ -185,8 +214,16 @@ namespace GameServer
 
         public bool CanLevelUp()
         {
-            return Level < Definition.MaxLevel && 
-                   Definition.LevelData.ContainsKey(Level + 1);
+            
+            if (Definition.MaxLevel <= 0)
+                return false;
+
+            int maxInternal = Definition.LevelData.ContainsKey(0) ? Definition.MaxLevel : (Definition.MaxLevel - 1);
+            if (Level >= maxInternal)
+                return false;
+
+            int nextKey = Definition.LevelData.ContainsKey(0) ? (Level + 1) : (Level + 2);
+            return Definition.LevelData.Count == 0 || Definition.LevelData.ContainsKey(nextKey);
         }
 
         public void LevelUp()
@@ -201,32 +238,64 @@ namespace GameServer
         public void Use()
         {
             LastUseTime = DateTime.Now;
-            UseCount++;
         }
 
-        /// <summary>
-        /// 增加技能经验
-        /// </summary>
+        
+        
+        
         public void AddExp(int exp)
         {
-            // 增加技能经验
-            UseCount += exp;
+            if (exp <= 0)
+                return;
+
+            if (UseCount < 0)
+                UseCount = 0;
+
             
-            // 每增加一定经验检查技能升级
-            if (UseCount % 50 == 0) // 每50次使用检查一次升级
+            long next = (long)UseCount + exp;
+            if (next > int.MaxValue)
+                next = int.MaxValue;
+            UseCount = (int)next;
+
+            try
             {
-                // 检查技能升级
-                if (CanLevelUp())
+                
+                if (MagicManager.Instance.GetMagicCount() == 0)
                 {
-                    LevelUp();
+                    MagicManager.Instance.LoadAll();
                 }
+
+                var magicClass = MagicManager.Instance.GetClassById(SkillId);
+                if (magicClass != null)
+                {
+                    if (Level >= 3)
+                        return;
+
+                    int idx = Math.Clamp(Level, 0, 3);
+                    uint need = magicClass.dwNeedExp[idx];
+                    if (need > 0 && (uint)UseCount >= need)
+                    {
+                        Level = Math.Min(Level + 1, 3);
+                    }
+                    return;
+                }
+            }
+            catch
+            {
+                
+            }
+
+            
+            if (UseCount % 50 == 0 && CanLevelUp())
+            {
+                LevelUp();
             }
         }
     }
 
-    /// <summary>
-    /// 技能书
-    /// </summary>
+    
+    
+    
     public class SkillBook
     {
         public PlayerSkill Skill { get; }
@@ -318,6 +387,8 @@ namespace GameServer
 
         public PlayerSkill? GetMagicByKey(byte key)
         {
+            
+            
             lock (_lock)
             {
                 return _skills.Values.FirstOrDefault();
@@ -334,13 +405,15 @@ namespace GameServer
 
         public void SetMagicKey(uint magicId, byte key)
         {
+            
+            
             LogManager.Default.Info($"设置技能 {magicId} 的快捷键为 {key}");
         }
     }
 
-    /// <summary>
-    /// 技能管理器
-    /// </summary>
+    
+    
+    
     public class SkillManager
     {
         private static SkillManager? _instance;
@@ -355,12 +428,12 @@ namespace GameServer
 
         private void InitializeDefaultSkills()
         {
-            // 战士技能
+            
             var basicSword = new SkillDefinition(1001, "基础剑法", SkillType.Attack)
             {
                 Description = "基础的剑术攻击",
                 TargetType = SkillTargetType.Enemy,
-                RequireJob = 0, // 战士
+                RequireJob = 0, 
                 RequireLevel = 1,
                 Range = 1,
                 MaxLevel = 3
@@ -403,12 +476,12 @@ namespace GameServer
             halfMoon.LevelData[3] = new SkillLevelData(3) { MPCost = 15, Power = 55, Cooldown = 3000, LearnCost = 50000 };
             AddDefinition(halfMoon);
 
-            // 法师技能
+            
             var fireball = new SkillDefinition(2001, "火球术", SkillType.Attack)
             {
                 Description = "发射火球攻击敌人",
                 TargetType = SkillTargetType.Enemy,
-                RequireJob = 1, // 法师
+                RequireJob = 1, 
                 RequireLevel = 1,
                 Range = 7,
                 MaxLevel = 3
@@ -450,12 +523,12 @@ namespace GameServer
             hellFire.LevelData[3] = new SkillLevelData(3) { MPCost = 60, Power = 110, Cooldown = 6000, LearnCost = 500000 };
             AddDefinition(hellFire);
 
-            // 道士技能
+            
             var heal = new SkillDefinition(3001, "治愈术", SkillType.Heal)
             {
                 Description = "恢复生命值",
                 TargetType = SkillTargetType.Friend,
-                RequireJob = 2, // 道士
+                RequireJob = 2, 
                 RequireLevel = 1,
                 Range = 7,
                 MaxLevel = 3
@@ -538,9 +611,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 技能使用结果
-    /// </summary>
+    
+    
+    
     public class SkillUseResult
     {
         public bool Success { get; set; }
@@ -556,9 +629,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 技能执行器
-    /// </summary>
+    
+    
+    
     public class SkillExecutor
     {
         private static SkillExecutor? _instance;
@@ -566,37 +639,37 @@ namespace GameServer
 
         private SkillExecutor() { }
 
-        /// <summary>
-        /// 使用技能
-        /// </summary>
+        
+        
+        
         public SkillUseResult UseSkill(Player caster, int skillId, ICombatEntity? target = null, int x = 0, int y = 0)
         {
-            // 获取技能
+            
             var playerSkill = caster.SkillBook.GetSkill(skillId);
             if (playerSkill == null)
                 return new SkillUseResult(false, "未学习此技能");
 
-            // 检查冷却
+            
             if (!playerSkill.CanUse())
             {
                 var remaining = playerSkill.GetRemainingCooldown();
                 return new SkillUseResult(false, $"冷却中，还需{remaining.TotalSeconds:F1}秒");
             }
 
-            // 获取等级数据
-            var levelData = playerSkill.Definition.GetLevelData(playerSkill.Level);
+            
+            var levelData = playerSkill.GetCurrentLevelData();
             if (levelData == null)
                 return new SkillUseResult(false, "技能数据错误");
 
-            // 检查MP
+            
             if (!caster.ConsumeMP(levelData.MPCost))
                 return new SkillUseResult(false, "魔法不足");
 
-            // 检查HP消耗
+            
             if (playerSkill.Definition.HPCost > 0 && caster.CurrentHP <= playerSkill.Definition.HPCost)
                 return new SkillUseResult(false, "生命值不足");
 
-            // 检查施法距离
+            
             if (target != null && caster.CurrentMap != null)
             {
                 int distance = Math.Abs(caster.X - target.X) + Math.Abs(caster.Y - target.Y);
@@ -604,7 +677,7 @@ namespace GameServer
                     return new SkillUseResult(false, "距离太远");
             }
 
-            // 消耗资源
+            
             if (playerSkill.Definition.HPCost > 0)
                 caster.CurrentHP -= playerSkill.Definition.HPCost;
             
@@ -614,18 +687,18 @@ namespace GameServer
                     return new SkillUseResult(false, "金币不足");
             }
 
-            // 标记使用
+            
             playerSkill.Use();
 
-            // 执行技能效果
+            
             var result = ExecuteSkill(caster, playerSkill, target, x, y);
             
             if (result.Success)
             {
-                // 发送技能使用消息
+                
                 SendSkillUseMessage(caster, playerSkill, target, x, y);
                 
-                // 增加技能经验
+                
                 TrainSkill(caster, playerSkill);
                 
                 LogManager.Default.Info($"{caster.Name} 使用技能 {playerSkill.Definition.Name} (等级{playerSkill.Level})");
@@ -634,17 +707,17 @@ namespace GameServer
             return result;
         }
 
-        /// <summary>
-        /// 执行技能效果
-        /// </summary>
+        
+        
+        
         private SkillUseResult ExecuteSkill(Player caster, PlayerSkill skill, ICombatEntity? target, int x, int y)
         {
             var result = new SkillUseResult(true, "技能释放成功");
-            var levelData = skill.Definition.GetLevelData(skill.Level);
+            var levelData = skill.GetCurrentLevelData();
             if (levelData == null)
                 return new SkillUseResult(false, "技能数据错误");
 
-            // 根据技能类型执行不同的效果
+            
             switch (skill.Definition.Type)
             {
                 case SkillType.Attack:
@@ -672,7 +745,7 @@ namespace GameServer
                     break;
                     
                 case SkillType.Passive:
-                    // 被动技能不需要主动释放
+                    
                     result = new SkillUseResult(false, "被动技能不能主动释放");
                     break;
             }
@@ -680,64 +753,64 @@ namespace GameServer
             return result;
         }
 
-        /// <summary>
-        /// 执行攻击技能
-        /// </summary>
+        
+        
+        
         private SkillUseResult ExecuteAttackSkill(Player caster, PlayerSkill skill, ICombatEntity? target, int x, int y)
         {
             var result = new SkillUseResult(true, "攻击成功");
-            var levelData = skill.Definition.GetLevelData(skill.Level);
+            var levelData = skill.GetCurrentLevelData();
             if (levelData == null)
                 return new SkillUseResult(false, "技能数据错误");
 
-            // 获取目标列表
+            
             var targets = GetSkillTargets(caster, skill, target, x, y);
             
             foreach (var t in targets)
             {
-                // 计算伤害
+                
                 int baseDamage = levelData.Power;
                 
-                // 根据职业计算伤害加成
+                
                 int damageBonus = 0;
                 switch (caster.Job)
                 {
-                    case 0: // 战士
+                    case 0: 
                         damageBonus = caster.Stats.MinDC;
                         break;
-                    case 1: // 法师
+                    case 1: 
                         damageBonus = caster.Stats.MinMC;
                         break;
-                    case 2: // 道士
+                    case 2: 
                         damageBonus = caster.Stats.MinSC;
                         break;
                 }
                 
                 int totalDamage = baseDamage + damageBonus;
                 
-                // 执行战斗
+                
                 var combatResult = CombatSystemManager.Instance.ExecuteCombat(caster, t, DamageType.Magic);
                 result.TotalDamage += combatResult.Damage;
                 result.AffectedTargets.Add(t);
                 
-                // 发送伤害消息
+                
                 SendDamageMessage(caster, t, combatResult.Damage);
             }
 
             return result;
         }
 
-        /// <summary>
-        /// 执行治疗技能
-        /// </summary>
+        
+        
+        
         private SkillUseResult ExecuteHealSkill(Player caster, PlayerSkill skill, ICombatEntity? target, int x, int y)
         {
             var result = new SkillUseResult(true, "治疗成功");
-            var levelData = skill.Definition.GetLevelData(skill.Level);
+            var levelData = skill.GetCurrentLevelData();
             if (levelData == null)
                 return new SkillUseResult(false, "技能数据错误");
 
-            // 获取目标列表
+            
             var targets = GetSkillTargets(caster, skill, target, x, y);
             
             foreach (var t in targets)
@@ -747,44 +820,44 @@ namespace GameServer
                 result.TotalHeal += healAmount;
                 result.AffectedTargets.Add(t);
                 
-                // 发送治疗消息
+                
                 SendHealMessage(caster, t, healAmount);
             }
 
             return result;
         }
 
-        /// <summary>
-        /// 执行增益技能
-        /// </summary>
+        
+        
+        
         private SkillUseResult ExecuteBuffSkill(Player caster, PlayerSkill skill, ICombatEntity? target, int x, int y)
         {
             var result = new SkillUseResult(true, "增益效果生效");
-            var levelData = skill.Definition.GetLevelData(skill.Level);
+            var levelData = skill.GetCurrentLevelData();
             if (levelData == null)
                 return new SkillUseResult(false, "技能数据错误");
 
-            // 获取目标列表
+            
             var targets = GetSkillTargets(caster, skill, target, x, y);
             
             foreach (var t in targets)
             {
-                // 应用增益效果
-                // 根据技能效果类型应用不同的增益
+                
+                
                 foreach (var effect in skill.Definition.Effects)
                 {
                     switch (effect.Type)
                     {
                         case SkillEffectType.Buff:
-                            // 应用增益效果
+                            
                             ApplyBuffEffect(caster, t, skill, effect, levelData);
                             break;
                         case SkillEffectType.Shield:
-                            // 应用护盾效果
+                            
                             ApplyShieldEffect(caster, t, skill, effect, levelData);
                             break;
                         case SkillEffectType.Heal:
-                            // 应用治疗效果
+                            
                             ApplyHealEffect(caster, t, skill, effect, levelData);
                             break;
                     }
@@ -792,30 +865,30 @@ namespace GameServer
                 
                 result.AffectedTargets.Add(t);
                 
-                // 发送增益消息
+                
                 SendBuffMessage(caster, t, skill.Definition.Name);
             }
 
             return result;
         }
 
-        /// <summary>
-        /// 执行减益技能
-        /// </summary>
+        
+        
+        
         private SkillUseResult ExecuteDebuffSkill(Player caster, PlayerSkill skill, ICombatEntity? target, int x, int y)
         {
             var result = new SkillUseResult(true, "减益效果生效");
-            var levelData = skill.Definition.GetLevelData(skill.Level);
+            var levelData = skill.GetCurrentLevelData();
             if (levelData == null)
                 return new SkillUseResult(false, "技能数据错误");
 
-            // 获取目标列表
+            
             var targets = GetSkillTargets(caster, skill, target, x, y);
             
             foreach (var t in targets)
             {
-                // 应用减益效果
-                // 根据技能效果类型应用不同的减益
+                
+                
                 foreach (var effect in skill.Definition.Effects)
                 {
                     ApplyDebuffEffect(caster, t, skill, effect, levelData);
@@ -823,46 +896,46 @@ namespace GameServer
                 
                 result.AffectedTargets.Add(t);
                 
-                // 发送减益消息
+                
                 SendDebuffMessage(caster, t, skill.Definition.Name);
             }
 
             return result;
         }
 
-        /// <summary>
-        /// 执行召唤技能
-        /// </summary>
+        
+        
+        
         private SkillUseResult ExecuteSummonSkill(Player caster, PlayerSkill skill, ICombatEntity? target, int x, int y)
         {
             var result = new SkillUseResult(true, "召唤成功");
-            var levelData = skill.Definition.GetLevelData(skill.Level);
+            var levelData = skill.GetCurrentLevelData();
             if (levelData == null)
                 return new SkillUseResult(false, "技能数据错误");
 
-            // 检查召唤数量限制
+            
             if (caster.PetSystem.GetPetCount() >= caster.PetSystem.MaxPets)
                 return new SkillUseResult(false, "召唤数量已达上限");
 
-            // 创建召唤物
-            // 根据技能ID创建对应的召唤物
+            
+            
             string petName = GetSummonPetName(skill.SkillId, skill.Level);
-            int summonCount = levelData.Power; // 召唤数量
+            int summonCount = levelData.Power; 
             
             for (int i = 0; i < summonCount; i++)
             {
-                // 计算召唤位置
+                
                 int summonX = x;
                 int summonY = y;
                 
                 if (summonX == 0 && summonY == 0)
                 {
-                    // 如果没有指定位置，则在玩家周围召唤
+                    
                     summonX = caster.X + Random.Shared.Next(-2, 3);
                     summonY = caster.Y + Random.Shared.Next(-2, 3);
                 }
                 
-                // 召唤宠物
+                
                 bool success = caster.PetSystem.SummonPet(petName, true, summonX, summonY);
                 if (!success)
                 {
@@ -870,39 +943,39 @@ namespace GameServer
                 }
             }
             
-            // 发送召唤消息
+            
             SendSummonMessage(caster, skill.Definition.Name);
             
             return result;
         }
 
-        /// <summary>
-        /// 执行传送技能
-        /// </summary>
+        
+        
+        
         private SkillUseResult ExecuteTeleportSkill(Player caster, PlayerSkill skill, ICombatEntity? target, int x, int y)
         {
             var result = new SkillUseResult(true, "传送成功");
-            var levelData = skill.Definition.GetLevelData(skill.Level);
+            var levelData = skill.GetCurrentLevelData();
             if (levelData == null)
                 return new SkillUseResult(false, "技能数据错误");
 
-            // 检查目标位置是否有效
+            
             if (caster.CurrentMap == null || !caster.CurrentMap.CanMoveTo(x, y))
                 return new SkillUseResult(false, "无法传送到该位置");
 
-            // 执行传送
+            
             caster.X = (ushort)x;
             caster.Y = (ushort)y;
             
-            // 发送传送消息
+            
             SendTeleportMessage(caster, x, y);
             
             return result;
         }
 
-        /// <summary>
-        /// 获取技能目标列表
-        /// </summary>
+        
+        
+        
         private List<ICombatEntity> GetSkillTargets(Player caster, PlayerSkill skill, ICombatEntity? target, int x, int y)
         {
             var targets = new List<ICombatEntity>();
@@ -926,7 +999,7 @@ namespace GameServer
                     break;
                     
                 case SkillTargetType.Area:
-                    // 获取范围内的所有目标
+                    
                     if (caster.CurrentMap != null)
                     {
                         var areaTargets = caster.CurrentMap.GetObjectsInRange(x, y, skill.Definition.Radius);
@@ -934,7 +1007,7 @@ namespace GameServer
                         {
                             if (obj is ICombatEntity combatEntity)
                             {
-                                // 根据技能类型筛选目标
+                                
                                 if (skill.Definition.Type == SkillType.Attack && combatEntity != caster)
                                     targets.Add(combatEntity);
                                 else if (skill.Definition.Type == SkillType.Heal && combatEntity == caster)
@@ -945,7 +1018,7 @@ namespace GameServer
                     break;
                     
                 case SkillTargetType.Ground:
-                    // 地面目标不需要实体目标
+                    
                     break;
             }
 
@@ -953,14 +1026,14 @@ namespace GameServer
         }
 
 
-        /// <summary>
-        /// 发送技能使用消息
-        /// </summary>
+        
+        
+        
         private void SendSkillUseMessage(Player caster, PlayerSkill skill, ICombatEntity? target, int x, int y)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(caster.ObjectId);
-            builder.WriteUInt16(0x285); // SM_SKILLUSE
+            builder.WriteUInt16(0x285); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -973,14 +1046,14 @@ namespace GameServer
             caster.SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送伤害消息
-        /// </summary>
+        
+        
+        
         private void SendDamageMessage(Player caster, ICombatEntity target, int damage)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(caster.ObjectId);
-            builder.WriteUInt16(0x286); // SM_DAMAGE
+            builder.WriteUInt16(0x286); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -990,14 +1063,14 @@ namespace GameServer
             caster.SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送治疗消息
-        /// </summary>
+        
+        
+        
         private void SendHealMessage(Player caster, ICombatEntity target, int healAmount)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(caster.ObjectId);
-            builder.WriteUInt16(0x287); // SM_HEAL
+            builder.WriteUInt16(0x287); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -1007,14 +1080,14 @@ namespace GameServer
             caster.SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送增益消息
-        /// </summary>
+        
+        
+        
         private void SendBuffMessage(Player caster, ICombatEntity target, string buffName)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(caster.ObjectId);
-            builder.WriteUInt16(0x288); // SM_BUFF
+            builder.WriteUInt16(0x288); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -1024,14 +1097,14 @@ namespace GameServer
             caster.SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送减益消息
-        /// </summary>
+        
+        
+        
         private void SendDebuffMessage(Player caster, ICombatEntity target, string debuffName)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(caster.ObjectId);
-            builder.WriteUInt16(0x289); // SM_DEBUFF
+            builder.WriteUInt16(0x289); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -1041,14 +1114,14 @@ namespace GameServer
             caster.SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送召唤消息
-        /// </summary>
+        
+        
+        
         private void SendSummonMessage(Player caster, string summonName)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(caster.ObjectId);
-            builder.WriteUInt16(0x28A); // SM_SUMMON
+            builder.WriteUInt16(0x28A); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -1057,14 +1130,14 @@ namespace GameServer
             caster.SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送传送消息
-        /// </summary>
+        
+        
+        
         private void SendTeleportMessage(Player caster, int x, int y)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(caster.ObjectId);
-            builder.WriteUInt16(0x28B); // SM_TELEPORT
+            builder.WriteUInt16(0x28B); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -1074,14 +1147,14 @@ namespace GameServer
             caster.SendMessage(builder.Build());
         }
 
-        /// <summary>
-        /// 发送技能升级消息
-        /// </summary>
+        
+        
+        
         private void SendSkillLevelUpMessage(Player caster, PlayerSkill skill)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(caster.ObjectId);
-            builder.WriteUInt16(0x28C); // SM_SKILLLEVELUP
+            builder.WriteUInt16(0x28C); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
@@ -1097,7 +1170,7 @@ namespace GameServer
             if (definition == null)
                 return false;
 
-            // 检查需求
+            
             if (definition.RequireLevel > player.Level)
                 return false;
 
@@ -1107,12 +1180,12 @@ namespace GameServer
             if (definition.RequireSkill != 0 && !player.SkillBook.HasSkill(definition.RequireSkill))
                 return false;
 
-            // 检查费用
+            
             var levelData = definition.GetLevelData(1);
             if (levelData != null && player.Gold < levelData.LearnCost)
                 return false;
 
-            // 学习技能
+            
             if (player.SkillBook.LearnSkill(definition))
             {
                 if (levelData != null)
@@ -1132,77 +1205,78 @@ namespace GameServer
             if (playerSkill == null || !playerSkill.CanLevelUp())
                 return false;
 
-            var nextLevel = playerSkill.Level + 1;
-            var levelData = playerSkill.Definition.GetLevelData(nextLevel);
+            int nextInternalLevel = playerSkill.Level + 1;
+            int nextKey = playerSkill.Definition.LevelData.ContainsKey(0) ? nextInternalLevel : (nextInternalLevel + 1);
+            var levelData = playerSkill.Definition.GetLevelData(nextKey);
             if (levelData == null)
                 return false;
 
-            // 检查费用
+            
             if (player.Gold < levelData.LearnCost)
                 return false;
 
-            // 升级
+            
             player.Gold -= levelData.LearnCost;
             player.SkillBook.LevelUpSkill(skillId);
             
-            LogManager.Default.Info($"{player.Name} 的技能 {playerSkill.Definition.Name} 升级到 {nextLevel} 级");
+            LogManager.Default.Info($"{player.Name} 的技能 {playerSkill.Definition.Name} 升级到 {nextInternalLevel} 级");
             return true;
         }
 
-        /// <summary>
-        /// 应用增益效果
-        /// </summary>
+        
+        
+        
         private void ApplyBuffEffect(Player caster, ICombatEntity target, PlayerSkill skill, SkillEffect effect, SkillLevelData levelData)
         {
-            // 获取Buff定义管理器中的增益效果
-            var buffDefinition = BuffDefinitionManager.Instance.GetDefinition(1001); // 默认使用力量祝福
+            
+            var buffDefinition = BuffDefinitionManager.Instance.GetDefinition(1001); 
             if (buffDefinition != null)
             {
-                // 根据技能等级调整效果值
+                
                 buffDefinition.Value = levelData.Power;
                 buffDefinition.Duration = effect.Duration > 0 ? effect.Duration : levelData.Duration;
                 
-                // 应用Buff
+                
                 target.BuffManager?.AddBuff(buffDefinition, caster);
             }
         }
 
-        /// <summary>
-        /// 应用护盾效果
-        /// </summary>
+        
+        
+        
         private void ApplyShieldEffect(Player caster, ICombatEntity target, PlayerSkill skill, SkillEffect effect, SkillLevelData levelData)
         {
-            // 获取护盾Buff定义
-            var shieldDefinition = BuffDefinitionManager.Instance.GetDefinition(1007); // 护盾
+            
+            var shieldDefinition = BuffDefinitionManager.Instance.GetDefinition(1007); 
             if (shieldDefinition != null)
             {
                 shieldDefinition.Value = levelData.Power;
                 shieldDefinition.Duration = effect.Duration > 0 ? effect.Duration : levelData.Duration;
                 
-                // 应用护盾
+                
                 target.BuffManager?.AddBuff(shieldDefinition, caster);
             }
         }
 
-        /// <summary>
-        /// 应用治疗效果
-        /// </summary>
+        
+        
+        
         private void ApplyHealEffect(Player caster, ICombatEntity target, PlayerSkill skill, SkillEffect effect, SkillLevelData levelData)
         {
-            // 直接治疗
+            
             int healAmount = levelData.Power;
             target.Heal(healAmount);
             
-            // 发送治疗消息
+            
             SendHealMessage(caster, target, healAmount);
         }
 
-        /// <summary>
-        /// 应用减益效果
-        /// </summary>
+        
+        
+        
         private void ApplyDebuffEffect(Player caster, ICombatEntity target, PlayerSkill skill, SkillEffect effect, SkillLevelData levelData)
         {
-            // 根据效果类型应用不同的减益
+            
             switch (effect.Type)
             {
                 case SkillEffectType.Poison:
@@ -1217,62 +1291,62 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 应用中毒效果
-        /// </summary>
+        
+        
+        
         private void ApplyPoisonEffect(Player caster, ICombatEntity target, PlayerSkill skill, SkillEffect effect, SkillLevelData levelData)
         {
-            var poisonDefinition = BuffDefinitionManager.Instance.GetDefinition(2001); // 中毒
+            var poisonDefinition = BuffDefinitionManager.Instance.GetDefinition(2001); 
             if (poisonDefinition != null)
             {
                 poisonDefinition.Value = levelData.Power;
                 poisonDefinition.Duration = effect.Duration > 0 ? effect.Duration : levelData.Duration;
                 
-                // 应用中毒效果
+                
                 target.BuffManager?.AddBuff(poisonDefinition, caster);
             }
         }
 
-        /// <summary>
-        /// 应用减速效果
-        /// </summary>
+        
+        
+        
         private void ApplySlowEffect(Player caster, ICombatEntity target, PlayerSkill skill, SkillEffect effect, SkillLevelData levelData)
         {
-            var slowDefinition = BuffDefinitionManager.Instance.GetDefinition(2006); // 减速
+            var slowDefinition = BuffDefinitionManager.Instance.GetDefinition(2006); 
             if (slowDefinition != null)
             {
                 slowDefinition.Value = levelData.Power;
                 slowDefinition.Duration = effect.Duration > 0 ? effect.Duration : levelData.Duration;
                 
-                // 应用减速效果
+                
                 target.BuffManager?.AddBuff(slowDefinition, caster);
             }
         }
 
-        /// <summary>
-        /// 应用眩晕效果
-        /// </summary>
+        
+        
+        
         private void ApplyStunEffect(Player caster, ICombatEntity target, PlayerSkill skill, SkillEffect effect, SkillLevelData levelData)
         {
-            var stunDefinition = BuffDefinitionManager.Instance.GetDefinition(3001); // 眩晕
+            var stunDefinition = BuffDefinitionManager.Instance.GetDefinition(3001); 
             if (stunDefinition != null)
             {
                 stunDefinition.Duration = effect.Duration > 0 ? effect.Duration : levelData.Duration;
                 
-                // 应用眩晕效果
+                
                 target.BuffManager?.AddBuff(stunDefinition, caster);
             }
         }
 
-        /// <summary>
-        /// 获取召唤宠物名称
-        /// </summary>
+        
+        
+        
         private string GetSummonPetName(int skillId, int skillLevel)
         {
-            // 根据技能ID返回对应的宠物名称
+            
             switch (skillId)
             {
-                case 3003: // 召唤骷髅
+                case 3003: 
                     return skillLevel >= 3 ? "骷髅精灵" : 
                            skillLevel >= 2 ? "骷髅战士" : "骷髅";
                 default:
@@ -1280,64 +1354,66 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 训练技能
-        /// </summary>
+        
+        
+        
         private void TrainSkill(Player caster, PlayerSkill skill)
         {
+            
             skill.UseCount++;
             
-            // 每使用一定次数增加技能经验
+            
             if (skill.UseCount % 10 == 0)
             {
-                // 增加技能经验
-                // 根据技能等级和职业计算经验值
+                
+                
                 int expGain = CalculateSkillExpGain(caster, skill);
                 
-                // 这里可以保存技能经验到数据库
+                
+                
                 LogManager.Default.Info($"{caster.Name} 的技能 {skill.Definition.Name} 获得 {expGain} 经验");
                 
-                // 检查技能升级
+                
                 if (skill.CanLevelUp())
                 {
-                    // 检查升级条件
+                    
                     if (CheckSkillLevelUpConditions(caster, skill))
                     {
-                        // 自动升级技能
+                        
                         skill.LevelUp();
                         
-                        // 发送技能升级消息
+                        
                         SendSkillLevelUpMessage(caster, skill);
                         
-                        // 通知玩家
+                        
                         caster.Say($"恭喜！你的技能 {skill.Definition.Name} 升级到 {skill.Level} 级");
                     }
                 }
             }
         }
 
-        /// <summary>
-        /// 计算技能经验获得
-        /// </summary>
+        
+        
+        
         private int CalculateSkillExpGain(Player caster, PlayerSkill skill)
         {
-            // 基础经验值
+            
             int baseExp = 10;
             
-            // 根据技能等级调整
+            
             int levelBonus = skill.Level * 5;
             
-            // 根据职业调整
+            
             int jobBonus = 0;
             switch (caster.Job)
             {
-                case 0: // 战士
+                case 0: 
                     jobBonus = skill.Definition.Type == SkillType.Attack ? 10 : 5;
                     break;
-                case 1: // 法师
+                case 1: 
                     jobBonus = skill.Definition.Type == SkillType.Attack || skill.Definition.Type == SkillType.Buff ? 10 : 5;
                     break;
-                case 2: // 道士
+                case 2: 
                     jobBonus = skill.Definition.Type == SkillType.Heal || skill.Definition.Type == SkillType.Summon ? 10 : 5;
                     break;
             }
@@ -1345,26 +1421,27 @@ namespace GameServer
             return baseExp + levelBonus + jobBonus;
         }
 
-        /// <summary>
-        /// 检查技能升级条件
-        /// </summary>
+        
+        
+        
         private bool CheckSkillLevelUpConditions(Player caster, PlayerSkill skill)
         {
-            // 检查玩家等级是否足够
+            
             if (caster.Level < skill.Definition.RequireLevel * skill.Level)
             {
                 return false;
             }
             
-            // 检查技能使用次数是否足够
-            int requiredUses = skill.Level * 50; // 每级需要50次使用
+            
+            int requiredUses = skill.Level * 50; 
             if (skill.UseCount < requiredUses)
             {
                 return false;
             }
             
-            // 检查是否有足够的金币（如果需要）
-            var nextLevelData = skill.Definition.GetLevelData(skill.Level + 1);
+            
+            int nextKey = skill.Definition.LevelData.ContainsKey(0) ? (skill.Level + 1) : (skill.Level + 2);
+            var nextLevelData = skill.Definition.GetLevelData(nextKey);
             if (nextLevelData != null && caster.Gold < nextLevelData.LearnCost)
             {
                 return false;

@@ -2,9 +2,10 @@ using System;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 用户魔法技能结构
-    /// </summary>
+    
+    
+    
+    
     public class UserMagic
     {
         public Magic Magic { get; set; }
@@ -37,17 +38,17 @@ namespace GameServer
             Color = 0;
         }
 
-        /// <summary>
-        /// 检查是否已激活
-        /// </summary>
+        
+        
+        
         public bool IsActivated()
         {
-            return (Flag & 0x80000000) != 0; // USERMAGICFLAG_ACTIVED
+            return (Flag & 0x80000000) != 0; 
         }
 
-        /// <summary>
-        /// 设置激活状态
-        /// </summary>
+        
+        
+        
         public void SetActivated(bool activated)
         {
             if (activated)
@@ -56,9 +57,9 @@ namespace GameServer
                 Flag &= ~0x80000000u;
         }
 
-        /// <summary>
-        /// 检查是否可以使用（冷却时间已过）
-        /// </summary>
+        
+        
+        
         public bool CanUse(uint delayTime = 0)
         {
             if (Class == null)
@@ -68,17 +69,17 @@ namespace GameServer
             return elapsed >= delayTime;
         }
 
-        /// <summary>
-        /// 记录使用时间
-        /// </summary>
+        
+        
+        
         public void RecordUse()
         {
             LastUseTime = DateTime.Now;
         }
 
-        /// <summary>
-        /// 获取剩余冷却时间（毫秒）
-        /// </summary>
+        
+        
+        
         public uint GetCooldownRemaining(uint delayTime = 0)
         {
             if (Class == null)
@@ -98,9 +99,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 用户魔法技能链表
-    /// </summary>
+    
+    
+    
     public class UserMagicList
     {
         public UserMagic? Head { get; set; }
@@ -112,9 +113,9 @@ namespace GameServer
             Count = 0;
         }
 
-        /// <summary>
-        /// 添加魔法到链表
-        /// </summary>
+        
+        
+        
         public void Add(UserMagic userMagic)
         {
             if (Head == null)
@@ -129,9 +130,9 @@ namespace GameServer
             Count++;
         }
 
-        /// <summary>
-        /// 移除指定魔法
-        /// </summary>
+        
+        
+        
         public bool Remove(UserMagic userMagic)
         {
             if (Head == null)
@@ -160,9 +161,9 @@ namespace GameServer
             return false;
         }
 
-        /// <summary>
-        /// 根据魔法ID查找
-        /// </summary>
+        
+        
+        
         public UserMagic? FindById(ushort magicId)
         {
             UserMagic? current = Head;
@@ -175,9 +176,9 @@ namespace GameServer
             return null;
         }
 
-        /// <summary>
-        /// 根据魔法名称查找
-        /// </summary>
+        
+        
+        
         public UserMagic? FindByName(string magicName)
         {
             UserMagic? current = Head;
@@ -190,18 +191,18 @@ namespace GameServer
             return null;
         }
 
-        /// <summary>
-        /// 清空链表
-        /// </summary>
+        
+        
+        
         public void Clear()
         {
             Head = null;
             Count = 0;
         }
 
-        /// <summary>
-        /// 转换为数组
-        /// </summary>
+        
+        
+        
         public UserMagic[] ToArray()
         {
             UserMagic[] array = new UserMagic[Count];

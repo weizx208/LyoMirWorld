@@ -8,33 +8,42 @@ using MirCommon.Utils;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 怪物管理器扩展
-    /// </summary>
+    
+    
+    
+    
     public class MonsterManagerEx
     {
         private static MonsterManagerEx? _instance;
         public static MonsterManagerEx Instance => _instance ??= new MonsterManagerEx();
 
-        // 怪物类定义哈希表
+        
         private readonly Dictionary<string, MonsterClass> _monsterClassHash = new(StringComparer.OrdinalIgnoreCase);
         private readonly object _classLock = new();
 
-        // 怪物实例列表
+        
         private readonly List<MonsterEx> _monsterList = new();
+        private readonly Dictionary<uint, MonsterEx> _monsterById = new();
         private readonly object _monsterLock = new();
+        private uint _nextMonsterSeq = 0;
 
-        // 当前活动怪物（用于脚本执行等）
+        
         private MonsterEx? _activeMonster;
+
+        
+        private readonly Queue<MonsterEx> _deleteQueue = new();
+        private readonly object _deleteLock = new();
+        private const int DeleteQueueLimit = 2000;
 
         private MonsterManagerEx()
         {
-            // 初始化
+            
         }
 
-        /// <summary>
-        /// 加载怪物定义文件
-        /// </summary>
+        
+        
+        
+        
         public bool LoadMonsters(string fileName)
         {
             LogManager.Default.Info($"加载怪物定义文件: {fileName}");
@@ -58,17 +67,17 @@ namespace GameServer
 
                     if (trimmedLine.StartsWith("@"))
                     {
-                        // 开始新的怪物类定义
+                        
                         if (currentClass != null)
                         {
-                            // 保存前一个怪物类
+                            
                             SaveMonsterClass(currentClass);
                         }
 
-                        // 创建新的怪物类
+                        
                         currentClass = new MonsterClass();
                         
-                        // 初始化怪物类
+                        
                         string className = trimmedLine.Substring(1).Trim();
                         if (className.Length > 16)
                             className = className.Substring(0, 16);
@@ -83,12 +92,12 @@ namespace GameServer
                     }
                     else if (currentClass != null)
                     {
-                        // 解析属性行
+                        
                         ParsePropertyLine(currentClass, trimmedLine);
                     }
                 }
 
-                // 保存最后一个怪物类
+                
                 if (currentClass != null)
                 {
                     SaveMonsterClass(currentClass);
@@ -104,9 +113,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载怪物脚本文件
-        /// </summary>
+        
+        
+        
+        
         public void LoadMonsterScript(string fileName)
         {
             LogManager.Default.Info($"加载怪物脚本文件: {fileName}");
@@ -128,7 +138,7 @@ namespace GameServer
                     if (string.IsNullOrEmpty(trimmedLine) || trimmedLine.StartsWith("#"))
                         continue;
 
-                    // 格式: 怪物名称=出生脚本,获得目标脚本,击杀目标脚本,受伤脚本,死亡脚本
+                    
                     var parts = trimmedLine.Split('=', 2);
                     if (parts.Length != 2)
                         continue;
@@ -145,14 +155,14 @@ namespace GameServer
 
                     var scriptParts = scriptData.Split(',');
                     
-                    // 清理旧的脚本
+                    
                     monsterClass.BornScript = null;
                     monsterClass.GotTargetScript = null;
                     monsterClass.KillTargetScript = null;
                     monsterClass.HurtScript = null;
                     monsterClass.DeathScript = null;
 
-                    // 设置新的脚本
+                    
                     if (scriptParts.Length > 0 && !string.IsNullOrEmpty(scriptParts[0]))
                         monsterClass.BornScript = scriptParts[0];
                     if (scriptParts.Length > 1 && !string.IsNullOrEmpty(scriptParts[1]))
@@ -175,9 +185,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 创建怪物实例
-        /// </summary>
+        
+        
+        
+        
         public MonsterEx? CreateMonster(string monsterName, int mapId, int x, int y, MonsterGen? gen = null)
         {
             var monsterClass = GetClassByName(monsterName);
@@ -188,35 +199,36 @@ namespace GameServer
             }
 
             var monster = new MonsterEx();
+            
+            monster.SetId(GetNextObjectId());
             if (!monster.Init(monsterClass, mapId, x, y, gen))
             {
                 LogManager.Default.Warning($"初始化怪物失败: {monsterName}");
                 return null;
             }
 
-            // 添加到怪物列表
+            
             lock (_monsterLock)
             {
                 _monsterList.Add(monster);
+                _monsterById[monster.ObjectId] = monster;
             }
 
-            // 更新生成器计数
-            if (gen != null)
-            {
-                gen.CurrentCount++;
-            }
-
+            
             monsterClass.Count++;
+
+            
+            GameWorld.Instance.AddUpdateMonster(monster);
 
             return monster;
         }
 
-        /// <summary>
-        /// 创建怪物实例（通过ID）
-        /// </summary>
+        
+        
+        
         public MonsterEx? CreateMonster(int monsterId)
         {
-            // 通过ID查找怪物类
+            
             var monsterClass = GetMonsterClass(monsterId);
             if (monsterClass == null)
             {
@@ -227,69 +239,145 @@ namespace GameServer
             return new MonsterEx();
         }
 
-        /// <summary>
-        /// 删除怪物
-        /// </summary>
+        
+        
+        
+        
         public bool DeleteMonster(MonsterEx monster)
         {
             if (monster == null)
                 return false;
 
-            // 清理生成器引用
+            
             monster.ClearGen();
 
-            // 从列表中移除
+            
             lock (_monsterLock)
             {
                 _monsterList.Remove(monster);
+                _monsterById.Remove(monster.ObjectId);
             }
 
-            // 清理怪物资源
+            
             monster.Clean();
 
             return true;
         }
 
-        /// <summary>
-        /// 添加额外怪物（不通过生成器）
-        /// </summary>
+        
+        
+        
+        
+        public bool DeleteMonsterDelayed(MonsterEx monster)
+        {
+            if (monster == null)
+                return false;
+
+            
+            monster.ClearGen();
+            monster.SetDelTimer();
+
+            bool deleteNow = false;
+            lock (_deleteLock)
+            {
+                if (_deleteQueue.Count >= DeleteQueueLimit)
+                {
+                    deleteNow = true;
+                }
+                else
+                {
+                    _deleteQueue.Enqueue(monster);
+                }
+            }
+
+            return deleteNow ? DeleteMonster(monster) : true;
+        }
+
+        
+        
+        
+        public void UpdateDeleteMonster()
+        {
+            MonsterEx? monster = null;
+            lock (_deleteLock)
+            {
+                if (_deleteQueue.Count > 0)
+                    monster = _deleteQueue.Dequeue();
+            }
+
+            if (monster == null)
+                return;
+
+            try
+            {
+                if (monster.IsDelTimerTimeOut(10000))
+                {
+                    DeleteMonster(monster);
+                    return;
+                }
+
+                lock (_deleteLock)
+                {
+                    if (_deleteQueue.Count >= DeleteQueueLimit)
+                    {
+                        
+                        DeleteMonster(monster);
+                    }
+                    else
+                    {
+                        _deleteQueue.Enqueue(monster);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"更新删除怪物队列异常: monster={monster.Name}({monster.ObjectId:X8})", exception: ex);
+                try { DeleteMonster(monster); } catch { }
+            }
+        }
+
+        
+        
+        
+        
         public bool AddExtraMonster(MonsterEx monster)
         {
             if (monster == null)
                 return false;
 
+            
+            
+            if (monster.ObjectId == 0 || ObjectIdUtil.GetType(monster.ObjectId) != MirObjectType.Monster)
+            {
+                monster.SetId(GetNextObjectId());
+            }
+
             lock (_monsterLock)
             {
                 _monsterList.Add(monster);
+                _monsterById[monster.ObjectId] = monster;
             }
 
-            // 设置怪物ID
-            uint id = (uint)_monsterList.Count;
-            id |= ((uint)ObjectType.Monster << 24);
-            monster.SetId(id);
-
+            GameWorld.Instance.AddUpdateMonster(monster);
             return true;
         }
 
-        /// <summary>
-        /// 根据ID获取怪物
-        /// </summary>
+        
+        
+        
+        
         public MonsterEx? GetMonsterById(uint id)
         {
-            uint index = id & 0xffffff;
             lock (_monsterLock)
             {
-                if (index > 0 && index <= _monsterList.Count)
-                {
-                    return _monsterList[(int)index - 1];
-                }
+                return _monsterById.TryGetValue(id, out var monster) ? monster : null;
             }
-            return null;
         }
 
-        /// <summary>
-        /// 根据名称获取怪物类
-        /// </summary>
+        
+        
+        
+        
         public MonsterClass? GetClassByName(string name)
         {
             lock (_classLock)
@@ -298,9 +386,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取怪物数量
-        /// </summary>
+        
+        
+        
+        
         public int GetCount()
         {
             lock (_monsterLock)
@@ -309,25 +398,27 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取当前活动怪物
-        /// </summary>
+        
+        
+        
+        
         public MonsterEx? GetCurrentActiveMonster()
         {
             return _activeMonster;
         }
 
-        /// <summary>
-        /// 设置当前活动怪物
-        /// </summary>
+        
+        
+        
+        
         public void SetCurrentActiveMonster(MonsterEx? monster)
         {
             _activeMonster = monster;
         }
 
-        /// <summary>
-        /// 获取所有怪物类
-        /// </summary>
+        
+        
+        
         public List<MonsterClass> GetAllMonsterClasses()
         {
             lock (_classLock)
@@ -336,9 +427,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取所有怪物实例
-        /// </summary>
+        
+        
+        
         public List<MonsterEx> GetAllMonsters()
         {
             lock (_monsterLock)
@@ -347,9 +438,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 清理所有怪物
-        /// </summary>
+        
+        
+        
         public void ClearAllMonsters()
         {
             lock (_monsterLock)
@@ -359,12 +450,14 @@ namespace GameServer
                     monster.Clean();
                 }
                 _monsterList.Clear();
+                _monsterById.Clear();
+                _nextMonsterSeq = 0;
             }
         }
 
-        /// <summary>
-        /// 保存怪物类到哈希表
-        /// </summary>
+        
+        
+        
         private void SaveMonsterClass(MonsterClass monsterClass)
         {
             if (string.IsNullOrEmpty(monsterClass.Base.ClassName))
@@ -374,32 +467,32 @@ namespace GameServer
             {
                 if (_monsterClassHash.TryGetValue(monsterClass.Base.ClassName, out var existingClass))
                 {
-                    // 更新现有怪物类
-                    // 保留脚本引用
+                    
+                    
                     monsterClass.BornScript = existingClass.BornScript;
                     monsterClass.GotTargetScript = existingClass.GotTargetScript;
                     monsterClass.KillTargetScript = existingClass.KillTargetScript;
                     monsterClass.HurtScript = existingClass.HurtScript;
                     monsterClass.DeathScript = existingClass.DeathScript;
 
-                    // 复制数据
+                    
                     CopyMonsterClass(existingClass, monsterClass);
                     LogManager.Default.Info($"怪物 {monsterClass.Base.ClassName} 被更新");
                 }
                 else
                 {
-                    // 添加新怪物类
+                    
                     _monsterClassHash[monsterClass.Base.ClassName] = monsterClass;
                 }
             }
         }
 
-        /// <summary>
-        /// 复制怪物类数据
-        /// </summary>
+        
+        
+        
         private void CopyMonsterClass(MonsterClass dest, MonsterClass src)
         {
-            // 复制基础信息
+            
             dest.Base.ViewName = src.Base.ViewName;
             dest.Base.Race = src.Base.Race;
             dest.Base.Image = src.Base.Image;
@@ -407,7 +500,7 @@ namespace GameServer
             dest.Base.NameColor = src.Base.NameColor;
             dest.Base.Feature = src.Base.Feature;
 
-            // 复制属性
+            
             dest.Prop.HP = src.Prop.HP;
             dest.Prop.MP = src.Prop.MP;
             dest.Prop.Hit = src.Prop.Hit;
@@ -428,14 +521,14 @@ namespace GameServer
             dest.Prop.RecoverMP = src.Prop.RecoverMP;
             dest.Prop.RecoverMPTime = src.Prop.RecoverMPTime;
 
-            // 复制特殊属性
+            
             dest.SProp.PFlag = src.SProp.PFlag;
             dest.SProp.CallRate = src.SProp.CallRate;
             dest.SProp.AntSoulWall = src.SProp.AntSoulWall;
             dest.SProp.AntTrouble = src.SProp.AntTrouble;
             dest.SProp.AntHolyWord = src.SProp.AntHolyWord;
 
-            // 复制AI设置
+            
             dest.AISet.MoveStyle = src.AISet.MoveStyle;
             dest.AISet.DieStyle = src.AISet.DieStyle;
             dest.AISet.TargetSelect = src.AISet.TargetSelect;
@@ -445,11 +538,11 @@ namespace GameServer
             dest.AISet.EscapeDistance = src.AISet.EscapeDistance;
             dest.AISet.LockDir = src.AISet.LockDir;
 
-            // 复制宠物设置
+            
             dest.PetSet.Type = src.PetSet.Type;
             dest.PetSet.StopAt = src.PetSet.StopAt;
 
-            // 复制攻击描述
+            
             dest.AttackDesc.AttackStyle = src.AttackDesc.AttackStyle;
             dest.AttackDesc.AttackDistance = src.AttackDesc.AttackDistance;
             dest.AttackDesc.Delay = src.AttackDesc.Delay;
@@ -463,7 +556,7 @@ namespace GameServer
             dest.AttackDesc.Action = src.AttackDesc.Action;
             dest.AttackDesc.AppendTime = src.AttackDesc.AppendTime;
 
-            // 复制变身设置
+            
             for (int i = 0; i < 3; i++)
             {
                 dest.ChangeInto[i].Situation1.Situation = src.ChangeInto[i].Situation1.Situation;
@@ -476,18 +569,19 @@ namespace GameServer
                 dest.ChangeInto[i].Enabled = src.ChangeInto[i].Enabled;
             }
 
-            // 复制掉落物品
+            
             dest.DownItems = src.DownItems;
         }
 
-        /// <summary>
-        /// 解析属性行
-        /// </summary>
+        
+        
+        
+        
         private void ParsePropertyLine(MonsterClass monsterClass, string line)
         {
             try
             {
-                // 移除注释
+                
                 int commentIndex = line.IndexOf('#');
                 if (commentIndex >= 0)
                 {
@@ -497,7 +591,7 @@ namespace GameServer
                 if (string.IsNullOrEmpty(line))
                     return;
 
-                // 分割键值对
+                
                 var parts = line.Split(':', 2);
                 if (parts.Length != 2)
                 {
@@ -508,7 +602,7 @@ namespace GameServer
                 string key = parts[0].Trim();
                 string value = parts[1].Trim();
 
-                // 根据键名解析属性
+                
                 switch (key.ToLower())
                 {
                     case "base":
@@ -764,7 +858,7 @@ namespace GameServer
                         monsterClass.DeathScript = value;
                         break;
                     default:
-                        // 检查是否是变身设置
+                        
                         if (key.StartsWith("changeinto", StringComparison.OrdinalIgnoreCase))
                         {
                             ParseChangeInto(monsterClass, key, value);
@@ -782,10 +876,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解析基础属性 (base:)
-        /// 格式: ViewName/Race/Image/Level/NameColor
-        /// </summary>
+        
+        
+        
+        
         private void ParseBaseProperty(MonsterClass monsterClass, string value)
         {
             try
@@ -808,10 +902,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解析怪物属性 (prop:)
-        /// 格式: HP/MP/Hit/Speed/AC1/AC2/DC1/DC2/MAC1/MAC2/MC1/MC2/Exp/AIDelay/WalkDelay/RecoverHP/RecoverHPTime/RecoverMP/RecoverMPTime
-        /// </summary>
+        
+        
+        
+        
         private void ParsePropProperty(MonsterClass monsterClass, string value)
         {
             try
@@ -862,10 +956,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解析特殊属性 (sprop:)
-        /// 格式: PFlag/CallRate/AntSoulWall/AntTrouble/AntHolyWord
-        /// </summary>
+        
+        
+        
+        
         private void ParseSPropProperty(MonsterClass monsterClass, string value)
         {
             try
@@ -888,10 +982,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解析AI设置 (aiset:)
-        /// 格式: MoveStyle/DieStyle/TargetSelect/TargetFlag/ViewDistance/CoolEyes/EscapeDistance/LockDir
-        /// </summary>
+        
+        
+        
+        
         private void ParseAISetProperty(MonsterClass monsterClass, string value)
         {
             try
@@ -920,10 +1014,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解析宠物设置 (petset:)
-        /// 格式: Type/StopAt
-        /// </summary>
+        
+        
+        
+        
         private void ParsePetSetProperty(MonsterClass monsterClass, string value)
         {
             try
@@ -940,10 +1034,11 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解析攻击属性 (attack:)
-        /// 格式: AttackStyle/AttackDistance/Delay/DamageStyle/DamageRange/DamageType/AppendEffect/AppendRate/CostHP/CostMP
-        /// </summary>
+        
+        
+        
+        
+        
         private void ParseAttackProperty(MonsterClass monsterClass, string value)
         {
             try
@@ -954,6 +1049,7 @@ namespace GameServer
                     LogManager.Default.Warning($"攻击属性字段不足10个: {value}");
                     return;
                 }
+                
                 
                 monsterClass.AttackDesc.AttackStyle = StringToInteger(parts[0]);
                 monsterClass.AttackDesc.AttackDistance = StringToInteger(parts[1]);
@@ -972,10 +1068,11 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解析附加属性 (append:)
-        /// 格式: Feature/Action/AppendTime
-        /// </summary>
+        
+        
+        
+        
+        
         private void ParseAppendProperty(MonsterClass monsterClass, string value)
         {
             try
@@ -987,16 +1084,16 @@ namespace GameServer
                     return;
                 }
                 
-                // 第一个字段是Feature
+                
                 monsterClass.Base.Feature = (uint)StringToInteger(parts[0]);
                 
-                // 第二个字段是Action（可选）
+                
                 if (parts.Length > 1)
                     monsterClass.AttackDesc.Action = (ushort)StringToInteger(parts[1]);
                 else
                     monsterClass.AttackDesc.Action = 0;
                 
-                // 第三个字段是AppendTime（可选）
+                
                 if (parts.Length > 2)
                     monsterClass.AttackDesc.AppendTime = (ushort)StringToInteger(parts[2]);
                 else
@@ -1008,10 +1105,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解析变身属性 (chg1, chg2, chg3)
-        /// 格式: Situation1/Param1/Situation2/Param2/ChangeInto/AppendEffect/Anim/Enabled
-        /// </summary>
+        
+        
+        
+        
         private void ParseChangeIntoProperty(MonsterClass monsterClass, int index, string value)
         {
             try
@@ -1045,14 +1142,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解析变身设置
-        /// </summary>
+        
+        
+        
         private void ParseChangeInto(MonsterClass monsterClass, string key, string value)
         {
             try
             {
-                // 格式: ChangeInto0=情境1,参数1,情境2,参数2,变身目标,附加效果,动画,启用
+                
                 if (key.Length < 10)
                     return;
 
@@ -1066,34 +1163,34 @@ namespace GameServer
 
                 var changeInto = monsterClass.ChangeInto[index];
                 
-                // 情境1
+                
                 if (int.TryParse(parts[0], out int situation1))
                     changeInto.Situation1.Situation = situation1;
                 
-                // 参数1
+                
                 if (int.TryParse(parts[1], out int param1))
                     changeInto.Situation1.Param = param1;
                 
-                // 情境2
+                
                 if (int.TryParse(parts[2], out int situation2))
                     changeInto.Situation2.Situation = situation2;
                 
-                // 参数2
+                
                 if (int.TryParse(parts[3], out int param2))
                     changeInto.Situation2.Param = param2;
                 
-                // 变身目标
+                
                 changeInto.ChangeInto = parts[4];
                 
-                // 附加效果
+                
                 if (int.TryParse(parts[5], out int appendEffect))
                     changeInto.AppendEffect = appendEffect;
                 
-                // 动画
+                
                 if (bool.TryParse(parts[6], out bool anim))
                     changeInto.Anim = anim;
                 
-                // 启用
+                
                 if (bool.TryParse(parts[7], out bool enabled))
                     changeInto.Enabled = enabled;
             }
@@ -1103,52 +1200,58 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取下一个对象ID
-        /// </summary>
+        
+        
+        
         public uint GetNextObjectId()
         {
             lock (_monsterLock)
             {
-                uint id = (uint)(_monsterList.Count + 1);
-                id |= ((uint)ObjectType.Monster << 24);
-                return id;
+                
+                uint seq = ++_nextMonsterSeq;
+                if (_nextMonsterSeq > 0x00FFFFFFu)
+                {
+                    _nextMonsterSeq = 1;
+                    seq = 1;
+                }
+                return ObjectIdUtil.MakeObjectId(MirObjectType.Monster, seq);
             }
         }
 
-        /// <summary>
-        /// 根据ID获取怪物类
-        /// </summary>
+        
+        
+        
         public MonsterClass? GetMonsterClass(int monsterId)
         {
             lock (_classLock)
             {
-                // 通过ID查找怪物类
+                
                 foreach (var monsterClass in _monsterClassHash.Values)
                 {
-                    // 这里需要根据实际情况实现ID查找逻辑
+                    
+                    
                     return monsterClass;
                 }
                 return null;
             }
         }
 
-        /// <summary>
-        /// 字符串转整数
-        /// </summary>
+        
+        
+        
         private int StringToInteger(string str)
         {
             if (string.IsNullOrEmpty(str))
                 return 0;
             
-            // 移除空白字符
+            
             str = str.Trim();
             
-            // 尝试解析整数
+            
             if (int.TryParse(str, out int result))
                 return result;
             
-            // 如果解析失败，尝试处理十六进制格式
+            
             if (str.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
             {
                 str = str.Substring(2);
@@ -1156,7 +1259,7 @@ namespace GameServer
                     return result;
             }
             
-            // 如果还是失败，返回0
+            
             LogManager.Default.Warning($"无法将字符串转换为整数: '{str}'");
             return 0;
         }

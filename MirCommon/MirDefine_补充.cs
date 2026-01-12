@@ -3,9 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace MirCommon
 {
-    /// <summary>
-    /// 锁定的消息结构
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct LMirMsg
     {
@@ -22,9 +22,9 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 私有商店头部
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
     public struct PrivateShopHeader
     {
@@ -47,9 +47,9 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 私有商店显示
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct PrivateShopShow
     {
@@ -68,9 +68,9 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 私有商店物品查询
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct PrivateShopItemQuery
     {
@@ -86,9 +86,9 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 私有商店查询
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
     public struct PrivateShopQuery
     {
@@ -103,9 +103,9 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 装备结构
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct Equipment
     {
@@ -119,9 +119,10 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 用于内存中的物品位置表示，不用于数据库持久化
-    /// </summary>
+    
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct DBItemPos
     {
@@ -137,9 +138,9 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 玩家结构
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
     public struct PlayerStruct
     {
@@ -180,9 +181,9 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 其他玩家结构
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
     public struct OtherPlayer
     {
@@ -220,9 +221,9 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 注册账号结构
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
     public struct RegisterAccount
     {
@@ -295,9 +296,9 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 注册账号索引
-    /// </summary>
+    
+    
+    
     public enum RegisterAccountIndex
     {
         RAI_ACCOUNT = 0,
@@ -315,9 +316,9 @@ namespace MirCommon
         RAI_UNKNOWN = 226,
     }
     
-    /// <summary>
-    /// 创建角色描述
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
     public struct CreateCharDesc
     {
@@ -346,9 +347,9 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 特征结构
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct Feather
     {
@@ -366,9 +367,9 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 物品数据库标志
-    /// </summary>
+    
+    
+    
     public enum ItemDbFlag
     {
         IDF_GROUND,
@@ -381,9 +382,9 @@ namespace MirCommon
         IDF_UPGRADE,
     }
     
-    /// <summary>
-    /// 升级添加掩码
-    /// </summary>
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct UpgradeAddMask
     {
@@ -397,9 +398,9 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 属性索引
-    /// </summary>
+    
+    
+    
     public enum PropIndex
     {
         PI_MINAC,
@@ -439,9 +440,9 @@ namespace MirCommon
         PI_PROP_COUNT,
     }
     
-    /// <summary>
-    /// 物品需求类型
-    /// </summary>
+    
+    
+    
     public enum ItemNeedType
     {
         INT_LEVEL,
@@ -453,17 +454,17 @@ namespace MirCommon
         INT_SABUKOWNER,
     }
     
-    /// <summary>
-    /// 创建物品结构
-    /// 用于DM_CREATEITEM消息
-    /// </summary>
+    
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct CREATEITEM
     {
-        public uint dwClientKey;     // 客户端密钥
-        public Item item;            // 物品
-        public ushort wPos;          // 位置
-        public byte btFlag;          // 标志
+        public uint dwClientKey;     
+        public Item item;            
+        public ushort wPos;          
+        public byte btFlag;          
         
         public CREATEITEM()
         {
@@ -474,17 +475,17 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 客户端物品结构
-    /// 用于发送给客户端的物品信息
-    /// </summary>
+    
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ITEMCLIENT
     {
-        public BaseItem baseitem;    // 基础物品信息
-        public uint dwMakeIndex;     // 制造索引
-        public ushort wCurDura;      // 当前耐久
-        public ushort wMaxDura;      // 最大耐久
+        public BaseItem baseitem;    
+        public uint dwMakeIndex;     
+        public ushort wCurDura;      
+        public ushort wMaxDura;      
         
         public ITEMCLIENT()
         {
@@ -495,15 +496,15 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 创建玩家描述结构
-    /// 用于创建玩家对象
-    /// </summary>
+    
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct CREATEHUMANDESC
     {
-        public Database.CHARDBINFO dbinfo;    // 角色数据库信息
-        public IntPtr pClientObj;    // 客户端对象指针
+        public Database.CHARDBINFO dbinfo;    
+        public IntPtr pClientObj;    
         
         public CREATEHUMANDESC()
         {
@@ -512,15 +513,15 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 装备结构
-    /// 用于发送装备信息
-    /// </summary>
+    
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct EQUIPMENT
     {
-        public ushort pos;           // 装备位置
-        public ITEMCLIENT item;      // 物品信息
+        public ushort pos;           
+        public ITEMCLIENT item;      
         
         public EQUIPMENT()
         {
@@ -529,15 +530,15 @@ namespace MirCommon
         }
     }
     
-    /// <summary>
-    /// 背包物品位置结构
-    /// 用于发送背包物品位置信息
-    /// </summary>
+    
+    
+    
+    
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct BAGITEMPOS
     {
-        public uint ItemId;          // 物品ID
-        public ushort wPos;          // 位置
+        public uint ItemId;          
+        public ushort wPos;          
         
         public BAGITEMPOS()
         {
@@ -546,53 +547,126 @@ namespace MirCommon
         }
     }
 
-    /// <summary>
-    /// 数据库错误码
-    /// </summary>
+    
+    
+    
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
+    public struct MAGIC
+    {
+        public byte cKey;                 
+        public byte btLevel;              
+        public ushort wUnknown;           
+        public int iCurExp;               
+        public ushort wId;                
+        public byte btNameLength;         
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 12)]
+        public byte[] szName;             
+
+        public byte btEffectType;
+        public byte btEffect;
+        public byte btUnknown;
+        public ushort wSpell;
+        public ushort wPower;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+        public byte[] btNeedLevel;
+
+        public ushort wUnknown2;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+        public int[] iLevelupExp;
+
+        public byte btUnknown2;
+        public byte job;
+        public ushort wUnknown3;
+        public ushort wDelayTime;
+        public ushort wUnknown4;
+        public byte btDefSpell;
+        public byte btDefPower;
+        public ushort wMaxPower;
+        public ushort wDefMaxPower;
+
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 18)]
+        public byte[] btUnknown4;
+
+        public MAGIC()
+        {
+            cKey = 0;
+            btLevel = 0;
+            wUnknown = 0;
+            iCurExp = 0;
+            wId = 0;
+            btNameLength = 0;
+            szName = new byte[12];
+            btEffectType = 0;
+            btEffect = 0;
+            btUnknown = 0;
+            wSpell = 0;
+            wPower = 0;
+            btNeedLevel = new byte[4];
+            wUnknown2 = 0;
+            iLevelupExp = new int[4];
+            btUnknown2 = 0;
+            job = 0;
+            wUnknown3 = 0;
+            wDelayTime = 0;
+            wUnknown4 = 0;
+            btDefSpell = 0;
+            btDefPower = 0;
+            wMaxPower = 0;
+            wDefMaxPower = 0;
+            btUnknown4 = new byte[18];
+        }
+    }
+
+    
+    
+    
     public enum DbError
     {
-        SE_OK = 0,                  // 成功
-        SE_FAIL = 1,                // 失败
-        SE_ALLOCMEMORYFAIL = 2,     // 内存分配失败
-        SE_DB_NOMOREDATA = 3,       // 没有更多数据
-        SE_DB_NOTINITED = 4,        // 数据库未初始化
-        SE_LOGIN_ACCOUNTEXIST = 100, // 账号已存在
-        SE_LOGIN_ACCOUNTNOTEXIST = 101, // 账号不存在
-        SE_LOGIN_PASSWORDERROR = 102, // 密码错误
-        SE_SELCHAR_CHAREXIST = 200, // 角色已存在
-        SE_SELCHAR_NOTEXIST = 201,  // 角色不存在
-        SE_REG_INVALIDACCOUNT = 300, // 无效的账号
-        SE_REG_INVALIDPASSWORD = 301, // 无效的密码
-        SE_REG_INVALIDNAME = 302,   // 无效的名字
-        SE_REG_INVALIDBIRTHDAY = 303, // 无效的生日
-        SE_REG_INVALIDPHONENUMBER = 304, // 无效的电话号码
-        SE_REG_INVALIDMOBILEPHONE = 305, // 无效的手机号码
-        SE_REG_INVALIDQUESTION = 306, // 无效的问题
-        SE_REG_INVALIDANSWER = 307,  // 无效的答案
-        SE_REG_INVALIDIDCARD = 308,  // 无效的身份证
-        SE_REG_INVALIDEMAIL = 309,   // 无效的邮箱
-        SE_CREATECHARACTER_INVALID_CHARNAME = 400, // 无效的角色名
-        SE_ODBC_SQLCONNECTFAIL = 500, // 数据库连接失败
-        SE_ODBC_SQLEXECDIRECTFAIL = 501, // SQL执行失败
+        SE_OK = 0,                  
+        SE_FAIL = 1,                
+        SE_ALLOCMEMORYFAIL = 2,     
+        SE_DB_NOMOREDATA = 3,       
+        SE_DB_NOTINITED = 4,        
+        SE_LOGIN_ACCOUNTEXIST = 100, 
+        SE_LOGIN_ACCOUNTNOTEXIST = 101, 
+        SE_LOGIN_PASSWORDERROR = 102, 
+        SE_SELCHAR_CHAREXIST = 200, 
+        SE_SELCHAR_NOTEXIST = 201,  
+        SE_REG_INVALIDACCOUNT = 300, 
+        SE_REG_INVALIDPASSWORD = 301, 
+        SE_REG_INVALIDNAME = 302,   
+        SE_REG_INVALIDBIRTHDAY = 303, 
+        SE_REG_INVALIDPHONENUMBER = 304, 
+        SE_REG_INVALIDMOBILEPHONE = 305, 
+        SE_REG_INVALIDQUESTION = 306, 
+        SE_REG_INVALIDANSWER = 307,  
+        SE_REG_INVALIDIDCARD = 308,  
+        SE_REG_INVALIDEMAIL = 309,   
+        SE_CREATECHARACTER_INVALID_CHARNAME = 400, 
+        SE_ODBC_SQLCONNECTFAIL = 500, 
+        SE_ODBC_SQLEXECDIRECTFAIL = 501, 
     }
 
-    /// <summary>
-    /// 列类型
-    /// </summary>
+    
+    
+    
     public enum eColType
     {
-        CT_STRING,      // 字符串
-        CT_TINYINT,     // 8位整数
-        CT_SMALLINT,    // 16位整数
-        CT_INTEGER,     // 32位整数
-        CT_BIGINT,      // 64位整数
-        CT_DATETIME,    // 时间
-        CT_CODEDARRAY,  // 编码存的数据
+        CT_STRING,      
+        CT_TINYINT,     
+        CT_SMALLINT,    
+        CT_INTEGER,     
+        CT_BIGINT,      
+        CT_DATETIME,    
+        CT_CODEDARRAY,  
     }
 
-    /// <summary>
-    /// 数据库物品操作
-    /// </summary>
+    
+    
+    
     public enum dbitemoperation
     {
         DIO_DELETE,
@@ -601,93 +675,93 @@ namespace MirCommon
         DIO_UPDATEDURA
     }
 
-    /// <summary>
-    /// 服务器中心消息
-    /// </summary>
+    
+    
+    
     public enum scmsg
     {
         SCM_START,
-        // 注册服务器
-        // send...
-        // dwFlag = id( server = 0 other id != 0 )
-        // data = REGISTER_SERVER_INFO
-        // recv...
-        // dwFlag = id
-        // w1 = success?
-        // w2 = reason
-        // data = REGISTER_SERVER_RESULT
+        
+        
+        
+        
+        
+        
+        
+        
+        
         SCM_REGISTERSERVER,
-        // 取得选人服务器地址
-        // send...
-        // data = loginid/servername
-        // recv...
-        // w1 = success?
-        // w2 = reason
-        // data = ip/port/selectid
+        
+        
+        
+        
+        
+        
+        
         SCM_GETSELCHARSERVERADDR,
-        // 取得游戏世界服务器地址
-        // send...
-        // mapname/x/y/servername
-        // recv
-        // w1 = success?
-        // w2 = reason
-        // data = ip/port
+        
+        
+        
+        
+        
+        
+        
         SCM_GETGAMESERVERADDR,
-        // 更新服务器信息
-        // send...
-        // w1 = connections
-        // dwFlag = float loop time
-        // every one second
+        
+        
+        
+        
+        
         SCM_UPDATESERVERINFO,
-        // 取得服务器地址
-        // send...
-        // w1 = type
-        // data = name
-        // recv
-        // w1 = success?reason
-        // data = SERVERADDR
+        
+        
+        
+        
+        
+        
+        
         SCM_FINDSERVER,
-        // 发送服务器间消息
-        // send...
-        // dwflag = 0
-        // w1 = cmd
-        // w2 = sendtype
-        // w3 = sendparam
-        // data = data
-        // recv...
-        // dwflag = 0
-        // w1 = cmd
-        // w2 = sendservertype
-        // w3 = sendserverindex
-        // data = data
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
         SCM_MSGACROSSSERVER,
     }
 
-    /// <summary>
-    /// 跨服务器消息
-    /// </summary>
+    
+    
+    
     public enum MSG_ACROSS_SERVER
     {
-        // 踢掉某人
-        // 让数据库里的标记设置成不在线
-        // data = account
+        
+        
+        
         MAS_KICKCONNECTION,
-        // 登陆服务器请求进入选人服务器
-        // send...
-        // data = loginid/account
-        // recv...
-        // data = selcharid
+        
+        
+        
+        
+        
         MAS_ENTERSELCHARSERVER,
-        // 进入游戏世界服务器
-        // send...
-        // data = ENTERGAMESERVER
-        // recv...
-        // data = fail or success
+        
+        
+        
+        
+        
         MAS_ENTERGAMESERVER,
-        // send...
-        // data = LID/ACCOUNT/SID
-        // recv
-        // data = 
+        
+        
+        
+        
         MAS_RESTARTGAME,
     }
 }

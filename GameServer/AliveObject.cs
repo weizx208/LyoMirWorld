@@ -9,35 +9,28 @@ namespace GameServer
 {
     public abstract class AliveObject : MapObject, ICombatEntity
     {
-        // 基本属性
         public string Name { get; set; } = "NONAME";
         public byte Level { get; set; } = 1;
         public int CurrentHP { get; set; }
         public int MaxHP { get; set; }
         public int CurrentMP { get; set; }
         public int MaxMP { get; set; }
-        public int X { get; set; }
-        public int Y { get; set; }
 
-        // 移动相关
         public Direction CurrentDirection { get; set; }
         public ActionType CurrentAction { get; set; }
         public ushort ActionX { get; set; }
         public ushort ActionY { get; set; }
         public Direction ActionDirection { get; set; }
         public byte WalkSpeed { get; set; } = 2;
-        public byte RunSpeed { get; set; } = 2;
+        public byte RunSpeed { get; set; } = 4;
         
-        // 状态
         public bool IsDead { get; set; }
         public bool IsHidden { get; set; }
         public bool CanMove { get; set; } = true;
         
-        // 战斗属性
         public CombatStats Stats { get; set; }
         public BuffManager BuffManager { get; private set; }
         
-        // ICombatEntity 接口实现
         uint ICombatEntity.Id => ObjectId;
         string ICombatEntity.Name => Name;
         int ICombatEntity.CurrentHP { get => CurrentHP; set => CurrentHP = value; }
@@ -49,27 +42,24 @@ namespace GameServer
         bool ICombatEntity.IsDead { get => IsDead; set => IsDead = value; }
         BuffManager ICombatEntity.BuffManager => BuffManager;
 
-        int ICombatEntity.X { get => X; set => X = value; }
-        int ICombatEntity.Y { get => Y; set => Y = value; }
+        int ICombatEntity.X { get => X; set => X = (ushort)Math.Clamp(value, 0, 65535); }
+        int ICombatEntity.Y { get => Y; set => Y = (ushort)Math.Clamp(value, 0, 65535); }
 
-        // 可见对象列表
         private readonly ConcurrentDictionary<uint, VisibleObject> _visibleObjects = new();
         private uint _visibleObjectUpdateFlag = 0;
         
-        // 对象引用
+        protected int _visibleObjectFlag = 0;
+        
         protected ObjectReference<AliveObject> _targetRef = new();
         protected ObjectReference<AliveObject> _hitterRef = new();
         protected ObjectReference<AliveObject> _ownerRef = new();
         
-        // 攻击记录
         protected Dictionary<uint, AttackRecord> _attackRecords = new();
         protected readonly object _recordLock = new();
         
-        // 进程队列
         private readonly Queue<ObjectProcess> _processQueue = new();
         private readonly object _processLock = new();
         
-        // 定时器
         private DateTime _actionCompleteTime;
         private DateTime _lastHpRecoverTime;
         private DateTime _lastMpRecoverTime;
@@ -92,24 +82,17 @@ namespace GameServer
         {
             base.Update();
             
-            // 更新Buff
             BuffManager.Update();
             
-            // 处理进程队列
             ProcessQueue();
             
-            // 自动恢复
             AutoRecover();
             
-            // 清理过期攻击记录
             CleanupOldRecords(TimeSpan.FromMinutes(5));
         }
 
         #region 移动相关
 
-        /// <summary>
-        /// 行走
-        /// </summary>
         public virtual bool Walk(Direction dir, uint delay = 0)
         {
             if (!CanDoAction(ActionType.Walk))
@@ -119,9 +102,6 @@ namespace GameServer
             return WalkXY((ushort)newX, (ushort)newY, delay);
         }
 
-        /// <summary>
-        /// 行走到指定位置
-        /// </summary>
         public virtual bool WalkXY(ushort x, ushort y, uint delay = 0)
         {
             if (CurrentMap == null || !CurrentMap.CanWalk(x, y))
@@ -134,37 +114,51 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 奔跑
-        /// </summary>
         public virtual bool Run(Direction dir, uint delay = 0)
         {
             if (!CanDoAction(ActionType.Run))
                 return false;
 
-            var (x1, y1) = GetNextPosition(X, Y, dir);
-            var (newX, newY) = GetNextPosition(x1, y1, dir);
-            return RunXY((ushort)newX, (ushort)newY, delay);
+            int x = X, y = Y;
+            int steps = Math.Max(1, (int)GetRunSpeed());
+            for (int i = 0; i < steps; i++)
+            {
+                var (nextX, nextY) = GetNextPosition(x, y, dir);
+                if (CurrentMap == null || CurrentMap.IsBlocked((ushort)nextX, (ushort)nextY))
+                    return false;
+                x = nextX;
+                y = nextY;
+            }
+            
+            return RunXY((ushort)x, (ushort)y, delay);
         }
 
-        /// <summary>
-        /// 奔跑到指定位置
-        /// </summary>
         public virtual bool RunXY(ushort x, ushort y, uint delay = 0)
         {
             if (CurrentMap == null || !CurrentMap.CanWalk(x, y))
                 return false;
 
             var dir = GetDirection(X, Y, x, y);
+
+            int mx = X, my = Y;
+            int steps = Math.Max(1, (int)GetRunSpeed());
+            for (int i = 0; i < steps; i++)
+            {
+                var (nx, ny) = GetNextPosition(mx, my, dir);
+                if (CurrentMap.IsBlocked((ushort)nx, (ushort)ny))
+                    return false;
+                mx = nx;
+                my = ny;
+            }
+            if (mx != x || my != y)
+                return false;
+
             if (!SetAction(ActionType.Run, dir, x, y, delay))
                 return false;
 
             return true;
         }
 
-        /// <summary>
-        /// 转向
-        /// </summary>
         public virtual bool Turn(Direction dir)
         {
             CurrentDirection = dir;
@@ -172,9 +166,6 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 攻击
-        /// </summary>
         public virtual bool Attack(Direction dir, uint delay = 0)
         {
             if (!CanDoAction(ActionType.Attack))
@@ -183,9 +174,6 @@ namespace GameServer
             return SetAction(ActionType.Attack, dir, (ushort)X, (ushort)Y, delay);
         }
 
-        /// <summary>
-        /// 设置动作
-        /// </summary>
         protected virtual bool SetAction(ActionType action, Direction dir, ushort x, ushort y, uint delay)
         {
             if (!CanDoAction(action))
@@ -197,6 +185,14 @@ namespace GameServer
             ActionX = x;
             ActionY = y;
             
+            if ((action == ActionType.Walk || action == ActionType.Run) && CurrentMap != null)
+            {
+                if (X != x || Y != y)
+                {
+                    CurrentMap.MoveObject(this, x, y);
+                }
+            }
+
             uint actionTime = GetActionTime(action);
             _actionCompleteTime = DateTime.Now.AddMilliseconds(actionTime + delay);
 
@@ -204,32 +200,15 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 完成动作
-        /// </summary>
         public virtual bool CompleteAction()
         {
             if (DateTime.Now < _actionCompleteTime)
                 return false;
 
-            switch (CurrentAction)
-            {
-                case ActionType.Walk:
-                case ActionType.Run:
-                    if (CurrentMap != null)
-                    {
-                        CurrentMap.MoveObject(this, ActionX, ActionY);
-                    }
-                    break;
-            }
-
             CurrentAction = ActionType.Stand;
             return true;
         }
 
-        /// <summary>
-        /// 检查是否可以执行动作
-        /// </summary>
         public virtual bool CanDoAction(ActionType action)
         {
             if (IsDead)
@@ -247,31 +226,45 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 获取动作时间
-        /// </summary>
         protected virtual uint GetActionTime(ActionType action)
         {
+            static uint GetGameVarMs(int key, uint fallback)
+            {
+                float value = GameWorld.Instance.GetGameVar(key);
+                if (value <= 0)
+                    return fallback;
+                if (value >= uint.MaxValue)
+                    return uint.MaxValue;
+                return (uint)value;
+            }
+
             switch (action)
             {
                 case ActionType.Walk:
-                    return (uint)(1000 / WalkSpeed);
+                    return GetGameVarMs(GameVarConstants.WalkSpeed, 600);
                 case ActionType.Run:
-                    return (uint)(1000 / RunSpeed);
+                    return GetGameVarMs(GameVarConstants.RunSpeed, 300);
                 case ActionType.Attack:
-                    return 500;
+                    return GetGameVarMs(GameVarConstants.AttackSpeed, 500);
                 default:
                     return 0;
             }
+        }
+
+        public virtual byte GetRunSpeed()
+        {
+            return RunSpeed;
+        }
+
+        public virtual byte GetWalkSpeed()
+        {
+            return WalkSpeed;
         }
 
         #endregion
 
         #region 战斗相关
 
-        /// <summary>
-        /// 受到攻击
-        /// </summary>
         public virtual bool BeAttack(AliveObject attacker, int damage, DamageType damageType = DamageType.Physics)
         {
             if (IsDead)
@@ -280,9 +273,6 @@ namespace GameServer
             return TakeDamage(attacker as ICombatEntity, damage, damageType);
         }
 
-        /// <summary>
-        /// 受到伤害 (ICombatEntity接口实现)
-        /// </summary>
         public virtual bool TakeDamage(ICombatEntity attacker, int damage, DamageType damageType)
         {
             if (IsDead)
@@ -302,28 +292,18 @@ namespace GameServer
             return false;
         }
 
-        /// <summary>
-        /// 受到伤害 (AliveObject版本，用于内部调用)
-        /// </summary>
         public virtual bool TakeDamage(AliveObject attacker, int damage, DamageType damageType)
         {
             return TakeDamage(attacker as ICombatEntity, damage, damageType);
         }
 
-        /// <summary>
-        /// 造成伤害
-        /// </summary>
         public virtual bool Damage(uint hitterId, int value)
         {
             return TakeDamage((ICombatEntity)null!, value, DamageType.Physics);
         }
         
-        /// <summary>
-        /// Attack method for ICombatEntity interface
-        /// </summary>
         public virtual CombatResult Attack(ICombatEntity target, DamageType damageType = DamageType.Physics)
         {
-            // 简单实现，子类可以覆盖
             var result = new CombatResult
             {
                 DamageType = damageType,
@@ -339,9 +319,6 @@ namespace GameServer
             return result;
         }
 
-        /// <summary>
-        /// 治疗
-        /// </summary>
         public virtual void Heal(int amount)
         {
             if (IsDead)
@@ -351,9 +328,6 @@ namespace GameServer
             SendHpMpChanged();
         }
 
-        /// <summary>
-        /// 恢复魔法
-        /// </summary>
         public virtual void RestoreMP(int amount)
         {
             if (IsDead)
@@ -363,9 +337,6 @@ namespace GameServer
             SendHpMpChanged();
         }
 
-        /// <summary>
-        /// 消耗魔法
-        /// </summary>
         public virtual bool ConsumeMP(int amount)
         {
             if (CurrentMP < amount)
@@ -376,9 +347,6 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 死亡
-        /// </summary>
         public virtual void ToDeath(uint killerId = 0)
         {
             if (IsDead)
@@ -393,25 +361,26 @@ namespace GameServer
 
         #endregion
 
+        protected override void OnPositionChanged(ushort oldX, ushort oldY, ushort newX, ushort newY)
+        {
+            base.OnPositionChanged(oldX, oldY, newX, newY);
+
+            UpdateViewRange(oldX, oldY);
+        }
+
         #region 视野管理
 
-        /// <summary>
-        /// 更新视野范围
-        /// </summary>
         public virtual void UpdateViewRange(int oldX, int oldY)
         {
             if (CurrentMap == null)
                 return;
 
-            int viewRange = 18; // 视野范围
+            int viewRange = 18;
             
-            // 获取新视野内的对象
             var newObjects = CurrentMap.GetObjectsInRange(X, Y, viewRange);
             
-            // 获取旧视野内的对象
             var oldObjects = CurrentMap.GetObjectsInRange(oldX, oldY, viewRange);
 
-            // 找出进入视野的对象
             foreach (var obj in newObjects)
             {
                 if (obj.ObjectId == ObjectId)
@@ -423,7 +392,6 @@ namespace GameServer
                 }
             }
 
-            // 找出离开视野的对象
             foreach (var obj in oldObjects)
             {
                 if (!newObjects.Contains(obj))
@@ -433,11 +401,23 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 添加可见对象
-        /// </summary>
+        public virtual void AddVisibleObjectType(ObjectType type)
+        {
+            _visibleObjectFlag |= (1 << (int)type);
+        }
+        
+        public virtual int GetVisibleObjectFlag()
+        {
+            return _visibleObjectFlag;
+        }
+        
         public virtual void AddVisibleObject(MapObject obj)
         {
+            if ((_visibleObjectFlag & (1 << (int)obj.GetObjectType())) == 0)
+            {
+                return; 
+            }
+            
             var visObj = new VisibleObject
             {
                 Object = obj,
@@ -451,9 +431,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 移除可见对象
-        /// </summary>
         public virtual void RemoveVisibleObject(MapObject obj)
         {
             if (_visibleObjects.TryRemove(obj.ObjectId, out var visObj))
@@ -463,9 +440,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 搜索视野范围
-        /// </summary>
         public virtual void SearchViewRange()
         {
             if (CurrentMap == null)
@@ -481,9 +455,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 清理可见对象列表
-        /// </summary>
         public virtual void CleanVisibleList()
         {
             foreach (var kvp in _visibleObjects.ToArray())
@@ -500,17 +471,10 @@ namespace GameServer
 
         #region 消息发送
 
-        /// <summary>
-        /// 发送消息给自己
-        /// </summary>
         public virtual void SendMessage(byte[] message)
         {
-            // 子类实现
         }
 
-        /// <summary>
-        /// 发送消息给周围对象
-        /// </summary>
         public virtual void SendAroundMsg(int v, int v1, byte[] message)
         {
             if (CurrentMap == null)
@@ -519,41 +483,24 @@ namespace GameServer
             CurrentMap.BroadcastMessageInRange(X, Y, 18, message);
         }
 
-        /// <summary>
-        /// 发送消息给地图所有对象
-        /// </summary>
         public virtual void SendMapMsg(byte[] message)
         {
             CurrentMap?.BroadcastMessage(message);
         }
 
-        /// <summary>
-        /// 说话
-        /// </summary>
         public virtual void Say(string message)
         {
             LogManager.Default.Info($"[{Name}]: {message}");
-            // 发送聊天消息给周围玩家
-            // 构建聊天消息包并广播给视野范围内的玩家
-            // 在完整实现中，需要使用PacketBuilder构建SM_CHAT消息
-            // 然后通过SendAroundMsg发送给周围玩家
         }
 
-        /// <summary>
-        /// 发送HP/MP变化
-        /// </summary>
         protected virtual void SendHpMpChanged()
         {
-            // 子类实现
         }
 
         #endregion
 
         #region 进程处理
 
-        /// <summary>
-        /// 添加进程
-        /// </summary>
         public virtual bool AddProcess(ProcessType type, uint param1 = 0, uint param2 = 0, 
             uint param3 = 0, uint param4 = 0, uint delay = 0, int repeatTimes = 0, string? stringParam = null)
         {
@@ -571,9 +518,6 @@ namespace GameServer
             return AddProcess(process);
         }
 
-        /// <summary>
-        /// 添加进程
-        /// </summary>
         public virtual bool AddProcess(ObjectProcess process)
         {
             lock (_processLock)
@@ -583,9 +527,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 处理进程队列
-        /// </summary>
         protected virtual void ProcessQueue()
         {
             lock (_processLock)
@@ -610,9 +551,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 执行进程
-        /// </summary>
         protected virtual void DoProcess(ObjectProcess process)
         {
             switch (process.Type)
@@ -626,6 +564,14 @@ namespace GameServer
                 case ProcessType.Die:
                     ToDeath(process.Param1);
                     break;
+                case ProcessType.ChangeMap:
+                    if (this is HumanPlayer player)
+                    {
+                        ushort x = (ushort)Math.Clamp((int)process.Param2, 0, ushort.MaxValue);
+                        ushort y = (ushort)Math.Clamp((int)process.Param3, 0, ushort.MaxValue);
+                        player.ChangeMap(process.Param1, x, y);
+                    }
+                    break;
             }
         }
 
@@ -633,9 +579,6 @@ namespace GameServer
 
         #region 辅助方法
 
-        /// <summary>
-        /// 自动恢复
-        /// </summary>
         protected virtual void AutoRecover()
         {
             if (IsDead || CurrentAction != ActionType.Stand)
@@ -643,8 +586,7 @@ namespace GameServer
 
             var now = DateTime.Now;
 
-            // HP恢复
-            if ((now - _lastHpRecoverTime).TotalMilliseconds >= 5000) // 5秒恢复一次
+            if ((now - _lastHpRecoverTime).TotalMilliseconds >= 5000) 
             {
                 int recoverHp = GetAutoRecoverHp();
                 if (recoverHp > 0 && CurrentHP < MaxHP)
@@ -654,7 +596,6 @@ namespace GameServer
                 _lastHpRecoverTime = now;
             }
 
-            // MP恢复
             if ((now - _lastMpRecoverTime).TotalMilliseconds >= 5000)
             {
                 int recoverMp = GetAutoRecoverMp();
@@ -666,25 +607,16 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取自动恢复HP量
-        /// </summary>
         protected virtual int GetAutoRecoverHp()
         {
-            return MaxHP / 50; // 2%恢复
+            return MaxHP / 50; 
         }
 
-        /// <summary>
-        /// 获取自动恢复MP量
-        /// </summary>
         protected virtual int GetAutoRecoverMp()
         {
-            return MaxMP / 50; // 2%恢复
+            return MaxMP / 50; 
         }
 
-        /// <summary>
-        /// 清理过期攻击记录
-        /// </summary>
         public void CleanupOldRecords(TimeSpan timeout)
         {
             lock (_recordLock)
@@ -707,9 +639,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取方向上的下一个位置
-        /// </summary>
         protected (int x, int y) GetNextPosition(int x, int y, Direction dir)
         {
             switch (dir)
@@ -726,9 +655,6 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取两点之间的方向
-        /// </summary>
         protected Direction GetDirection(int x1, int y1, int x2, int y2)
         {
             int dx = x2 - x1;
@@ -750,9 +676,6 @@ namespace GameServer
 
         #region 对象引用
 
-        /// <summary>
-        /// 设置目标
-        /// </summary>
         public virtual void SetTarget(AliveObject? target)
         {
             var old = _targetRef.GetObject();
@@ -760,14 +683,8 @@ namespace GameServer
             OnChangeTarget(old, target);
         }
 
-        /// <summary>
-        /// 获取目标
-        /// </summary>
         public virtual AliveObject? GetTarget() => _targetRef.GetObject();
 
-        /// <summary>
-        /// 设置攻击者
-        /// </summary>
         public virtual void SetHitter(AliveObject? hitter)
         {
             var old = _hitterRef.GetObject();
@@ -775,14 +692,8 @@ namespace GameServer
             OnChangeHitter(old, hitter);
         }
 
-        /// <summary>
-        /// 获取攻击者
-        /// </summary>
         public virtual AliveObject? GetHitter() => _hitterRef.GetObject();
 
-        /// <summary>
-        /// 设置主人
-        /// </summary>
         public virtual void SetOwner(AliveObject? owner)
         {
             var old = _ownerRef.GetObject();
@@ -790,17 +701,89 @@ namespace GameServer
             OnChangeOwner(old, owner);
         }
 
-        /// <summary>
-        /// 获取主人
-        /// </summary>
         public virtual AliveObject? GetOwner() => _ownerRef.GetObject();
 
         #endregion
 
         #region 事件回调
 
-        protected virtual void OnDeath(AliveObject killer) { }
-        protected virtual void OnDamaged(AliveObject attacker, int damage, DamageType damageType) { }
+        protected virtual void OnDeath(AliveObject killer)
+        {
+            try
+            {
+                if (CurrentMap == null)
+                    return;
+
+                uint[] dwView = new uint[2]
+                {
+                    GetFeather(),
+                    GetStatus(),
+                };
+
+                byte[] payload = new byte[dwView.Length * 4];
+                Buffer.BlockCopy(dwView, 0, payload, 0, payload.Length);
+
+                ushort dir = (ushort)((int)CurrentDirection & 0xFF);
+                var msg = new MirCommon.MirMsgOrign
+                {
+                    dwFlag = ObjectId,
+                    wCmd = MirCommon.ProtocolCmd.SM_NOWDEATH,
+                    wParam = new ushort[3] { X, Y, dir },
+                };
+
+                byte[] encoded = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(msg, payload);
+                if (encoded.Length <= 0)
+                    return;
+
+                CurrentMap.SendToNearbyPlayers(X, Y, 18, encoded);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"OnDeath广播SM_NOWDEATH失败: {Name}({ObjectId:X8}) - {ex.Message}");
+            }
+        }
+
+        protected virtual void OnDamaged(AliveObject attacker, int damage, DamageType damageType)
+        {
+            try
+            {
+                if (CurrentMap == null)
+                    return;
+
+                ushort curHp = (ushort)Math.Clamp(CurrentHP, 0, ushort.MaxValue);
+                ushort maxHp = (ushort)Math.Clamp(MaxHP, 0, ushort.MaxValue);
+                ushort dmg = (ushort)Math.Clamp(damage, 0, ushort.MaxValue);
+
+                uint attackerId = attacker?.ObjectId ?? 0;
+                uint[] dwView = new uint[4]
+                {
+                    GetFeather(),
+                    GetStatus(),
+                    attackerId,
+                    unchecked((uint)Environment.TickCount),
+                };
+
+                byte[] payload = new byte[dwView.Length * 4];
+                Buffer.BlockCopy(dwView, 0, payload, 0, payload.Length);
+
+                var msg = new MirCommon.MirMsgOrign
+                {
+                    dwFlag = ObjectId,
+                    wCmd = MirCommon.ProtocolCmd.SM_BEATTACK,
+                    wParam = new ushort[3] { curHp, maxHp, dmg },
+                };
+
+                byte[] encoded = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(msg, payload);
+                if (encoded.Length <= 0)
+                    return;
+
+                CurrentMap.SendToNearbyPlayers(X, Y, 18, encoded);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"OnDamaged广播SM_BEATTACK失败: {Name}({ObjectId:X8}) - {ex.Message}");
+            }
+        }
         protected virtual void OnKilledTarget(AliveObject target) { }
         protected virtual void OnDoAction(ActionType action) { }
         protected virtual void OnChangeTarget(AliveObject? old, AliveObject? newTarget) { }
@@ -811,30 +794,67 @@ namespace GameServer
 
         #endregion
 
+        public virtual uint GetFeather() => 0;
+
+        public virtual uint GetStatus() => 0;
+
+        public virtual uint GetHealth()
+        {
+            ushort cur = (ushort)Math.Clamp(CurrentHP, 0, 65535);
+            ushort max = (ushort)Math.Clamp(MaxHP, 0, 65535);
+            return ((uint)max << 16) | cur;
+        }
+
+        public virtual byte GetSex() => 0;
+
+        public virtual string GetViewName() => Name;
+
+        public virtual byte GetNameColor(MapObject? viewer = null) => 255;
+
         public override bool GetViewMsg(out byte[] msg, MapObject? viewer = null)
         {
-            // 子类实现具体的消息构建
             msg = Array.Empty<byte>();
-            return false;
+
+            if (IsHidden)
+                return false;
+
+            string tail = $"{GetViewName()}/{GetNameColor(viewer)}";
+            byte[] tailBytes = System.Text.Encoding.GetEncoding("GBK").GetBytes(tail);
+
+            byte[] data = new byte[12 + tailBytes.Length];
+            Buffer.BlockCopy(BitConverter.GetBytes(GetFeather()), 0, data, 0, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes(GetStatus()), 0, data, 4, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes(GetHealth()), 0, data, 8, 4);
+            Buffer.BlockCopy(tailBytes, 0, data, 12, tailBytes.Length);
+
+            ushort w3 = (ushort)(((ushort)GetSex() << 8) | ((ushort)CurrentDirection & 0xFF));
+            ushort cmd = IsDead ? ProtocolCmd.SM_DIE : ProtocolCmd.SM_APPEAR;
+
+            var outMsg = new MirCommon.MirMsgOrign
+            {
+                dwFlag = ObjectId,
+                wCmd = cmd,
+                wParam = new ushort[3] { X, Y, w3 },
+            };
+
+            msg = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(outMsg, data);
+            return msg.Length > 0;
         }
     }
 
-    /// <summary>
-    /// 动作类型
-    /// </summary>
     public enum ActionType
     {
-        None = -1,      // 无动作
-        Stand = 0,      // 站立
-        Walk = 1,       // 行走
-        Run = 2,        // 奔跑
-        Attack = 3,     // 攻击
-        Hit = 4,        // 被击
-        Die = 5,        // 死亡
-        Spell = 6,      // 施法
-        Sit = 7,        // 坐下
-        Mining = 8,     // 挖矿
-        GetMeat = 9,    // 挖肉
+        None = -1,      
+        Stand = 0,      
+        Walk = 1,       
+        Run = 2,        
+        Attack = 3,     
+        Hit = 4,        
+        Die = 5,        
+        Spell = 6,      
+        Sit = 7,        
+        Mining = 8,     
+        GetMeat = 9,    
         Max = 10,
         SpellCast = 11,
         Pickup = 12,

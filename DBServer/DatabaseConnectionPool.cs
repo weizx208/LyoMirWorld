@@ -8,9 +8,6 @@ using MirCommon.Utils;
 
 namespace DBServer
 {
-    /// <summary>
-    /// 数据库连接池管理器
-    /// </summary>
     public class DatabaseConnectionPool : IDisposable
     {
         private readonly string _connectionString;
@@ -22,7 +19,6 @@ namespace DBServer
         private bool _disposed;
         private int _activeConnections;
         
-        // 监控指标
         private long _totalConnectionsCreated;
         private long _totalConnectionsReused;
         private long _totalConnectionErrors;
@@ -40,15 +36,11 @@ namespace DBServer
             _totalConnectionErrors = 0;
             _startTime = DateTime.Now;
             
-            // 启动健康检查定时器（每5分钟检查一次）
             _healthCheckTimer = new Timer(HealthCheckCallback, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
             
             LogManager.Default.Info($"数据库连接池初始化完成，最大连接数: {maxConnections}");
         }
         
-        /// <summary>
-        /// 获取数据库连接
-        /// </summary>
         public async Task<SqlConnection> GetConnectionAsync(CancellationToken cancellationToken = default)
         {
             await _semaphore.WaitAsync(cancellationToken);
@@ -57,25 +49,21 @@ namespace DBServer
             {
                 Interlocked.Increment(ref _activeConnections);
                 
-                // 尝试从池中获取连接
                 if (_connections.TryTake(out var connection))
                 {
                     Interlocked.Increment(ref _totalConnectionsReused);
                     
-                    // 检查连接是否仍然有效
                     if (connection.State == ConnectionState.Open)
                     {
                         return connection;
                     }
                     else
                     {
-                        // 连接已关闭，创建新连接
                         connection.Dispose();
                         Interlocked.Decrement(ref _totalConnectionsReused);
                     }
                 }
                 
-                // 创建新连接
                 Interlocked.Increment(ref _totalConnectionsCreated);
                 connection = new SqlConnection(_connectionString);
                 
@@ -101,9 +89,6 @@ namespace DBServer
             }
         }
         
-        /// <summary>
-        /// 释放连接回连接池
-        /// </summary>
         public void ReleaseConnection(SqlConnection connection)
         {
             if (connection == null)
@@ -111,14 +96,12 @@ namespace DBServer
                 
             try
             {
-                // 如果连接仍然有效，放回池中
                 if (connection.State == ConnectionState.Open)
                 {
                     _connections.Add(connection);
                 }
                 else
                 {
-                    // 连接已关闭，直接释放
                     connection.Dispose();
                 }
             }
@@ -129,9 +112,6 @@ namespace DBServer
             }
         }
         
-        /// <summary>
-        /// 执行数据库操作（自动管理连接）
-        /// </summary>
         public async Task<T> ExecuteWithConnectionAsync<T>(
             Func<SqlConnection, Task<T>> operation,
             CancellationToken cancellationToken = default)
@@ -148,9 +128,6 @@ namespace DBServer
             }
         }
         
-        /// <summary>
-        /// 执行数据库操作（自动管理连接）
-        /// </summary>
         public async Task ExecuteWithConnectionAsync(
             Func<SqlConnection, Task> operation,
             CancellationToken cancellationToken = default)
@@ -167,9 +144,6 @@ namespace DBServer
             }
         }
         
-        /// <summary>
-        /// 健康检查回调
-        /// </summary>
         private void HealthCheckCallback(object state)
         {
             try
@@ -178,12 +152,10 @@ namespace DBServer
                 {
                     var connectionsToRemove = new List<SqlConnection>();
                     
-                    // 检查所有连接的健康状态
                     while (_connections.TryTake(out var connection))
                     {
                         try
                         {
-                            // 执行简单的健康检查查询
                             using (var cmd = new SqlCommand("SELECT 1", connection))
                             {
                                 if (connection.State != ConnectionState.Open)
@@ -200,17 +172,14 @@ namespace DBServer
                                 }
                             }
                             
-                            // 连接健康，放回池中
                             _connections.Add(connection);
                         }
                         catch
                         {
-                            // 连接不健康，释放
                             connectionsToRemove.Add(connection);
                         }
                     }
                     
-                    // 释放不健康的连接
                     foreach (var connection in connectionsToRemove)
                     {
                         connection.Dispose();
@@ -228,9 +197,6 @@ namespace DBServer
             }
         }
         
-        /// <summary>
-        /// 获取连接池统计信息
-        /// </summary>
         public ConnectionPoolStats GetStats()
         {
             return new ConnectionPoolStats
@@ -245,9 +211,6 @@ namespace DBServer
             };
         }
         
-        /// <summary>
-        /// 清理连接池
-        /// </summary>
         public void Clear()
         {
             lock (_lock)
@@ -275,9 +238,6 @@ namespace DBServer
         }
     }
     
-    /// <summary>
-    /// 连接池统计信息
-    /// </summary>
     public class ConnectionPoolStats
     {
         public long TotalConnectionsCreated { get; set; }
@@ -304,9 +264,6 @@ namespace DBServer
         }
     }
     
-    /// <summary>
-    /// 查询缓存管理器
-    /// </summary>
     public class QueryCacheManager
     {
         private readonly ConcurrentDictionary<string, CacheEntry> _cache;
@@ -319,13 +276,9 @@ namespace DBServer
             _cache = new ConcurrentDictionary<string, CacheEntry>();
             _defaultExpiration = defaultExpiration == default ? TimeSpan.FromMinutes(5) : defaultExpiration;
             
-            // 启动清理定时器（每分钟清理一次过期缓存）
             _cleanupTimer = new Timer(CleanupCallback, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
         }
         
-        /// <summary>
-        /// 获取缓存数据
-        /// </summary>
         public bool TryGet<T>(string key, out T value)
         {
             if (_cache.TryGetValue(key, out var entry))
@@ -338,7 +291,6 @@ namespace DBServer
                 }
                 else
                 {
-                    // 缓存已过期，移除
                     _cache.TryRemove(key, out _);
                 }
             }
@@ -347,9 +299,6 @@ namespace DBServer
             return false;
         }
         
-        /// <summary>
-        /// 设置缓存数据
-        /// </summary>
         public void Set<T>(string key, T value, TimeSpan? expiration = null)
         {
             var entry = new CacheEntry
@@ -364,17 +313,11 @@ namespace DBServer
             _cache[key] = entry;
         }
         
-        /// <summary>
-        /// 移除缓存数据
-        /// </summary>
         public bool Remove(string key)
         {
             return _cache.TryRemove(key, out _);
         }
         
-        /// <summary>
-        /// 清理过期缓存
-        /// </summary>
         private void CleanupCallback(object state)
         {
             try
@@ -406,9 +349,6 @@ namespace DBServer
             }
         }
         
-        /// <summary>
-        /// 获取缓存统计信息
-        /// </summary>
         public CacheStats GetStats()
         {
             return new CacheStats
@@ -418,9 +358,6 @@ namespace DBServer
             };
         }
         
-        /// <summary>
-        /// 估算内存使用量
-        /// </summary>
         private long CalculateMemoryUsage()
         {
             long total = 0;
@@ -431,23 +368,18 @@ namespace DBServer
             return total;
         }
         
-        /// <summary>
-        /// 估算对象大小
-        /// </summary>
         private long EstimateSize(object obj)
         {
             if (obj == null) return 0;
             
-            // 简单估算：字符串长度 * 2 + 对象开销
             if (obj is string str)
             {
                 return str.Length * 2 + 20;
             }
             
-            // 数组估算
             if (obj is Array array)
             {
-                long size = 20; // 数组对象开销
+                long size = 20; 
                 if (array.Length > 0)
                 {
                     var element = array.GetValue(0);
@@ -456,7 +388,6 @@ namespace DBServer
                 return size;
             }
             
-            // 默认估算
             return 50;
         }
         
@@ -476,13 +407,10 @@ namespace DBServer
         }
     }
     
-    /// <summary>
-    /// 缓存统计信息
-    /// </summary>
     public class CacheStats
     {
         public int TotalEntries { get; set; }
-        public long MemoryUsage { get; set; } // 字节
+        public long MemoryUsage { get; set; }
         
         public override string ToString()
         {
@@ -490,9 +418,6 @@ namespace DBServer
         }
     }
     
-    /// <summary>
-    /// 批量操作管理器
-    /// </summary>
     public class BatchOperationManager
     {
         private readonly DatabaseConnectionPool _connectionPool;
@@ -507,13 +432,9 @@ namespace DBServer
             _operations = new List<BatchOperation>();
             _batchSize = batchSize;
             
-            // 启动定时刷新（每5秒刷新一次）
             _flushTimer = new Timer(FlushCallback, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
         }
         
-        /// <summary>
-        /// 添加批量操作
-        /// </summary>
         public void AddOperation(string sql, params SqlParameter[] parameters)
         {
             lock (_lock)
@@ -525,7 +446,6 @@ namespace DBServer
                     Timestamp = DateTime.Now
                 });
                 
-                // 如果达到批量大小，立即执行
                 if (_operations.Count >= _batchSize)
                 {
                     Task.Run(() => ExecuteBatchAsync());
@@ -533,9 +453,6 @@ namespace DBServer
             }
         }
         
-        /// <summary>
-        /// 执行批量操作
-        /// </summary>
         private async Task ExecuteBatchAsync()
         {
             List<BatchOperation> operationsToExecute;
@@ -582,7 +499,6 @@ namespace DBServer
             {
                 LogManager.Default.Error($"批量操作执行异常: {ex.Message}");
                 
-                // 将失败的操作重新加入队列（可以添加重试逻辑）
                 lock (_lock)
                 {
                     _operations.InsertRange(0, operationsToExecute);
@@ -590,25 +506,16 @@ namespace DBServer
             }
         }
         
-        /// <summary>
-        /// 定时刷新回调
-        /// </summary>
         private void FlushCallback(object state)
         {
             Task.Run(() => ExecuteBatchAsync());
         }
         
-        /// <summary>
-        /// 强制刷新所有待处理操作
-        /// </summary>
         public async Task FlushAsync()
         {
             await ExecuteBatchAsync();
         }
         
-        /// <summary>
-        /// 获取批量操作统计信息
-        /// </summary>
         public BatchStats GetStats()
         {
             lock (_lock)
@@ -625,7 +532,6 @@ namespace DBServer
         public void Dispose()
         {
             _flushTimer?.Dispose();
-            // 在释放前刷新所有待处理操作
             Task.Run(async () => await FlushAsync()).Wait();
         }
         
@@ -637,9 +543,6 @@ namespace DBServer
         }
     }
     
-    /// <summary>
-    /// 批量操作统计信息
-    /// </summary>
     public class BatchStats
     {
         public int PendingOperations { get; set; }

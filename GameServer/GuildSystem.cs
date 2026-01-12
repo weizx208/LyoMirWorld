@@ -6,20 +6,20 @@ namespace GameServer
     using MirCommon;
     using MirCommon.Utils;
 
-    /// <summary>
-    /// 行会职位
-    /// </summary>
+    
+    
+    
     public enum GuildRank
     {
-        Member = 0,         // 成员
-        Elder = 1,          // 长老
-        ViceLeader = 2,     // 副会长
-        Leader = 3          // 会长
+        Member = 0,         
+        Elder = 1,          
+        ViceLeader = 2,     
+        Leader = 3          
     }
 
-    /// <summary>
-    /// 行会成员信息
-    /// </summary>
+    
+    
+    
     public class GuildMember
     {
         public uint PlayerId { get; set; }
@@ -42,9 +42,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 行会信息
-    /// </summary>
+    
+    
+    
     public class Guild
     {
         public uint GuildId { get; set; }
@@ -60,7 +60,7 @@ namespace GameServer
         private readonly Dictionary<uint, GuildMember> _members = new();
         private readonly object _memberLock = new();
         
-        // 行会仓库
+        
         private readonly List<ItemInstance> _warehouse = new();
         private readonly object _warehouseLock = new();
         private const int MAX_WAREHOUSE_SLOTS = 100;
@@ -77,13 +77,13 @@ namespace GameServer
             Funds = 0;
             Notice = "欢迎加入行会！";
             
-            // 添加会长为成员
+            
             AddMember(leaderId, leaderName, GuildRank.Leader);
         }
 
-        /// <summary>
-        /// 添加成员
-        /// </summary>
+        
+        
+        
         public bool AddMember(uint playerId, string playerName, GuildRank rank = GuildRank.Member)
         {
             lock (_memberLock)
@@ -102,9 +102,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 移除成员
-        /// </summary>
+        
+        
+        
         public bool RemoveMember(uint playerId)
         {
             lock (_memberLock)
@@ -112,7 +112,7 @@ namespace GameServer
                 if (!_members.TryGetValue(playerId, out var member))
                     return false;
 
-                // 不能移除会长
+                
                 if (member.Rank == GuildRank.Leader)
                     return false;
 
@@ -123,9 +123,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 移除成员（根据名称）
-        /// </summary>
+        
+        
+        
         public bool RemoveMember(string playerName)
         {
             lock (_memberLock)
@@ -134,7 +134,7 @@ namespace GameServer
                 if (member == null)
                     return false;
 
-                // 不能移除会长
+                
                 if (member.Rank == GuildRank.Leader)
                     return false;
 
@@ -145,9 +145,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取成员
-        /// </summary>
+        
+        
+        
         public GuildMember? GetMember(uint playerId)
         {
             lock (_memberLock)
@@ -157,9 +157,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取所有成员
-        /// </summary>
+        
+        
+        
         public List<GuildMember> GetAllMembers()
         {
             lock (_memberLock)
@@ -168,9 +168,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取在线成员
-        /// </summary>
+        
+        
+        
         public List<GuildMember> GetOnlineMembers()
         {
             lock (_memberLock)
@@ -179,9 +179,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取成员数量
-        /// </summary>
+        
+        
+        
         public int GetMemberCount()
         {
             lock (_memberLock)
@@ -190,18 +190,18 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取最大成员数量
-        /// </summary>
+        
+        
+        
         public int GetMaxMembers()
         {
-            // 根据行会等级决定最大成员数
-            return (int)Level * 10 + 20; // 1级:30人, 2级:40人, 3级:50人...
+            
+            return (int)Level * 10 + 20; 
         }
 
-        /// <summary>
-        /// 设置成员职位
-        /// </summary>
+        
+        
+        
         public bool SetMemberRank(uint playerId, GuildRank newRank)
         {
             lock (_memberLock)
@@ -209,7 +209,7 @@ namespace GameServer
                 if (!_members.TryGetValue(playerId, out var member))
                     return false;
 
-                // 不能修改会长职位
+                
                 if (member.Rank == GuildRank.Leader)
                     return false;
 
@@ -218,9 +218,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 增加贡献度
-        /// </summary>
+        
+        
+        
         public void AddContribution(uint playerId, uint amount)
         {
             lock (_memberLock)
@@ -229,20 +229,20 @@ namespace GameServer
                 {
                     member.Contribution += amount;
                     
-                    // 同时增加行会经验
+                    
                     AddExperience(amount / 10);
                 }
             }
         }
 
-        /// <summary>
-        /// 增加行会经验
-        /// </summary>
+        
+        
+        
         public void AddExperience(uint amount)
         {
             Experience += amount;
             
-            // 检查升级
+            
             uint requiredExp = GetRequiredExperience();
             while (Experience >= requiredExp && Level < 10)
             {
@@ -254,17 +254,17 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取升级所需经验
-        /// </summary>
+        
+        
+        
         private uint GetRequiredExperience()
         {
             return Level * 10000;
         }
 
-        /// <summary>
-        /// 设置公告
-        /// </summary>
+        
+        
+        
         public void SetNotice(string notice)
         {
             if (notice.Length > 200)
@@ -273,9 +273,9 @@ namespace GameServer
             Notice = notice;
         }
 
-        /// <summary>
-        /// 增加资金
-        /// </summary>
+        
+        
+        
         public bool AddFunds(uint amount)
         {
             if (amount > uint.MaxValue - Funds)
@@ -285,9 +285,9 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 扣除资金
-        /// </summary>
+        
+        
+        
         public bool TakeFunds(uint amount)
         {
             if (Funds < amount)
@@ -297,9 +297,9 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 添加物品到仓库
-        /// </summary>
+        
+        
+        
         public bool AddToWarehouse(ItemInstance item)
         {
             lock (_warehouseLock)
@@ -312,9 +312,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 从仓库移除物品
-        /// </summary>
+        
+        
+        
         public bool RemoveFromWarehouse(int index)
         {
             lock (_warehouseLock)
@@ -327,9 +327,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取仓库物品
-        /// </summary>
+        
+        
+        
         public List<ItemInstance> GetWarehouseItems()
         {
             lock (_warehouseLock)
@@ -338,9 +338,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取仓库空位数量
-        /// </summary>
+        
+        
+        
         public int GetWarehouseFreeSlots()
         {
             lock (_warehouseLock)
@@ -349,27 +349,27 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 检查是否为敌对行会（虚方法，在GuildEx中重写）
-        /// </summary>
+        
+        
+        
         public virtual bool IsKillGuild(Guild otherGuild)
         {
-            // 基础Guild类没有敌对行会功能
+            
             return false;
         }
 
-        /// <summary>
-        /// 检查是否为联盟行会（虚方法，在GuildEx中重写）
-        /// </summary>
+        
+        
+        
         public virtual bool IsAllyGuild(Guild otherGuild)
         {
-            // 基础Guild类没有联盟行会功能
+            
             return false;
         }
 
-        /// <summary>
-        /// 成员上线
-        /// </summary>
+        
+        
+        
         public void MemberOnline(uint playerId)
         {
             lock (_memberLock)
@@ -381,9 +381,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 成员下线
-        /// </summary>
+        
+        
+        
         public void MemberOffline(uint playerId)
         {
             lock (_memberLock)
@@ -400,35 +400,35 @@ namespace GameServer
             throw new NotImplementedException();
         }
 
-        /// <summary>
-        /// 获取行会首页信息
-        /// </summary>
+        
+        
+        
         public string GetFrontPage()
         {
             return $"行会名称: {Name}\n会长: {LeaderName}\n等级: {Level}\n成员: {GetMemberCount()}/{GetMaxMembers()}\n资金: {Funds}\n公告: {Notice}";
         }
 
-        /// <summary>
-        /// 发送行会首页信息给玩家
-        /// </summary>
+        
+        
+        
         public void SendFirstPage(HumanPlayer player)
         {
             if (player == null) return;
             player.SaySystem(GetFrontPage());
         }
 
-        /// <summary>
-        /// 发送行会经验信息给玩家
-        /// </summary>
+        
+        
+        
         public void SendExp(HumanPlayer player)
         {
             if (player == null) return;
             player.SaySystem($"行会经验: {Experience}/{GetRequiredExperience()}");
         }
 
-        /// <summary>
-        /// 发送行会成员列表给玩家
-        /// </summary>
+        
+        
+        
         public void SendMemberList(HumanPlayer player)
         {
             if (player == null) return;
@@ -442,28 +442,29 @@ namespace GameServer
             player.SaySystem(memberList);
         }
 
-        /// <summary>
-        /// 解析成员列表
-        /// </summary>
+        
+        
+        
         public bool ParseMemberList(HumanPlayer player, string memberList)
         {
             if (player == null) return false;
+            
             
             LogManager.Default.Info($"解析行会成员列表: {memberList}");
             return true;
         }
 
-        /// <summary>
-        /// 获取错误消息
-        /// </summary>
+        
+        
+        
         public string GetErrorMsg()
         {
             return "操作失败";
         }
 
-        /// <summary>
-        /// 检查玩家是否是行会会长
-        /// </summary>
+        
+        
+        
         public bool IsMaster(HumanPlayer player)
         {
             if (player == null)
@@ -473,35 +474,35 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 行会管理器
-    /// </summary>
+    
+    
+    
     public class GuildManager
     {
         private static GuildManager? _instance;
         public static GuildManager Instance => _instance ??= new GuildManager();
 
         private readonly Dictionary<uint, Guild> _guilds = new();
-        private readonly Dictionary<uint, uint> _playerGuildMap = new(); // playerId -> guildId
+        private readonly Dictionary<uint, uint> _playerGuildMap = new(); 
         private readonly object _lock = new();
         
         private uint _nextGuildId = 1000;
 
         private GuildManager() { }
 
-        /// <summary>
-        /// 创建行会
-        /// </summary>
+        
+        
+        
         public Guild? CreateGuild(string name, uint leaderId, string leaderName)
         {
             if (string.IsNullOrWhiteSpace(name) || name.Length > 16)
                 return null;
 
-            // 检查名称是否已存在
+            
             if (GetGuildByName(name) != null)
                 return null;
 
-            // 检查玩家是否已有行会
+            
             if (GetPlayerGuild(leaderId) != null)
                 return null;
 
@@ -518,19 +519,19 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 创建扩展行会（GuildEx）
-        /// </summary>
+        
+        
+        
         public GuildEx? CreateGuildEx(string name, uint leaderId, string leaderName)
         {
             if (string.IsNullOrWhiteSpace(name) || name.Length > 16)
                 return null;
 
-            // 检查名称是否已存在
+            
             if (GetGuildByName(name) != null)
                 return null;
 
-            // 检查玩家是否已有行会
+            
             if (GetPlayerGuild(leaderId) != null)
                 return null;
 
@@ -547,9 +548,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解散行会
-        /// </summary>
+        
+        
+        
         public bool DisbandGuild(uint guildId, uint requesterId)
         {
             lock (_lock)
@@ -557,24 +558,24 @@ namespace GameServer
                 if (!_guilds.TryGetValue(guildId, out var guild))
                     return false;
 
-                // 只有会长可以解散行会
+                
                 if (guild.LeaderId != requesterId)
                     return false;
 
-                // 如果是GuildEx，清理敌对和联盟关系
+                
                 if (guild is GuildEx guildEx)
                 {
                     guildEx.ClearAllKillRelations();
                     guildEx.ClearAllAllyRelations();
                 }
 
-                // 移除所有成员映射
+                
                 foreach (var member in guild.GetAllMembers())
                 {
                     _playerGuildMap.Remove(member.PlayerId);
                 }
 
-                // 移除行会
+                
                 _guilds.Remove(guildId);
                 
                 LogManager.Default.Info($"行会 {guild.Name} 已解散");
@@ -582,9 +583,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加入行会
-        /// </summary>
+        
+        
+        
         public bool JoinGuild(uint guildId, uint playerId, string playerName)
         {
             lock (_lock)
@@ -592,11 +593,11 @@ namespace GameServer
                 if (!_guilds.TryGetValue(guildId, out var guild))
                     return false;
 
-                // 检查玩家是否已有行会
+                
                 if (_playerGuildMap.ContainsKey(playerId))
                     return false;
 
-                // 添加到行会
+                
                 if (!guild.AddMember(playerId, playerName))
                     return false;
 
@@ -605,9 +606,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 离开行会
-        /// </summary>
+        
+        
+        
         public bool LeaveGuild(uint playerId)
         {
             lock (_lock)
@@ -618,11 +619,11 @@ namespace GameServer
                 if (!_guilds.TryGetValue(guildId, out var guild))
                     return false;
 
-                // 会长不能离开行会，只能解散
+                
                 if (guild.LeaderId == playerId)
                     return false;
 
-                // 从行会移除
+                
                 if (!guild.RemoveMember(playerId))
                     return false;
 
@@ -631,9 +632,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 踢出成员
-        /// </summary>
+        
+        
+        
         public bool KickMember(uint guildId, uint requesterId, uint targetId)
         {
             lock (_lock)
@@ -641,22 +642,22 @@ namespace GameServer
                 if (!_guilds.TryGetValue(guildId, out var guild))
                     return false;
 
-                // 检查权限
+                
                 var requester = guild.GetMember(requesterId);
                 var target = guild.GetMember(targetId);
                 
                 if (requester == null || target == null)
                     return false;
 
-                // 只有会长、副会长、长老可以踢人
+                
                 if (requester.Rank < GuildRank.Elder)
                     return false;
 
-                // 不能踢比自己职位高的人
+                
                 if (target.Rank >= requester.Rank && requesterId != guild.LeaderId)
                     return false;
 
-                // 从行会移除
+                
                 if (!guild.RemoveMember(targetId))
                     return false;
 
@@ -665,9 +666,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 设置成员职位
-        /// </summary>
+        
+        
+        
         public bool SetMemberRank(uint guildId, uint requesterId, uint targetId, GuildRank newRank)
         {
             lock (_lock)
@@ -675,7 +676,7 @@ namespace GameServer
                 if (!_guilds.TryGetValue(guildId, out var guild))
                     return false;
 
-                // 只有会长可以设置职位
+                
                 if (guild.LeaderId != requesterId)
                     return false;
 
@@ -683,9 +684,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取行会
-        /// </summary>
+        
+        
+        
         public Guild? GetGuild(uint guildId)
         {
             lock (_lock)
@@ -695,9 +696,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取扩展行会（GuildEx）
-        /// </summary>
+        
+        
+        
         public GuildEx? GetGuildEx(uint guildId)
         {
             lock (_lock)
@@ -710,9 +711,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 根据名称获取行会
-        /// </summary>
+        
+        
+        
         public Guild? GetGuildByName(string name)
         {
             lock (_lock)
@@ -721,9 +722,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 根据名称获取扩展行会
-        /// </summary>
+        
+        
+        
         public GuildEx? GetGuildExByName(string name)
         {
             lock (_lock)
@@ -733,9 +734,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取玩家所在行会
-        /// </summary>
+        
+        
+        
         public Guild? GetPlayerGuild(uint playerId)
         {
             lock (_lock)
@@ -748,9 +749,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取玩家所在扩展行会
-        /// </summary>
+        
+        
+        
         public GuildEx? GetPlayerGuildEx(uint playerId)
         {
             lock (_lock)
@@ -763,9 +764,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取所有行会
-        /// </summary>
+        
+        
+        
         public List<Guild> GetAllGuilds()
         {
             lock (_lock)
@@ -774,9 +775,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 搜索行会
-        /// </summary>
+        
+        
+        
         public List<Guild> SearchGuilds(string keyword)
         {
             lock (_lock)
@@ -788,9 +789,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 玩家上线
-        /// </summary>
+        
+        
+        
         public void PlayerOnline(uint playerId)
         {
             lock (_lock)
@@ -800,9 +801,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 玩家下线
-        /// </summary>
+        
+        
+        
         public void PlayerOffline(uint playerId)
         {
             lock (_lock)
@@ -812,9 +813,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 增加贡献度
-        /// </summary>
+        
+        
+        
         public void AddContribution(uint playerId, uint amount)
         {
             lock (_lock)
@@ -824,9 +825,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 增加行会资金
-        /// </summary>
+        
+        
+        
         public bool AddGuildFunds(uint guildId, uint amount)
         {
             lock (_lock)
@@ -836,9 +837,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 扣除行会资金
-        /// </summary>
+        
+        
+        
         public bool TakeGuildFunds(uint guildId, uint amount)
         {
             lock (_lock)
@@ -848,9 +849,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 设置行会公告
-        /// </summary>
+        
+        
+        
         public bool SetGuildNotice(uint guildId, uint requesterId, string notice)
         {
             lock (_lock)
@@ -859,7 +860,7 @@ namespace GameServer
                 if (guild == null)
                     return false;
 
-                // 检查权限：会长、副会长可以设置公告
+                
                 var member = guild.GetMember(requesterId);
                 if (member == null || member.Rank < GuildRank.ViceLeader)
                     return false;
@@ -869,9 +870,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送行会消息
-        /// </summary>
+        
+        
+        
         public void SendGuildMessage(uint guildId, string message)
         {
             lock (_lock)
@@ -886,16 +887,16 @@ namespace GameServer
                     var player = HumanPlayerMgr.Instance.FindById(member.PlayerId);
                     if (player != null)
                     {
-                        // 使用聊天系统发送行会消息
+                        
                         ChatManager.Instance.SendMessage(player, ChatChannel.GUILD, message);
                     }
                 }
             }
         }
 
-        /// <summary>
-        /// 获取行会排名（按等级和经验）
-        /// </summary>
+        
+        
+        
         public List<Guild> GetGuildRanking(int count = 10)
         {
             lock (_lock)
@@ -909,9 +910,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取行会成员排名（按贡献度）
-        /// </summary>
+        
+        
+        
         public List<GuildMember> GetMemberRanking(uint guildId, int count = 20)
         {
             lock (_lock)
@@ -928,9 +929,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 检查行会名称是否可用
-        /// </summary>
+        
+        
+        
         public bool IsGuildNameAvailable(string name)
         {
             lock (_lock)
@@ -939,9 +940,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取行会统计信息
-        /// </summary>
+        
+        
+        
         public (int totalGuilds, int totalMembers, int onlineMembers) GetStatistics()
         {
             lock (_lock)

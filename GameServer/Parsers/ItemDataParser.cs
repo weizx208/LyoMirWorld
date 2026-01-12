@@ -7,9 +7,9 @@ using MirCommon.Utils;
 
 namespace GameServer.Parsers
 {
-    /// <summary>
-    /// 物品类定义
-    /// </summary>
+    
+    
+    
     public class ItemClass
     {
         public string Name { get; set; } = "";
@@ -37,19 +37,19 @@ namespace GameServer.Parsers
         public ushort ItemLimit { get; set; }
     }
 
-    /// <summary>
-    /// 物品数据解析器
-    /// baseitem.txt格式: name/stdmode/shape/image/specialpower/ac1/ac2/mac1/mac2/dc1/dc2/mc1/mc2/sc1/sc2/weight/maxdura/price/needtype/needlevel/stateview/@script
-    /// </summary>
+    
+    
+    
+    
     public class ItemDataParser
     {
         private readonly Dictionary<string, ItemClass> _items = new();
 
         public int ItemCount => _items.Count;
 
-        /// <summary>
-        /// 加载物品数据文件
-        /// </summary>
+        
+        
+        
         public bool Load(string filePath)
         {
             if (!File.Exists(filePath))
@@ -78,7 +78,7 @@ namespace GameServer.Parsers
                         }
                         else
                         {
-                            // 物品已存在，更新数据
+                            
                             _items[itemClass.Name] = itemClass;
                             LogManager.Default.Debug($"更新物品数据: {itemClass.Name}");
                         }
@@ -99,9 +99,9 @@ namespace GameServer.Parsers
             }
         }
 
-        /// <summary>
-        /// 解析物品数据行
-        /// </summary>
+        
+        
+        
         private bool ParseItemLine(string line, out ItemClass itemClass)
         {
             itemClass = new ItemClass();
@@ -131,7 +131,7 @@ namespace GameServer.Parsers
                 itemClass.SC[1] = byte.Parse(parts[14].Trim());
                 itemClass.Weight = byte.Parse(parts[15].Trim());
 
-                // 处理耐久度（可能包含 * 乘数）
+                
                 string duraStr = parts[16].Trim();
                 if (duraStr.Contains('*'))
                 {
@@ -156,7 +156,7 @@ namespace GameServer.Parsers
                 }
                 else
                 {
-                    // 可选参数
+                    
                     if (parts.Length > 20)
                     {
                         itemClass.StateView = int.Parse(parts[20].Trim());
@@ -167,7 +167,7 @@ namespace GameServer.Parsers
                     }
                 }
 
-                // 脚本（最后一个参数，以@开头）
+                
                 if (parts.Length > 20 && parts[parts.Length - 1].StartsWith("@"))
                 {
                     itemClass.PageScript = parts[parts.Length - 1].Substring(1);
@@ -182,9 +182,9 @@ namespace GameServer.Parsers
             }
         }
 
-        /// <summary>
-        /// 添加物品
-        /// </summary>
+        
+        
+        
         public bool AddItem(ItemClass itemClass)
         {
             if (_items.ContainsKey(itemClass.Name))
@@ -196,26 +196,26 @@ namespace GameServer.Parsers
             return true;
         }
 
-        /// <summary>
-        /// 根据名称获取物品
-        /// </summary>
+        
+        
+        
         public ItemClass? GetItem(string name)
         {
             return _items.TryGetValue(name, out var item) ? item : null;
         }
 
-        /// <summary>
-        /// 获取所有物品
-        /// </summary>
+        
+        
+        
         public IEnumerable<ItemClass> GetAllItems()
         {
             return _items.Values;
         }
 
-        /// <summary>
-        /// 加载物品限制配置 (itemlimit.txt)
-        /// 格式: 物品名=限制1|限制2|限制3
-        /// </summary>
+        
+        
+        
+        
         public bool LoadItemLimit(string filePath)
         {
             if (!File.Exists(filePath))
@@ -271,9 +271,9 @@ namespace GameServer.Parsers
             }
         }
 
-        /// <summary>
-        /// 获取物品限制位
-        /// </summary>
+        
+        
+        
         private int GetItemLimitBit(string limitType)
         {
             return limitType switch
@@ -288,10 +288,10 @@ namespace GameServer.Parsers
             };
         }
 
-        /// <summary>
-        /// 加载物品脚本链接 (itemscript.txt)
-        /// 格式: 物品名=拾取脚本,丢弃脚本,使用脚本
-        /// </summary>
+        
+        
+        
+        
         public bool LoadItemScript(string filePath)
         {
             if (!File.Exists(filePath))
@@ -328,7 +328,7 @@ namespace GameServer.Parsers
 
                     if (scripts.Length > 1)
                     {
-                        // 丢弃脚本可能包含延迟和执行次数
+                        
                         var dropParts = scripts[1].Split('|');
                         if (dropParts.Length == 1)
                         {

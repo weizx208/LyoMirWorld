@@ -7,64 +7,73 @@ using MirCommon.Utils;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 物品类型
-    /// </summary>
+    
+    
+    
     public enum ItemType
     {
-        Weapon = 0,         // 武器
-        Armor = 1,          // 防具
-        Helmet = 2,         // 头盔
-        Necklace = 3,       // 项链
-        Ring = 4,           // 戒指
-        Bracelet = 5,       // 手镯
-        Belt = 6,           // 腰带
-        Boots = 7,          // 鞋子
-        Potion = 8,         // 药水
-        Scroll = 9,         // 卷轴
-        Book = 10,          // 技能书
-        Material = 11,      // 材料
-        Quest = 12,         // 任务物品
-        Other = 99,          // 其他
+        Weapon = 0,         
+        Armor = 1,          
+        Helmet = 2,         
+        Necklace = 3,       
+        Ring = 4,           
+        Bracelet = 5,       
+        Belt = 6,           
+        Boots = 7,          
+        Potion = 8,         
+        Scroll = 9,         
+        Book = 10,          
+        Material = 11,      
+        Quest = 12,         
+        Other = 99,          
         Food = 100,
         Charm = 101
     }
 
-    /// <summary>
-    /// 物品品质
-    /// </summary>
+    
+    
+    
     public enum ItemQuality
     {
-        Normal = 0,         // 普通 (白色)
-        Fine = 1,           // 精良 (绿色)
-        Rare = 2,           // 稀有 (蓝色)
-        Epic = 3,           // 史诗 (紫色)
-        Legendary = 4,      // 传说 (橙色)
-        Mythic = 5          // 神话 (红色)
+        Normal = 0,         
+        Fine = 1,           
+        Rare = 2,           
+        Epic = 3,           
+        Legendary = 4,      
+        Mythic = 5          
     }
 
-    /// <summary>
-    /// 装备位置
-    /// </summary>
+    
+    
+    
     public enum EquipSlot
     {
-        Weapon = 0,         // 武器
-        Helmet = 1,         // 头盔
-        Armor = 2,          // 衣服
-        Necklace = 3,       // 项链
-        RingLeft = 4,       // 左戒指
-        RingRight = 5,      // 右戒指
-        BraceletLeft = 6,   // 左手镯
-        BraceletRight = 7,  // 右手镯
-        Belt = 8,           // 腰带
-        Boots = 9,          // 鞋子
-        Mount = 10,         // 坐骑
-        Max = 11
+        
+        Dress = 0,          
+        Weapon = 1,         
+        Charm = 2,          
+        Necklace = 3,       
+        Helmet = 4,         
+        BraceletLeft = 5,   
+        BraceletRight = 6,  
+        RingLeft = 7,       
+        RingRight = 8,      
+        Shoes = 9,          
+        Belt = 10,          
+        Stone = 11,         
+        Poison = 12,        
+        Reserved = 13,      
+        Max = 14,
+
+        
+        Armor = Dress,
+        Boots = Shoes,
+        Mount = Charm
     }
 
-    /// <summary>
-    /// 物品定义
-    /// </summary>
+    
+    
+    
     public class ItemDefinition
     {
         public int ItemId { get; set; }
@@ -80,22 +89,57 @@ namespace GameServer
         public uint BuyPrice { get; set; }
         public uint SellPrice { get; set; }
 
-        // 装备属性
-        public int DC { get; set; }         // 攻击力
-        public int MC { get; set; }         // 魔法力
-        public int SC { get; set; }         // 道术
-        public int AC { get; set; }         // 防御
-        public int MAC { get; set; }        // 魔防
-        public int Accuracy { get; set; }   // 准确
-        public int Agility { get; set; }    // 敏捷
-        public int HP { get; set; }         // 生命
-        public int MP { get; set; }         // 魔法
-        public int Lucky { get; set; }      // 幸运
+        
+        public byte StdMode { get; set; }
+        public int Shape { get; set; }
+        public ushort Image { get; set; }
+        public ushort MaxDura { get; set; }
+        
+        
+        
+        
+        
+        public ushort DuraTimes { get; set; } = 1000;
+        public byte Weight { get; set; }
+        public sbyte SpecialPower { get; set; }
+        public byte NeedType { get; set; }
+        public byte NeedLevel { get; set; }
+        
+        
+        
+        public byte StateView { get; set; }
 
-        // 需求
+        
+        public string PageScript { get; set; } = string.Empty;
+        public string PickupScript { get; set; } = string.Empty;
+        public string DropScript { get; set; } = string.Empty;
+        public uint DropScriptDelay { get; set; }
+        public uint DropScriptExecuteTimes { get; set; }
+
+        
+        public ushort ItemLimit { get; set; }
+
+        
+        public int MinDC { get; set; }      
+        public int MaxDC { get; set; }      
+        public int MinMC { get; set; }      
+        public int MaxMC { get; set; }      
+        public int MinSC { get; set; }      
+        public int MaxSC { get; set; }      
+        public int MinAC { get; set; }      
+        public int MaxAC { get; set; }      
+        public int MinMAC { get; set; }     
+        public int MaxMAC { get; set; }     
+        public int Accuracy { get; set; }   
+        public int Agility { get; set; }    
+        public int HP { get; set; }         
+        public int MP { get; set; }         
+        public int Lucky { get; set; }      
+
+        
         public int RequireLevel { get; set; }
-        public int RequireJob { get; set; } = -1; // -1表示所有职业
-        public int RequireSex { get; set; } = -1; // -1表示所有性别，0=男，1=女
+        public int RequireJob { get; set; } = -1; 
+        public int RequireSex { get; set; } = -1; 
         public bool CanDropInSafeArea { get; internal set; }
         public bool CanUse { get; internal set; }
         public bool IsConsumable { get; internal set; }
@@ -111,9 +155,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 物品实例
-    /// </summary>
+    
+    
+    
     public class ItemInstance
     {
         public long InstanceId { get; set; }
@@ -125,14 +169,24 @@ namespace GameServer
         public bool IsBound { get; set; }
         public DateTime CreateTime { get; set; }
 
-        // 强化等级
+        
         public int EnhanceLevel { get; set; }
 
-        // 附加属性（可以超过基础属性）
+        
+        
+        
+        public byte DressColor { get; set; }
+
+        
         public Dictionary<string, int> ExtraStats { get; set; } = new();
         public string Name { get; internal set; }
         public uint BoundPlayerId { get; internal set; }
         public bool IsExpired { get; internal set; }
+
+        
+        
+        
+        public uint UsingStartTime { get; set; }
 
         public ItemInstance(ItemDefinition definition, long instanceId)
         {
@@ -144,28 +198,31 @@ namespace GameServer
             Durability = MaxDurability;
             CreateTime = DateTime.Now;
             Name = definition.Name;
+            UsingStartTime = 0;
+            DressColor = 0;
         }
+
         
-        /// <summary>
-        /// 获取物品制造索引
-        /// </summary>
+        
+        
         public uint GetMakeIndex()
         {
             return (uint)InstanceId;
         }
+
         
-        /// <summary>
-        /// 获取物品图片索引
-        /// </summary>
+        
+        
+        
         public ushort GetImageIndex()
         {
-            // 在实际项目中，这里应该从Definition中获取真正的图片索引
-            return (ushort)ItemId;
+            
+            return Definition.Image != 0 ? Definition.Image : (ushort)ItemId;
         }
+
         
-        /// <summary>
-        /// 获取物品名称
-        /// </summary>
+        
+        
         public string GetName()
         {
             return Name ?? Definition.Name;
@@ -173,20 +230,39 @@ namespace GameServer
 
         public bool CanStackWith(ItemInstance other)
         {
-            return ItemId == other.ItemId && 
+            return ItemId == other.ItemId &&
                    !IsBound && !other.IsBound &&
                    Definition.MaxStack > 1 &&
                    Count < Definition.MaxStack;
         }
 
-        public int GetTotalDC() => Definition.DC + ExtraStats.GetValueOrDefault("DC", 0) + EnhanceLevel * 2;
-        public int GetTotalAC() => Definition.AC + ExtraStats.GetValueOrDefault("AC", 0) + EnhanceLevel;
-        public int GetTotalMAC() => Definition.MAC + ExtraStats.GetValueOrDefault("MAC", 0) + EnhanceLevel;
+        public int GetTotalMinDC() => Definition.MinDC + ExtraStats.GetValueOrDefault("DC", 0) + EnhanceLevel * 2;
+        public int GetTotalMaxDC() => Definition.MaxDC + ExtraStats.GetValueOrDefault("DC", 0) + EnhanceLevel * 2;
+        public int GetTotalMinMC() => Definition.MinMC + ExtraStats.GetValueOrDefault("MC", 0);
+        public int GetTotalMaxMC() => Definition.MaxMC + ExtraStats.GetValueOrDefault("MC", 0);
+        public int GetTotalMinSC() => Definition.MinSC + ExtraStats.GetValueOrDefault("SC", 0);
+        public int GetTotalMaxSC() => Definition.MaxSC + ExtraStats.GetValueOrDefault("SC", 0);
+        public int GetTotalMinAC() => Definition.MinAC + ExtraStats.GetValueOrDefault("AC", 0) + EnhanceLevel;
+        public int GetTotalMaxAC() => Definition.MaxAC + ExtraStats.GetValueOrDefault("AC", 0) + EnhanceLevel;
+        public int GetTotalMinMAC() => Definition.MinMAC + ExtraStats.GetValueOrDefault("MAC", 0) + EnhanceLevel;
+        public int GetTotalMaxMAC() => Definition.MaxMAC + ExtraStats.GetValueOrDefault("MAC", 0) + EnhanceLevel;
+
+        
+        public int GetTotalDC() => GetTotalMinDC() + GetTotalMaxDC();
+        public int GetTotalMC() => GetTotalMinMC() + GetTotalMaxMC();
+        public int GetTotalSC() => GetTotalMinSC() + GetTotalMaxSC();
+        public int GetTotalAC() => GetTotalMinAC() + GetTotalMaxAC();
+        public int GetTotalMAC() => GetTotalMinMAC() + GetTotalMaxMAC();
+        public int GetTotalHP() => Definition.HP + ExtraStats.GetValueOrDefault("HP", 0);
+        public int GetTotalMP() => Definition.MP + ExtraStats.GetValueOrDefault("MP", 0);
+        public int GetTotalAccuracy() => Definition.Accuracy + ExtraStats.GetValueOrDefault("Accuracy", 0);
+        public int GetTotalAgility() => Definition.Agility + ExtraStats.GetValueOrDefault("Agility", 0);
+        public int GetTotalLucky() => Definition.Lucky + ExtraStats.GetValueOrDefault("Lucky", 0);
     }
 
-    /// <summary>
-    /// 背包
-    /// </summary>
+    
+    
+    
     public class Inventory
     {
         private readonly Dictionary<int, ItemInstance> _items = new();
@@ -197,7 +273,7 @@ namespace GameServer
         {
             lock (_lock)
             {
-                // 尝试堆叠
+                
                 if (item.Definition.MaxStack > 1)
                 {
                     foreach (var existingItem in _items.Values)
@@ -210,14 +286,14 @@ namespace GameServer
                             );
                             existingItem.Count += canAdd;
                             item.Count -= canAdd;
-                            
+
                             if (item.Count == 0)
                                 return true;
                         }
                     }
                 }
 
-                // 找空位
+                
                 for (int i = 0; i < MaxSlots; i++)
                 {
                     if (!_items.ContainsKey(i))
@@ -227,7 +303,47 @@ namespace GameServer
                     }
                 }
 
-                return false; // 背包满
+                return false; 
+            }
+        }
+
+        
+        
+        
+        public bool TrySetItem(int slot, ItemInstance item, bool overwrite = false)
+        {
+            lock (_lock)
+            {
+                if (slot < 0 || slot >= MaxSlots)
+                    return false;
+
+                if (!overwrite && _items.ContainsKey(slot))
+                    return false;
+
+                _items[slot] = item;
+                return true;
+            }
+        }
+
+        
+        
+        
+        public bool TryAddItemNoStack(ItemInstance item, out int slot)
+        {
+            lock (_lock)
+            {
+                for (int i = 0; i < MaxSlots; i++)
+                {
+                    if (!_items.ContainsKey(i))
+                    {
+                        _items[i] = item;
+                        slot = i;
+                        return true;
+                    }
+                }
+
+                slot = -1;
+                return false;
             }
         }
 
@@ -307,9 +423,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 清空背包
-        /// </summary>
+        
+        
+        
         public void Clear()
         {
             lock (_lock)
@@ -378,11 +494,37 @@ namespace GameServer
                 return true;
             }
         }
+
+        
+        
+        
+        public ushort CalcWeight()
+        {
+            lock (_lock)
+            {
+                long total = 0;
+                foreach (var item in _items.Values)
+                {
+                    if (item == null)
+                        continue;
+
+                    int weight = item.Definition?.Weight ?? 0;
+                    if (weight < 0) weight = 0;
+                    int count = Math.Max(1, item.Count);
+
+                    total += (long)weight * count;
+                    if (total >= ushort.MaxValue)
+                        return ushort.MaxValue;
+                }
+
+                return (ushort)total;
+            }
+        }
     }
 
-    /// <summary>
-    /// 装备栏
-    /// </summary>
+    
+    
+    
     public class Equipment
     {
         private readonly ItemInstance?[] _slots = new ItemInstance[(int)EquipSlot.Max];
@@ -394,9 +536,9 @@ namespace GameServer
             _owner = owner;
         }
 
-        /// <summary>
-        /// 装备物品
-        /// </summary>
+        
+        
+        
         public bool Equip(EquipSlot slot, ItemInstance item)
         {
             lock (_lock)
@@ -404,42 +546,41 @@ namespace GameServer
                 if (!CanEquip(item))
                     return false;
 
-                // 检查装备位置是否正确
+                
                 if (!IsCorrectSlot(slot, item))
                 {
                     _owner.Say("这个装备不能放在这个位置");
                     return false;
                 }
 
-                // 检查是否有装备在该位置
+                
                 var oldItem = _slots[(int)slot];
                 if (oldItem != null)
                 {
-                    // 先卸下旧装备
-                    if (!UnequipToInventory(slot))
+                    
+                    if (!_owner.Inventory.AddItem(oldItem))
                     {
                         _owner.Say("背包空间不足，无法卸下旧装备");
                         return false;
                     }
+
+                    _slots[(int)slot] = null;
                 }
 
-                // 装备新物品
+                
                 _slots[(int)slot] = item;
+
                 
-                // 应用装备属性
-                ApplyEquipmentStats(item, true);
-                
-                // 发送装备更新消息
-                SendEquipmentUpdate(slot, item);
-                
+                _owner.RecalcTotalStats();
+
                 _owner.Say($"装备了 {item.Definition.Name}");
                 return true;
             }
         }
 
-        /// <summary>
-        /// 卸下装备到背包
-        /// </summary>
+        
+        
+        
         public ItemInstance? Unequip(EquipSlot slot)
         {
             lock (_lock)
@@ -448,30 +589,27 @@ namespace GameServer
                 if (item == null)
                     return null;
 
-                // 检查背包空间
+                
                 if (!_owner.Inventory.AddItem(item))
                 {
                     _owner.Say("背包空间不足");
                     return null;
                 }
 
-                // 移除装备属性
-                ApplyEquipmentStats(item, false);
                 
-                // 清空装备槽
                 _slots[(int)slot] = null;
+
                 
-                // 发送装备更新消息
-                SendEquipmentUpdate(slot, null);
-                
+                _owner.RecalcTotalStats();
+
                 _owner.Say($"卸下了 {item.Definition.Name}");
                 return item;
             }
         }
 
-        /// <summary>
-        /// 卸下装备到背包（内部方法）
-        /// </summary>
+        
+        
+        
         private bool UnequipToInventory(EquipSlot slot)
         {
             var item = _slots[(int)slot];
@@ -481,16 +619,13 @@ namespace GameServer
             if (!_owner.Inventory.AddItem(item))
                 return false;
 
-            // 移除装备属性
-            ApplyEquipmentStats(item, false);
-            
             _slots[(int)slot] = null;
             return true;
         }
 
-        /// <summary>
-        /// 获取装备
-        /// </summary>
+        
+        
+        
         public ItemInstance? GetEquipment(EquipSlot slot)
         {
             lock (_lock)
@@ -499,41 +634,41 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取物品（别名方法）
-        /// </summary>
+        
+        
+        
         public ItemInstance? GetItem(EquipSlot slot)
         {
             return GetEquipment(slot);
         }
 
-        /// <summary>
-        /// 检查是否可以装备
-        /// </summary>
+        
+        
+        
         public bool CanEquip(ItemInstance item)
         {
-            // 检查等级需求
+            
             if (_owner.Level < item.Definition.RequireLevel)
             {
                 _owner.Say($"需要等级 {item.Definition.RequireLevel}");
                 return false;
             }
 
-            // 检查职业需求
+            
             if (item.Definition.RequireJob != -1 && _owner.Job != item.Definition.RequireJob)
             {
                 _owner.Say("职业不符");
                 return false;
             }
 
-            // 检查性别需求（如果有）
+            
             if (item.Definition.RequireSex != -1 && _owner.Sex != item.Definition.RequireSex)
             {
                 _owner.Say("性别不符");
                 return false;
             }
 
-            // 检查绑定状态
+            
             if (item.IsBound && item.IsBound)
             {
                 _owner.Say("绑定物品不能装备");
@@ -543,345 +678,259 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 检查装备位置是否正确
-        /// </summary>
+        
+        
+        
         private bool IsCorrectSlot(EquipSlot slot, ItemInstance item)
         {
-            // 根据物品类型确定正确的装备位置
-            switch (item.Definition.Type)
+            
+            byte stdMode = item.Definition.StdMode;
+
+            switch (slot)
             {
-                case ItemType.Weapon:
-                    return slot == EquipSlot.Weapon;
-                case ItemType.Armor:
-                    return slot == EquipSlot.Armor;
-                case ItemType.Helmet:
-                    return slot == EquipSlot.Helmet;
-                case ItemType.Necklace:
-                    return slot == EquipSlot.Necklace;
-                case ItemType.Ring:
-                    return slot == EquipSlot.RingLeft || slot == EquipSlot.RingRight;
-                case ItemType.Bracelet:
-                    return slot == EquipSlot.BraceletLeft || slot == EquipSlot.BraceletRight;
-                case ItemType.Belt:
-                    return slot == EquipSlot.Belt;
-                case ItemType.Boots:
-                    return slot == EquipSlot.Boots;
-                case ItemType.Other:
-                    // 坐骑等特殊装备
-                    return slot == EquipSlot.Mount;
+                case EquipSlot.Charm:
+                    return stdMode == 30 || stdMode == 32 || stdMode == 33; 
+                case EquipSlot.Weapon:
+                    return stdMode == 5 || stdMode == 6;
+                case EquipSlot.Dress:
+                    return stdMode == (byte)(_owner.Sex + 10); 
+                case EquipSlot.Necklace:
+                    return stdMode == 19 || stdMode == 20 || stdMode == 21;
+                case EquipSlot.RingLeft:
+                case EquipSlot.RingRight:
+                    return stdMode == 22 || stdMode == 23;
+                case EquipSlot.BraceletLeft:
+                    if (stdMode == 25 || stdMode == 34) return true; 
+                    goto case EquipSlot.BraceletRight;
+                case EquipSlot.BraceletRight:
+                    return stdMode == 24 || stdMode == 26;
+                case EquipSlot.Helmet:
+                    return stdMode == 15;
+                case EquipSlot.Shoes:
+                    return stdMode == 81; 
+                case EquipSlot.Belt:
+                    return stdMode == 58; 
+                case EquipSlot.Stone:
+                    return stdMode == 59 || stdMode == 60 || stdMode == 61;
+                case EquipSlot.Poison:
+                    return stdMode == 25 || stdMode == 34 || stdMode == 33; 
                 default:
                     return false;
             }
         }
 
-        /// <summary>
-        /// 应用装备属性
-        /// </summary>
-        private void ApplyEquipmentStats(ItemInstance item, bool equip)
-        {
-            int multiplier = equip ? 1 : -1;
-
-            // 应用基础属性
-            _owner.BaseDC += item.Definition.DC * multiplier;
-            _owner.BaseMC += item.Definition.MC * multiplier;
-            _owner.BaseSC += item.Definition.SC * multiplier;
-            _owner.BaseAC += item.Definition.AC * multiplier;
-            _owner.BaseMAC += item.Definition.MAC * multiplier;
-            _owner.Accuracy += item.Definition.Accuracy * multiplier;
-            _owner.Agility += item.Definition.Agility * multiplier;
-            _owner.MaxHP += item.Definition.HP * multiplier;
-            _owner.MaxMP += item.Definition.MP * multiplier;
-            _owner.Lucky += item.Definition.Lucky * multiplier;
-
-            // 应用额外属性
-            foreach (var extraStat in item.ExtraStats)
-            {
-                switch (extraStat.Key)
-                {
-                    case "DC":
-                        _owner.BaseDC += extraStat.Value * multiplier;
-                        break;
-                    case "AC":
-                        _owner.BaseAC += extraStat.Value * multiplier;
-                        break;
-                    case "MAC":
-                        _owner.BaseMAC += extraStat.Value * multiplier;
-                        break;
-                    case "HP":
-                        _owner.MaxHP += extraStat.Value * multiplier;
-                        break;
-                    case "MP":
-                        _owner.MaxMP += extraStat.Value * multiplier;
-                        break;
-                    case "Lucky":
-                        _owner.Lucky += extraStat.Value * multiplier;
-                        break;
-                }
-            }
-
-            // 应用强化等级加成
-            if (item.EnhanceLevel > 0)
-            {
-                _owner.BaseDC += item.EnhanceLevel * 2 * multiplier;
-                _owner.BaseAC += item.EnhanceLevel * multiplier;
-                _owner.BaseMAC += item.EnhanceLevel * multiplier;
-            }
-
-            // 更新当前HP/MP（如果最大值变化）
-            if (equip)
-            {
-                _owner.CurrentHP = Math.Min(_owner.CurrentHP, _owner.MaxHP);
-                _owner.CurrentMP = Math.Min(_owner.CurrentMP, _owner.MaxMP);
-            }
-
-            // 重新计算总属性
-            _owner.RecalcTotalStats();
-        }
-
-        /// <summary>
-        /// 发送装备更新消息
-        /// </summary>
-        private void SendEquipmentUpdate(EquipSlot slot, ItemInstance? item)
-        {
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(_owner.ObjectId);
-            builder.WriteUInt16(0x287); // SM_EQUIPMENTUPDATE
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteByte((byte)slot);
-            
-            if (item != null)
-            {
-                builder.WriteUInt64((ulong)item.InstanceId);
-                builder.WriteInt32(item.ItemId);
-                builder.WriteString(item.Definition.Name);
-                builder.WriteUInt16((ushort)item.Durability);
-                builder.WriteUInt16((ushort)item.MaxDurability);
-                builder.WriteByte((byte)item.EnhanceLevel);
-                
-                // 发送装备属性
-                builder.WriteInt32(item.Definition.DC);
-                builder.WriteInt32(item.Definition.MC);
-                builder.WriteInt32(item.Definition.SC);
-                builder.WriteInt32(item.Definition.AC);
-                builder.WriteInt32(item.Definition.MAC);
-                builder.WriteInt32(item.Definition.Accuracy);
-                builder.WriteInt32(item.Definition.Agility);
-                builder.WriteInt32(item.Definition.HP);
-                builder.WriteInt32(item.Definition.MP);
-                builder.WriteInt32(item.Definition.Lucky);
-                
-                // 发送额外属性
-                builder.WriteByte((byte)item.ExtraStats.Count);
-                foreach (var extraStat in item.ExtraStats)
-                {
-                    builder.WriteString(extraStat.Key);
-                    builder.WriteInt32(extraStat.Value);
-                }
-            }
-            else
-            {
-                builder.WriteUInt64(0);
-                builder.WriteInt32(0);
-                builder.WriteString("");
-                builder.WriteUInt16(0);
-                builder.WriteUInt16(0);
-                builder.WriteByte(0);
-                
-                // 空装备的属性
-                for (int i = 0; i < 10; i++) builder.WriteInt32(0);
-                builder.WriteByte(0);
-            }
-            
-            _owner.SendMessage(builder.Build());
-        }
-
-        /// <summary>
-        /// 获取总属性
-        /// </summary>
+        
+        
+        
         public CombatStats GetTotalStats()
         {
             var stats = new CombatStats();
-            
+
             lock (_lock)
             {
                 foreach (var item in _slots)
                 {
                     if (item == null) continue;
-                    
-                    stats.MinDC += item.GetTotalDC();
-                    stats.MaxDC += item.GetTotalDC();
-                    stats.MinAC += item.GetTotalAC();
-                    stats.MaxAC += item.GetTotalAC();
-                    stats.MinMAC += item.GetTotalMAC();
-                    stats.MaxMAC += item.GetTotalMAC();
-                    stats.Accuracy += item.Definition.Accuracy;
-                    stats.Agility += item.Definition.Agility;
-                    stats.Lucky += item.Definition.Lucky;
-                    stats.HP += item.Definition.HP;
-                    stats.MP += item.Definition.MP;
+
+                    stats.MinDC += item.GetTotalMinDC();
+                    stats.MaxDC += item.GetTotalMaxDC();
+                    stats.MinMC += item.GetTotalMinMC();
+                    stats.MaxMC += item.GetTotalMaxMC();
+                    stats.MinSC += item.GetTotalMinSC();
+                    stats.MaxSC += item.GetTotalMaxSC();
+                    stats.MinAC += item.GetTotalMinAC();
+                    stats.MaxAC += item.GetTotalMaxAC();
+                    stats.MinMAC += item.GetTotalMinMAC();
+                    stats.MaxMAC += item.GetTotalMaxMAC();
+                    stats.Accuracy += item.GetTotalAccuracy();
+                    stats.Agility += item.GetTotalAgility();
+                    stats.Lucky += item.GetTotalLucky();
+                    stats.MaxHP += item.GetTotalHP();
+                    stats.MaxMP += item.GetTotalMP();
                 }
             }
 
             return stats;
         }
 
-        /// <summary>
-        /// 检查装备耐久度
-        /// </summary>
-        public void CheckDurability()
+        
+        
+        
+        
+        public int CalcEquipmentsWeight(int excludePos = -1)
         {
+            int total = 0;
+
             lock (_lock)
             {
-                foreach (var item in _slots)
+                for (int i = 0; i < _slots.Length; i++)
                 {
+                    if (i == (int)EquipSlot.Weapon)
+                        continue;
+                    if (excludePos >= 0 && i == excludePos)
+                        continue;
+
+                    var item = _slots[i];
+                    if (item == null)
+                        continue;
+
+                    total += item.Definition?.Weight ?? 0;
+                }
+            }
+
+            return total;
+        }
+
+        
+        
+        
+        public void CheckDurability()
+        {
+            bool changed = false;
+            lock (_lock)
+            {
+                for (int i = 0; i < _slots.Length; i++)
+                {
+                    var item = _slots[i];
                     if (item == null) continue;
-                    
+
                     if (item.Durability <= 0)
                     {
-                        // 装备损坏
+                        
                         _owner.Say($"{item.Definition.Name} 已损坏，需要修理");
+
                         
-                        // 装备损坏效果：移除装备属性加成
-                        ApplyEquipmentStats(item, false);
-                        
-                        // 发送装备损坏消息
                         SendEquipmentBrokenMessage(item);
+
                         
-                        // 从装备栏移除损坏的装备
-                        for (int i = 0; i < _slots.Length; i++)
-                        {
-                            if (_slots[i] == item)
-                            {
-                                _slots[i] = null;
-                                break;
-                            }
-                        }
-                        
-                        // 发送装备更新消息
-                        for (int i = 0; i < _slots.Length; i++)
-                        {
-                            if (_slots[i] == null) continue;
-                            SendEquipmentUpdate((EquipSlot)i, _slots[i]);
-                        }
+                        _slots[i] = null;
+                        changed = true;
+
                     }
                     else if (item.Durability <= item.MaxDurability * 0.2)
                     {
-                        // 装备耐久度低警告
-                        _owner.Say($"{item.Definition.Name} 耐久度低，请及时修理");
                         
-                        // 发送耐久度警告消息
+                        _owner.Say($"{item.Definition.Name} 耐久度低，请及时修理");
+
+                        
                         SendDurabilityWarningMessage(item);
                     }
                 }
             }
+
+            if (changed)
+            {
+                _owner.RecalcTotalStats();
+            }
         }
+
         
-        /// <summary>
-        /// 发送装备损坏消息
-        /// </summary>
+        
+        
         private void SendEquipmentBrokenMessage(ItemInstance item)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(_owner.ObjectId);
-            builder.WriteUInt16(0x28F); // SM_EQUIPMENTBROKEN
+            builder.WriteUInt16(0x28F); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteString(item.Definition.Name);
-            
+
             _owner.SendMessage(builder.Build());
+
+            
+            _owner.NotifyAppearanceChanged();
         }
+
         
-        /// <summary>
-        /// 发送耐久度警告消息
-        /// </summary>
+        
+        
         private void SendDurabilityWarningMessage(ItemInstance item)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(_owner.ObjectId);
-            builder.WriteUInt16(0x290); // SM_DURABILITYWARNING
+            builder.WriteUInt16(0x290); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteString(item.Definition.Name);
             builder.WriteUInt16((ushort)item.Durability);
             builder.WriteUInt16((ushort)item.MaxDurability);
-            
+
             _owner.SendMessage(builder.Build());
+
+            
+            _owner.NotifyAppearanceChanged();
         }
 
-        /// <summary>
-        /// 减少装备耐久度
-        /// </summary>
+        
+        
+        
         public void ReduceDurability(int amount = 1)
         {
+            bool changed = false;
             lock (_lock)
             {
-                foreach (var item in _slots)
+                for (int i = 0; i < _slots.Length; i++)
                 {
+                    var item = _slots[i];
                     if (item == null) continue;
+
                     
-                    // 根据装备类型决定耐久度消耗
                     int durabilityLoss = amount;
+
                     
-                    // 武器在攻击时消耗更多耐久度
                     if (item.Definition.Type == ItemType.Weapon)
                         durabilityLoss *= 2;
+
                     
-                    // 防具在被攻击时消耗耐久度
-                    if (item.Definition.Type == ItemType.Armor || 
+                    if (item.Definition.Type == ItemType.Armor ||
                         item.Definition.Type == ItemType.Helmet ||
                         item.Definition.Type == ItemType.Boots)
-                        durabilityLoss = 1; // 防具每次被攻击消耗1点耐久度
+                        durabilityLoss = 1; 
+
                     
-                    // 首饰耐久度消耗较慢
                     if (item.Definition.Type == ItemType.Necklace ||
                         item.Definition.Type == ItemType.Ring ||
                         item.Definition.Type == ItemType.Bracelet ||
                         item.Definition.Type == ItemType.Belt)
-                        durabilityLoss = (int)(amount * 0.5); // 首饰消耗减半
-                    
+                        durabilityLoss = (int)(amount * 0.5); 
+
                     item.Durability = Math.Max(0, item.Durability - durabilityLoss);
-                    
+
                     if (item.Durability <= 0)
                     {
-                        // 装备损坏
+                        
                         _owner.Say($"{item.Definition.Name} 已损坏");
+
                         
-                        // 装备损坏效果：移除装备属性加成
-                        ApplyEquipmentStats(item, false);
-                        
-                        // 发送装备损坏消息
                         SendEquipmentBrokenMessage(item);
+
                         
-                        // 从装备栏移除损坏的装备
-                        for (int i = 0; i < _slots.Length; i++)
-                        {
-                            if (_slots[i] == item)
-                            {
-                                _slots[i] = null;
-                                break;
-                            }
-                        }
+                        _slots[i] = null;
+                        changed = true;
                     }
                     else if (item.Durability <= item.MaxDurability * 0.2)
                     {
-                        // 装备耐久度低警告
-                        _owner.Say($"{item.Definition.Name} 耐久度低，请及时修理");
                         
-                        // 发送耐久度警告消息
+                        _owner.Say($"{item.Definition.Name} 耐久度低，请及时修理");
+
+                        
                         SendDurabilityWarningMessage(item);
                     }
                 }
             }
+
+            if (changed)
+            {
+                _owner.RecalcTotalStats();
+            }
         }
 
-        /// <summary>
-        /// 修理装备
-        /// </summary>
+        
+        
+        
         public bool RepairEquipment(EquipSlot slot)
         {
             lock (_lock)
@@ -893,7 +942,7 @@ namespace GameServer
                     return false;
                 }
 
-                // 计算修理费用
+                
                 uint repairCost = CalculateRepairCost(item);
                 if (_owner.Gold < repairCost)
                 {
@@ -901,59 +950,59 @@ namespace GameServer
                     return false;
                 }
 
-                // 扣除金币
+                
                 _owner.TakeGold(repairCost);
+
                 
-                // 修理装备
                 item.Durability = item.MaxDurability;
-                
+
                 _owner.Say($"修理了 {item.Definition.Name}，花费 {repairCost} 金币");
                 return true;
             }
         }
 
-        /// <summary>
-        /// 计算修理费用
-        /// </summary>
+        
+        
+        
         private uint CalculateRepairCost(ItemInstance item)
         {
-            // 基础修理费用 = 物品售价 * 耐久度损失比例
+            
             float durabilityLossRatio = 1.0f - ((float)item.Durability / item.MaxDurability);
             uint baseCost = (uint)(item.Definition.SellPrice * durabilityLossRatio);
+
             
-            // 强化等级增加修理费用
             if (item.EnhanceLevel > 0)
                 baseCost += (uint)(baseCost * item.EnhanceLevel * 0.1f);
-            
-            return Math.Max(10, baseCost); // 最低10金币
+
+            return Math.Max(10, baseCost); 
         }
 
-        /// <summary>
-        /// 显示装备信息
-        /// </summary>
+        
+        
+        
         public void ShowEquipmentInfo()
         {
             lock (_lock)
             {
                 _owner.Say("=== 装备信息 ===");
-                
+
                 for (int i = 0; i < _slots.Length; i++)
                 {
                     var item = _slots[i];
                     var slotName = ((EquipSlot)i).ToString();
-                    
+
                     if (item != null)
                     {
                         _owner.Say($"{slotName}: {item.Definition.Name} (Lv.{item.Definition.Level})");
                         _owner.Say($"  耐久: {item.Durability}/{item.MaxDurability}");
                         _owner.Say($"  强化: +{item.EnhanceLevel}");
-                        
-                        if (item.Definition.DC > 0)
-                            _owner.Say($"  攻击: {item.GetTotalDC()}");
-                        if (item.Definition.AC > 0)
-                            _owner.Say($"  防御: {item.GetTotalAC()}");
-                        if (item.Definition.MAC > 0)
-                            _owner.Say($"  魔防: {item.GetTotalMAC()}");
+
+                        if (item.Definition.MinDC > 0 || item.Definition.MaxDC > 0)
+                            _owner.Say($"  攻击: {item.GetTotalMinDC()}-{item.GetTotalMaxDC()}");
+                        if (item.Definition.MinAC > 0 || item.Definition.MaxAC > 0)
+                            _owner.Say($"  防御: {item.GetTotalMinAC()}-{item.GetTotalMaxAC()}");
+                        if (item.Definition.MinMAC > 0 || item.Definition.MaxMAC > 0)
+                            _owner.Say($"  魔防: {item.GetTotalMinMAC()}-{item.GetTotalMaxMAC()}");
                     }
                     else
                     {
@@ -963,9 +1012,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取所有装备
-        /// </summary>
+        
+        
+        
         public List<ItemInstance> GetAllEquipment()
         {
             lock (_lock)
@@ -973,10 +1022,10 @@ namespace GameServer
                 return _slots.Where(item => item != null).ToList()!;
             }
         }
+
         
-        /// <summary>
-        /// 获取当前武器
-        /// </summary>
+        
+        
         public ItemInstance? GetWeapon()
         {
             lock (_lock)
@@ -985,9 +1034,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 检查是否有特殊装备效果
-        /// </summary>
+        
+        
+        
         public void CheckSpecialEffects()
         {
             lock (_lock)
@@ -995,24 +1044,24 @@ namespace GameServer
                 foreach (var item in _slots)
                 {
                     if (item == null) continue;
+
                     
-                    // 检查特殊效果
                     CheckItemSpecialEffects(item);
                 }
             }
         }
+
         
-        /// <summary>
-        /// 检查物品特殊效果
-        /// </summary>
+        
+        
         private void CheckItemSpecialEffects(ItemInstance item)
         {
-            // 检查幸运属性
+            
             if (item.Definition.Lucky > 0)
             {
-                // 幸运装备增加暴击率和命中率
+                
                 _owner.Lucky += item.Definition.Lucky;
-                // 发送幸运效果消息
+                
                 if (item.Definition.Lucky >= 3)
                 {
                     SendSpecialEffectMessage(item, "幸运+3：大幅增加暴击率");
@@ -1022,135 +1071,135 @@ namespace GameServer
                     SendSpecialEffectMessage(item, "幸运+2：增加暴击率");
                 }
             }
+
             
-            // 检查诅咒属性
             if (item.Definition.Lucky < 0)
             {
-                // 诅咒装备减少属性
-                _owner.Lucky += item.Definition.Lucky; // 幸运值为负
+                
+                _owner.Lucky += item.Definition.Lucky; 
                 SendSpecialEffectMessage(item, $"诅咒：减少幸运{Math.Abs(item.Definition.Lucky)}点");
             }
+
             
-            // 检查套装效果
             CheckSetBonusEffects();
+
             
-            // 检查特殊装备效果（如麻痹、复活等）
             CheckUniqueItemEffects(item);
         }
+
         
-        /// <summary>
-        /// 检查套装效果
-        /// </summary>
+        
+        
         private void CheckSetBonusEffects()
         {
-            // 统计套装部件数量
-            Dictionary<string, int> setCounts = new();
             
+            Dictionary<string, int> setCounts = new();
+
             foreach (var item in _slots)
             {
                 if (item == null) continue;
+
                 
-                // 假设ItemDefinition有SetName属性
-                // 这里需要根据实际的ItemDefinition结构来调整
-                // string setName = item.Definition.SetName;
-                // if (!string.IsNullOrEmpty(setName))
-                // {
-                //     setCounts.TryGetValue(setName, out int count);
-                //     setCounts[setName] = count + 1;
-                // }
+                
+                
+                
+                
+                
+                
+                
             }
+
             
-            // 应用套装效果
             foreach (var kvp in setCounts)
             {
                 string setName = kvp.Key;
                 int count = kvp.Value;
-                
+
                 if (count >= 2)
                 {
-                    // 2件套效果
+                    
                     ApplySetBonus(setName, 2);
                 }
                 if (count >= 4)
                 {
-                    // 4件套效果
+                    
                     ApplySetBonus(setName, 4);
                 }
                 if (count >= 6)
                 {
-                    // 6件套效果
+                    
                     ApplySetBonus(setName, 6);
                 }
             }
         }
+
         
-        /// <summary>
-        /// 应用套装效果
-        /// </summary>
+        
+        
         private void ApplySetBonus(string setName, int pieceCount)
         {
-            // 根据套装名称和件数应用效果
-            // 这里需要根据实际的套装配置来完善
+            
+            
             string effectMessage = $"{setName} {pieceCount}件套效果激活";
             SendSpecialEffectMessage(null, effectMessage);
         }
+
         
-        /// <summary>
-        /// 检查特殊物品效果（麻痹戒指、复活戒指等）
-        /// </summary>
+        
+        
         private void CheckUniqueItemEffects(ItemInstance item)
         {
-            // 根据物品ID检查特殊效果
+            
             switch (item.ItemId)
             {
-                case 5001: // 麻痹戒指
-                    // 麻痹效果：攻击时有概率麻痹目标
-                    // 这里需要实现麻痹效果逻辑
+                case 5001: 
+                    
+                    
                     SendSpecialEffectMessage(item, "麻痹戒指：攻击时有概率麻痹目标");
                     break;
+
+                case 5002: 
                     
-                case 5002: // 复活戒指
-                    // 复活效果：死亡后自动复活
-                    // 这里需要实现复活效果逻辑
+                    
                     SendSpecialEffectMessage(item, "复活戒指：死亡后自动复活");
                     break;
+
+                case 5003: 
                     
-                case 5003: // 护身戒指
-                    // 护身效果：受到伤害时优先消耗MP
-                    // 这里需要实现护身效果逻辑
+                    
                     SendSpecialEffectMessage(item, "护身戒指：受到伤害时优先消耗MP");
                     break;
+
+                case 5004: 
                     
-                case 5004: // 传送戒指
-                    // 传送效果：可以使用传送功能
-                    // 这里需要实现传送效果逻辑
+                    
                     SendSpecialEffectMessage(item, "传送戒指：可以使用传送功能");
                     break;
+
+                case 5005: 
                     
-                case 5005: // 隐身戒指
-                    // 隐身效果：可以隐身
-                    // 这里需要实现隐身效果逻辑
+                    
                     SendSpecialEffectMessage(item, "隐身戒指：可以隐身");
                     break;
-                    
+
                 default:
-                    // 其他物品没有特殊效果
+                    
                     break;
             }
         }
+
         
-        /// <summary>
-        /// 发送特殊效果消息
-        /// </summary>
+        
+        
         private void SendSpecialEffectMessage(ItemInstance? item, string effectMessage)
         {
             var builder = new PacketBuilder();
             builder.WriteUInt32(_owner.ObjectId);
-            builder.WriteUInt16(0x291); // SM_SPECIALEFFECT
+            builder.WriteUInt16(0x291); 
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
             builder.WriteUInt16(0);
-            
+
             if (item != null)
             {
                 builder.WriteString(item.Definition.Name);
@@ -1159,34 +1208,39 @@ namespace GameServer
             {
                 builder.WriteString("");
             }
-            
+
             builder.WriteString(effectMessage);
-            
+
             _owner.SendMessage(builder.Build());
+
+            
+            _owner.NotifyAppearanceChanged();
         }
     }
 
-    /// <summary>
-    /// 物品管理器
-    /// </summary>
+    
+    
+    
     public class ItemManager
     {
         private static ItemManager? _instance;
         public static ItemManager Instance => _instance ??= new ItemManager();
 
+        private readonly Parsers.ItemDataParser _itemDataParser = new();
+
         private readonly ConcurrentDictionary<int, ItemDefinition> _definitions = new();
         private readonly ConcurrentDictionary<string, ItemDefinition> _definitionsByName = new();
-        private long _nextInstanceId = 1;
+        private int _nextTempMakeIndex = 0;
         private bool _isLoaded = false;
 
         private ItemManager()
         {
-            // 不再在构造函数中初始化，等待Load方法调用
+            
         }
 
-        /// <summary>
-        /// 加载物品数据文件
-        /// </summary>
+        
+        
+        
         public bool Load(string filePath)
         {
             if (_isLoaded)
@@ -1197,18 +1251,17 @@ namespace GameServer
 
             try
             {
-                var parser = new Parsers.ItemDataParser();
-                if (parser.Load(filePath))
+                if (_itemDataParser.Load(filePath))
                 {
                     int loadedCount = 0;
-                    foreach (var itemClass in parser.GetAllItems())
+                    foreach (var itemClass in _itemDataParser.GetAllItems())
                     {
                         if (AddItemClass(itemClass))
                         {
                             loadedCount++;
                         }
                     }
-                    
+
                     LogManager.Default.Info($"成功加载 {loadedCount} 个物品定义");
                     _isLoaded = true;
                     return true;
@@ -1216,7 +1269,7 @@ namespace GameServer
                 else
                 {
                     LogManager.Default.Error($"加载物品数据文件失败: {filePath}");
-                    // 加载失败时使用默认物品作为后备
+                    
                     InitializeDefaultItems();
                     return false;
                 }
@@ -1224,21 +1277,37 @@ namespace GameServer
             catch (Exception ex)
             {
                 LogManager.Default.Error($"加载物品数据时发生异常: {filePath}", exception: ex);
-                // 发生异常时使用默认物品作为后备
+                
                 InitializeDefaultItems();
                 return false;
             }
         }
 
-        /// <summary>
-        /// 加载物品限制配置
-        /// </summary>
+        
+        
+        
         public bool LoadLimit(string filePath)
         {
             try
             {
-                var parser = new Parsers.ItemDataParser();
-                return parser.LoadItemLimit(filePath);
+                if (!_isLoaded)
+                {
+                    LogManager.Default.Warning("物品限制加载失败：物品数据尚未加载");
+                    return false;
+                }
+
+                bool ok = _itemDataParser.LoadItemLimit(filePath);
+                if (!ok)
+                    return false;
+
+                
+                foreach (var itemClass in _itemDataParser.GetAllItems())
+                {
+                    if (_definitionsByName.TryGetValue(itemClass.Name, out var def))
+                        def.ItemLimit = itemClass.ItemLimit;
+                }
+
+                return true;
             }
             catch (Exception ex)
             {
@@ -1247,15 +1316,38 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载物品脚本链接
-        /// </summary>
+        
+        
+        
         public bool LoadScriptLink(string filePath)
         {
             try
             {
-                var parser = new Parsers.ItemDataParser();
-                return parser.LoadItemScript(filePath);
+                if (!_isLoaded)
+                {
+                    LogManager.Default.Warning("物品脚本链接加载失败：物品数据尚未加载");
+                    return false;
+                }
+
+                bool ok = _itemDataParser.LoadItemScript(filePath);
+                if (!ok)
+                    return false;
+
+                
+                foreach (var itemClass in _itemDataParser.GetAllItems())
+                {
+                    if (_definitionsByName.TryGetValue(itemClass.Name, out var def))
+                    {
+                        def.PickupScript = itemClass.PickupScript ?? string.Empty;
+                        def.DropScript = itemClass.DropScript ?? string.Empty;
+                        def.DropScriptDelay = itemClass.DropScriptDelay;
+                        def.DropScriptExecuteTimes = itemClass.DropScriptExecuteTimes;
+                        if (!string.IsNullOrWhiteSpace(itemClass.PageScript))
+                            def.PageScript = itemClass.PageScript.Trim();
+                    }
+                }
+
+                return true;
             }
             catch (Exception ex)
             {
@@ -1264,20 +1356,20 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 添加物品类（将ItemClass转换为ItemDefinition）
-        /// </summary>
+        
+        
+        
         private bool AddItemClass(Parsers.ItemClass itemClass)
         {
             try
             {
-                // 将StdMode转换为ItemType
+                
                 ItemType itemType = ConvertStdModeToItemType(itemClass.StdMode);
+
                 
-                // 生成唯一的ItemId（使用名称的哈希值）
                 int itemId = Math.Abs(itemClass.Name.GetHashCode()) % 1000000;
+
                 
-                // 确保ItemId是唯一的
                 while (_definitions.ContainsKey(itemId))
                 {
                     itemId = (itemId + 1) % 1000000;
@@ -1285,33 +1377,55 @@ namespace GameServer
 
                 var definition = new ItemDefinition(itemId, itemClass.Name, itemType)
                 {
-                    // 基础属性
-                    Level = itemClass.NeedLevel,
-                    DC = itemClass.DC[0] + itemClass.DC[1], // 最小+最大
-                    MC = itemClass.MC[0] + itemClass.MC[1],
-                    SC = itemClass.SC[0] + itemClass.SC[1],
-                    AC = itemClass.AC[0] + itemClass.AC[1],
-                    MAC = itemClass.MAC[0] + itemClass.MAC[1],
                     
-                    // 其他属性
+                    StdMode = itemClass.StdMode,
+                    Shape = itemClass.Shape,
+                    Image = itemClass.Image,
+                    MaxDura = itemClass.MaxDura,
+                    DuraTimes = itemClass.DuraTimes,
+                    Weight = itemClass.Weight,
+                    SpecialPower = itemClass.SpecialPower,
+                    NeedType = itemClass.NeedType,
+                    NeedLevel = itemClass.NeedLevel,
+                    StateView = (byte)Math.Clamp(itemClass.StateView, 0, 255),
+
+                    
+                    PageScript = itemClass.PageScript ?? string.Empty,
+                    PickupScript = itemClass.PickupScript ?? string.Empty,
+                    DropScript = itemClass.DropScript ?? string.Empty,
+                    DropScriptDelay = itemClass.DropScriptDelay,
+                    DropScriptExecuteTimes = itemClass.DropScriptExecuteTimes,
+                    ItemLimit = itemClass.ItemLimit,
+
+                    
+                    Level = itemClass.NeedLevel,
+                    MinDC = itemClass.DC[0],
+                    MaxDC = itemClass.DC[1],
+                    MinMC = itemClass.MC[0],
+                    MaxMC = itemClass.MC[1],
+                    MinSC = itemClass.SC[0],
+                    MaxSC = itemClass.SC[1],
+                    MinAC = itemClass.AC[0],
+                    MaxAC = itemClass.AC[1],
+                    MinMAC = itemClass.MAC[0],
+                    MaxMAC = itemClass.MAC[1],
+
+                    
                     MaxStack = GetMaxStackByType(itemType),
                     BuyPrice = (uint)itemClass.Price,
-                    SellPrice = (uint)(itemClass.Price / 2), // 售价通常是买价的一半
+                    SellPrice = (uint)(itemClass.Price / 2), 
                     RequireLevel = itemClass.NeedLevel,
+
                     
-                    // 根据NeedType设置职业需求
                     RequireJob = ConvertNeedTypeToJob(itemClass.NeedType),
-                    
-                    // 耐久度
-                    // 注意：ItemDefinition中没有直接的耐久度属性，耐久度在ItemInstance中处理
                 };
 
-                // 根据StdMode设置特殊属性
+                
                 SetSpecialProperties(definition, itemClass);
 
                 AddDefinition(definition);
                 _definitionsByName[itemClass.Name] = definition;
-                
+
                 return true;
             }
             catch (Exception ex)
@@ -1321,93 +1435,119 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 将StdMode转换为ItemType
-        /// </summary>
+        
+        
+        
         private ItemType ConvertStdModeToItemType(byte stdMode)
         {
+            
             switch (stdMode)
             {
-                case 5:  // 武器
-                case 6:  // 武器
-                case 10: // 男衣服
-                case 11: // 女衣服
+                case (byte)MirCommon.ItemStdMode.ISM_WEAPON0:
+                case (byte)MirCommon.ItemStdMode.ISM_WEAPON1:
                     return ItemType.Weapon;
-                case 15: // 头盔
+                case (byte)MirCommon.ItemStdMode.ISM_DRESS_MALE:
+                case (byte)MirCommon.ItemStdMode.ISM_DRESS_FEMALE:
+                    return ItemType.Armor;
+                case (byte)MirCommon.ItemStdMode.ISM_HELMENT:
                     return ItemType.Helmet;
-                case 19: // 项链
+                case (byte)MirCommon.ItemStdMode.ISM_NECKLACE0:
+                case (byte)MirCommon.ItemStdMode.ISM_NECKLACE1:
+                case (byte)MirCommon.ItemStdMode.ISM_NECKLACE2:
                     return ItemType.Necklace;
-                case 20: // 戒指
-                case 21: // 戒指
-                case 22: // 戒指
-                case 23: // 戒指
+                case (byte)MirCommon.ItemStdMode.ISM_RING0:
+                case (byte)MirCommon.ItemStdMode.ISM_RING1:
                     return ItemType.Ring;
-                case 24: // 手镯
-                case 26: // 手镯
+                case (byte)MirCommon.ItemStdMode.ISM_BRACELET0:
+                case (byte)MirCommon.ItemStdMode.ISM_BRACELET1:
                     return ItemType.Bracelet;
-                case 30: // 符咒
-                    return ItemType.Scroll;
-                case 31: // 肉
-                case 40: // 书
-                    return ItemType.Book;
-                case 42: // 药水
+                case (byte)MirCommon.ItemStdMode.ISM_BELT:
+                    return ItemType.Belt;
+                case (byte)MirCommon.ItemStdMode.ISM_SHOES:
+                    return ItemType.Boots;
+                case (byte)MirCommon.ItemStdMode.ISM_DRUG:
                     return ItemType.Potion;
-                case 45: // 矿石
+                case (byte)MirCommon.ItemStdMode.ISM_USABLEITEM:
+                case (byte)MirCommon.ItemStdMode.ISM_SCROLL0:
+                case (byte)MirCommon.ItemStdMode.ISM_SCROLL1:
+                case (byte)MirCommon.ItemStdMode.ISM_CANDLE:
+                    return ItemType.Scroll;
+                case (byte)MirCommon.ItemStdMode.ISM_BOOK:
+                    return ItemType.Book;
+                case (byte)MirCommon.ItemStdMode.ISM_MEAT:
+                case (byte)MirCommon.ItemStdMode.ISM_FOOD0:
+                case (byte)MirCommon.ItemStdMode.ISM_FOOD1:
+                    return ItemType.Food;
+                case (byte)MirCommon.ItemStdMode.ISM_MATERIAL:
+                case (byte)MirCommon.ItemStdMode.ISM_MINE:
                     return ItemType.Material;
+                case (byte)MirCommon.ItemStdMode.ISM_CHARM:
+                    return ItemType.Charm;
                 default:
                     return ItemType.Other;
             }
         }
 
-        /// <summary>
-        /// 根据物品类型获取最大堆叠数量
-        /// </summary>
+        
+        
+        
         private int GetMaxStackByType(ItemType type)
         {
             return type == ItemType.Potion || type == ItemType.Material || type == ItemType.Scroll ? 100 : 1;
         }
 
-        /// <summary>
-        /// 将NeedType转换为职业需求
-        /// </summary>
+        
+        
+        
         private int ConvertNeedTypeToJob(byte needType)
         {
-            // 0=战士, 1=法师, 2=道士, -1=所有职业
+            
             switch (needType)
             {
-                case 0: return 0; // 战士
-                case 1: return 1; // 法师
-                case 2: return 2; // 道士
-                default: return -1; // 所有职业
+                case 0: return 0; 
+                case 1: return 1; 
+                case 2: return 2; 
+                default: return -1; 
             }
         }
 
-        /// <summary>
-        /// 设置特殊属性
-        /// </summary>
+        
+        
+        
         private void SetSpecialProperties(ItemDefinition definition, Parsers.ItemClass itemClass)
         {
-            // 设置准确、敏捷、幸运等属性
-            // 这里可以根据StdMode和Shape设置不同的属性
-            if (itemClass.StdMode == 5 || itemClass.StdMode == 6) // 武器
-            {
-                definition.Accuracy = itemClass.SpecialPower; // SpecialPower可能表示准确
-            }
             
-            // 设置幸运/诅咒
+            if (itemClass.StdMode == (byte)MirCommon.ItemStdMode.ISM_DRUG)
+            {
+                definition.HP = itemClass.AC[0];
+                definition.MP = itemClass.MAC[0];
+                definition.IsConsumable = true;
+                definition.CanUse = true;
+                return;
+            }
+
+            
+            
+            if (itemClass.StdMode == 5 || itemClass.StdMode == 6) 
+            {
+                definition.Accuracy = itemClass.SpecialPower; 
+            }
+
+            
             definition.Lucky = itemClass.SpecialPower;
         }
 
-        /// <summary>
-        /// 初始化默认物品（后备方案）
-        /// </summary>
+        
+        
+        
         private void InitializeDefaultItems()
         {
-            // 武器
+            
             AddDefinition(new ItemDefinition(1001, "木剑", ItemType.Weapon)
             {
                 Level = 1,
-                DC = 2,
+                MinDC = 0,
+                MaxDC = 2,
                 RequireLevel = 1,
                 BuyPrice = 50,
                 SellPrice = 10
@@ -1416,7 +1556,8 @@ namespace GameServer
             AddDefinition(new ItemDefinition(1002, "铁剑", ItemType.Weapon)
             {
                 Level = 5,
-                DC = 5,
+                MinDC = 0,
+                MaxDC = 5,
                 RequireLevel = 5,
                 Quality = ItemQuality.Fine,
                 BuyPrice = 200,
@@ -1426,18 +1567,20 @@ namespace GameServer
             AddDefinition(new ItemDefinition(1003, "钢剑", ItemType.Weapon)
             {
                 Level = 10,
-                DC = 10,
+                MinDC = 0,
+                MaxDC = 10,
                 RequireLevel = 10,
                 Quality = ItemQuality.Rare,
                 BuyPrice = 1000,
                 SellPrice = 200
             });
 
-            // 防具
+            
             AddDefinition(new ItemDefinition(2001, "布衣", ItemType.Armor)
             {
                 Level = 1,
-                AC = 2,
+                MinAC = 0,
+                MaxAC = 2,
                 RequireLevel = 1,
                 BuyPrice = 50,
                 SellPrice = 10
@@ -1446,14 +1589,15 @@ namespace GameServer
             AddDefinition(new ItemDefinition(2002, "皮甲", ItemType.Armor)
             {
                 Level = 5,
-                AC = 5,
+                MinAC = 0,
+                MaxAC = 5,
                 RequireLevel = 5,
                 Quality = ItemQuality.Fine,
                 BuyPrice = 200,
                 SellPrice = 40
             });
 
-            // 药水
+            
             AddDefinition(new ItemDefinition(3001, "小红药", ItemType.Potion)
             {
                 MaxStack = 100,
@@ -1478,7 +1622,7 @@ namespace GameServer
                 SellPrice = 2
             });
 
-            // 材料
+            
             AddDefinition(new ItemDefinition(4001, "铁矿石", ItemType.Material)
             {
                 MaxStack = 100,
@@ -1500,6 +1644,10 @@ namespace GameServer
         public void AddDefinition(ItemDefinition definition)
         {
             _definitions[definition.ItemId] = definition;
+            if (!string.IsNullOrWhiteSpace(definition.Name))
+            {
+                _definitionsByName[definition.Name.Trim()] = definition;
+            }
         }
 
         public ItemDefinition? GetDefinition(int itemId)
@@ -1508,16 +1656,58 @@ namespace GameServer
             return definition;
         }
 
+        public ItemDefinition? GetDefinitionByName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return null;
+
+            return _definitionsByName.TryGetValue(name.Trim(), out var definition) ? definition : null;
+        }
+
+        
+        
+        
+        
+        public uint AllocateTempMakeIndex()
+        {
+            uint seq = (uint)(System.Threading.Interlocked.Increment(ref _nextTempMakeIndex) & 0x7FFFFFFF);
+            if (seq == 0) seq = 1;
+            return 0x80000000u | seq;
+        }
+
         public ItemInstance? CreateItem(int itemId, int count = 1)
         {
             var definition = GetDefinition(itemId);
             if (definition == null)
                 return null;
 
-            long instanceId = System.Threading.Interlocked.Increment(ref _nextInstanceId);
-            var item = new ItemInstance(definition, instanceId)
+            uint makeIndex = AllocateTempMakeIndex();
+            int maxDura;
+            if (definition.StdMode == (byte)MirCommon.ItemStdMode.ISM_BOOK)
             {
-                Count = count
+                maxDura = definition.MaxDura;
+            }
+            else
+            {
+                long scaled = (long)definition.DuraTimes * definition.MaxDura;
+                maxDura = (int)Math.Clamp(scaled, 0, ushort.MaxValue);
+            }
+
+            byte dressColor = 0;
+            if (definition.StdMode == (byte)MirCommon.ItemStdMode.ISM_DRESS_MALE ||
+                definition.StdMode == (byte)MirCommon.ItemStdMode.ISM_DRESS_FEMALE)
+            {
+                
+                int initDressColor = (int)GameWorld.Instance.GetGameVar(GameVarConstants.InitDressColor);
+                dressColor = initDressColor < 0 ? (byte)Random.Shared.Next(0, 16) : (byte)(initDressColor & 0x0F);
+            }
+
+            var item = new ItemInstance(definition, (long)makeIndex)
+            {
+                Count = count,
+                MaxDurability = maxDura > 0 ? maxDura : 100,
+                Durability = maxDura > 0 ? maxDura : 100,
+                DressColor = dressColor
             };
 
             return item;
@@ -1543,15 +1733,15 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 掉落系统
-    /// </summary>
+    
+    
+    
     public class LootSystem
     {
         public class LootEntry
         {
             public int ItemId { get; set; }
-            public float DropRate { get; set; } // 0.0 - 1.0
+            public float DropRate { get; set; } 
             public int MinCount { get; set; } = 1;
             public int MaxCount { get; set; } = 1;
         }
@@ -1599,12 +1789,87 @@ namespace GameServer
 
         public void InitializeDefaultLoots()
         {
-            // 骷髅(ID:1)掉落
-            AddMonsterLoot(1, 3001, 0.3f);  // 30%掉小红药
-            AddMonsterLoot(1, 4001, 0.2f);  // 20%掉铁矿石
-            AddMonsterLoot(1, 1001, 0.05f); // 5%掉木剑
+            
+            AddMonsterLoot(1, 3001, 0.3f);  
+            AddMonsterLoot(1, 4001, 0.2f);  
+            AddMonsterLoot(1, 1001, 0.05f); 
 
             LogManager.Default.Info("掉落表已初始化");
+        }
+    }
+
+    
+    
+    
+    
+    public class BankStorage
+    {
+        private readonly Dictionary<int, ItemInstance> _items = new();
+        private readonly object _lock = new();
+
+        public int MaxSlots { get; set; } = 100;
+
+        public void Clear()
+        {
+            lock (_lock)
+            {
+                _items.Clear();
+            }
+        }
+
+        public bool AddItem(ItemInstance item)
+        {
+            lock (_lock)
+            {
+                for (int i = 0; i < MaxSlots; i++)
+                {
+                    if (!_items.ContainsKey(i))
+                    {
+                        _items[i] = item;
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        public bool RemoveByMakeIndex(ulong makeIndex)
+        {
+            lock (_lock)
+            {
+                var kv = _items.FirstOrDefault(p => (ulong)p.Value.InstanceId == makeIndex);
+                if (kv.Value == null)
+                    return false;
+                _items.Remove(kv.Key);
+                return true;
+            }
+        }
+
+        public ItemInstance? FindByMakeIndex(ulong makeIndex)
+        {
+            lock (_lock)
+            {
+                return _items.Values.FirstOrDefault(i => (ulong)i.InstanceId == makeIndex);
+            }
+        }
+
+        public Dictionary<int, ItemInstance> GetAllItems()
+        {
+            lock (_lock)
+            {
+                return new Dictionary<int, ItemInstance>(_items);
+            }
+        }
+
+        public int Count
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _items.Count;
+                }
+            }
         }
     }
 }

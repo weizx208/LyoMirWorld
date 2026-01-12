@@ -5,9 +5,9 @@ using MirCommon.Utils;
 
 namespace GameServer.Parsers
 {
-    /// <summary>
-    /// 技能/魔法数据
-    /// </summary>
+    
+    
+    
     public class MagicData
     {
         public string Name { get; set; } = "";
@@ -27,9 +27,9 @@ namespace GameServer.Parsers
         public int Delay { get; set; }
     }
 
-    /// <summary>
-    /// 技能/魔法数据解析器 (basemagic.txt)
-    /// </summary>
+    
+    
+    
     public class MagicDataParser
     {
         private readonly Dictionary<string, MagicData> _magics = new();
@@ -40,7 +40,7 @@ namespace GameServer.Parsers
 
             try
             {
-                // 使用ANSI编码读取文件
+                
                 var lines = SmartReader.ReadAllLines(filePath);
                 int count = 0;
 
@@ -90,9 +90,9 @@ namespace GameServer.Parsers
         public MagicData? GetMagic(string name) => _magics.TryGetValue(name, out var magic) ? magic : null;
     }
 
-    /// <summary>
-    /// NPC生成数据
-    /// </summary>
+    
+    
+    
     public class NpcGenData
     {
         public string Name { get; set; } = "";
@@ -106,10 +106,10 @@ namespace GameServer.Parsers
         public int Flag { get; set; }
     }
 
-    /// <summary>
-    /// NPC配置解析器 (npcgen.txt)
-    /// 格式: 名称/地图ID/X/Y/脚本名/标志
-    /// </summary>
+    
+    
+    
+    
     public class NpcConfigParser
     {
         private readonly List<NpcGenData> _npcs = new();
@@ -120,17 +120,18 @@ namespace GameServer.Parsers
 
             try
             {
-                // 使用ANSI编码读取文件
+                
                 var lines = SmartReader.ReadAllLines(filePath);
                 int count = 0;
 
                 foreach (var line in lines)
                 {
-                    if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("#"))
+                    if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("#") || line.TrimStart().StartsWith(";"))
                         continue;
 
-                    var parts = line.Split(new[] { '/', ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length < 4) continue;
+                    
+                    var parts = line.Split('/');
+                    if (parts.Length < 6) continue;
 
                     Helper.TryHexToInt(parts[2].Trim(), out int view);
                     var npc = new NpcGenData
@@ -141,14 +142,16 @@ namespace GameServer.Parsers
                         MapID = int.Parse(parts[3].Trim()),
                         X = int.Parse(parts[4].Trim()),
                         Y = int.Parse(parts[5].Trim()),
-                        Istalk = parts.Length > 6 ? Helper.BoolParser(parts[5].Trim()):false,
-                        ScriptName = parts.Length > 7 ? parts[7].Trim():""
+                        Istalk = parts.Length > 6 && (parts[6].Trim() == "1" || parts[6].Trim().ToLower() == "true"),
+                        ScriptName = parts.Length > 7 ? parts[7].Trim() : ""
                     };
 
-                    if (parts.Length > 4)
-                        npc.ScriptName = parts[4].Trim();
-                    if (parts.Length > 5)
-                        npc.Flag = int.Parse(parts[5].Trim());
+                    if (parts.Length > 8)
+                    {
+                        
+                        if (int.TryParse(parts[8].Trim(), out int flag))
+                            npc.Flag = flag;
+                    }
 
                     _npcs.Add(npc);
                     count++;
@@ -167,9 +170,9 @@ namespace GameServer.Parsers
         public IEnumerable<NpcGenData> GetAllNpcs() => _npcs;
     }
 
-    /// <summary>
-    /// CSV格式解析器 - 通用CSV文件解析
-    /// </summary>
+    
+    
+    
     public class CSVParser
     {
         public List<Dictionary<string, string>> Parse(string filePath, bool hasHeader = true)
@@ -179,7 +182,7 @@ namespace GameServer.Parsers
 
             try
             {
-                // 使用ANSI编码读取文件
+                
                 var lines = SmartReader.ReadAllLines(filePath);
                 if (lines.Length == 0) return result;
 
@@ -228,9 +231,9 @@ namespace GameServer.Parsers
         }
     }
 
-    /// <summary>
-    /// INI格式解析器
-    /// </summary>
+    
+    
+    
     public class INIParser
     {
         private readonly Dictionary<string, Dictionary<string, string>> _sections = new();
@@ -241,7 +244,7 @@ namespace GameServer.Parsers
 
             try
             {
-                // 使用ANSI编码读取文件
+                
                 var lines = SmartReader.ReadAllLines(filePath);
                 string currentSection = "default";
                 _sections[currentSection] = new Dictionary<string, string>();
@@ -294,9 +297,9 @@ namespace GameServer.Parsers
         }
     }
 
-    /// <summary>
-    /// 简单脚本文件解析器
-    /// </summary>
+    
+    
+    
     public class SimpleScriptParser
     {
         public class ScriptLine
@@ -313,7 +316,7 @@ namespace GameServer.Parsers
 
             try
             {
-                // 使用ANSI编码读取文件
+                
                 var lines = SmartReader.ReadAllLines(filePath);
 
                 foreach (var line in lines)
@@ -346,9 +349,9 @@ namespace GameServer.Parsers
         }
     }
 
-    /// <summary>
-    /// 通用文本文件解析器
-    /// </summary>
+    
+    
+    
     public class TextFileParser
     {
         public List<string> LoadLines(string filePath, bool skipComments = true, bool skipEmpty = true)
@@ -358,7 +361,7 @@ namespace GameServer.Parsers
 
             try
             {
-                // 使用ANSI编码读取文件
+                
                 var lines = SmartReader.ReadAllLines(filePath);
 
                 foreach (var line in lines)
@@ -387,7 +390,7 @@ namespace GameServer.Parsers
 
             try
             {
-                // 使用ANSI编码读取文件
+                
                 var lines = SmartReader.ReadAllLines(filePath);
 
                 foreach (var line in lines)

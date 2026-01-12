@@ -4,22 +4,22 @@ using System.Threading.Tasks;
 
 namespace MirCommon.Network
 {
-    /// <summary>
-    /// 消息处理器委托
-    /// </summary>
+    
+    
+    
     public delegate Task<bool> MessageHandlerDelegate(uint clientId, byte[] data, int length);
 
-    /// <summary>
-    /// 消息处理器管理器
-    /// </summary>
+    
+    
+    
     public class MessageHandlerManager
     {
         private readonly Dictionary<DbMsg, MessageHandlerDelegate> _handlers = new();
         private readonly object _lock = new();
 
-        /// <summary>
-        /// 注册消息处理器
-        /// </summary>
+        
+        
+        
         public void RegisterHandler(DbMsg msgType, MessageHandlerDelegate handler)
         {
             lock (_lock)
@@ -28,9 +28,9 @@ namespace MirCommon.Network
             }
         }
 
-        /// <summary>
-        /// 注销消息处理器
-        /// </summary>
+        
+        
+        
         public void UnregisterHandler(DbMsg msgType)
         {
             lock (_lock)
@@ -39,9 +39,9 @@ namespace MirCommon.Network
             }
         }
 
-        /// <summary>
-        /// 处理消息
-        /// </summary>
+        
+        
+        
         public async Task<bool> HandleMessageAsync(DbMsg msgType, uint clientId, byte[] data, int length)
         {
             MessageHandlerDelegate? handler;
@@ -65,9 +65,9 @@ namespace MirCommon.Network
             }
         }
 
-        /// <summary>
-        /// 获取已注册的处理器数量
-        /// </summary>
+        
+        
+        
         public int GetHandlerCount()
         {
             lock (_lock)
@@ -77,29 +77,29 @@ namespace MirCommon.Network
         }
     }
 
-    /// <summary>
-    /// 消息解析器
-    /// </summary>
+    
+    
+    
     public static class MessageParser
     {
-        /// <summary>
-        /// 解析数据库消息
-        /// </summary>
+        
+        
+        
         public static bool ParseDbMessage(byte[] data, int length, out DbMsg msgType, out byte[] payload)
         {
             msgType = DbMsg.DM_START;
             payload = Array.Empty<byte>();
 
-            if (length < 2) // 至少需要消息类型（2字节）
+            if (length < 2) 
                 return false;
 
             try
             {
-                // 读取消息类型
+                
                 ushort msgValue = BitConverter.ToUInt16(data, 0);
                 msgType = (DbMsg)msgValue;
 
-                // 提取负载数据
+                
                 if (length > 2)
                 {
                     payload = new byte[length - 2];
@@ -114,18 +114,18 @@ namespace MirCommon.Network
             }
         }
 
-        /// <summary>
-        /// 构建数据库消息
-        /// </summary>
+        
+        
+        
         public static byte[] BuildDbMessage(DbMsg msgType, byte[]? payload = null)
         {
             int payloadLength = payload?.Length ?? 0;
             byte[] result = new byte[2 + payloadLength];
 
-            // 写入消息类型
+            
             BitConverter.GetBytes((ushort)msgType).CopyTo(result, 0);
 
-            // 写入负载
+            
             if (payload != null && payloadLength > 0)
             {
                 Array.Copy(payload, 0, result, 2, payloadLength);
@@ -134,9 +134,9 @@ namespace MirCommon.Network
             return result;
         }
 
-        /// <summary>
-        /// 解析字符串（以'/'分隔）
-        /// </summary>
+        
+        
+        
         public static string[] ParseStringParameters(string data, char separator = '/')
         {
             if (string.IsNullOrEmpty(data))
@@ -145,18 +145,18 @@ namespace MirCommon.Network
             return data.Split(separator, StringSplitOptions.RemoveEmptyEntries);
         }
 
-        /// <summary>
-        /// 构建字符串参数
-        /// </summary>
+        
+        
+        
         public static string BuildStringParameters(params string[] parameters)
         {
             return string.Join("/", parameters);
         }
     }
 
-    /// <summary>
-    /// 数据包构建器
-    /// </summary>
+    
+    
+    
     public class PacketBuilder
     {
         private readonly List<byte> _buffer = new();
@@ -222,9 +222,9 @@ namespace MirCommon.Network
         public int Length => _buffer.Count;
     }
 
-    /// <summary>
-    /// 数据包读取器
-    /// </summary>
+    
+    
+    
     public class PacketReader
     {
         private readonly byte[] _data;

@@ -8,82 +8,65 @@ using MirCommon.Utils;
 namespace GameServer
 {
 
-    /// <summary>
-    /// 神佑类型
-    /// </summary>
     public enum GodBlessType
     {
-        DoubleExp = 0,      // 双倍经验
-        DoubleDrop = 1,     // 双倍掉落
-        NoPk = 2,          // 无PK
-        NoDeath = 3,       // 不死
+        DoubleExp = 0,      
+        DoubleDrop = 1,     
+        NoPk = 2,          
+        NoDeath = 3,       
         Max
     }
-    /// <summary>
-    /// Buff类型
-    /// </summary>
     public enum BuffType
     {
-        Buff = 0,           // 增益
-        Debuff = 1,         // 减益
-        Control = 2,        // 控制
-        Special = 3         // 特殊
+        Buff = 0,           
+        Debuff = 1,         
+        Control = 2,        
+        Special = 3         
     }
 
-    /// <summary>
-    /// Buff效果类型
-    /// </summary>
     public enum BuffEffectType
     {
-        // 属性增益
-        IncreaseHP = 0,         // 增加生命上限
-        IncreaseMP = 1,         // 增加魔法上限
-        IncreaseDC = 2,         // 增加攻击力
-        IncreaseAC = 3,         // 增加防御力
-        IncreaseMAC = 4,        // 增加魔防
-        IncreaseAccuracy = 5,   // 增加准确
-        IncreaseAgility = 6,    // 增加敏捷
-        IncreaseSpeed = 7,      // 增加移速
-        IncreaseLucky = 8,      // 增加幸运
+        IncreaseHP = 0,         
+        IncreaseMP = 1,         
+        IncreaseDC = 2,         
+        IncreaseAC = 3,         
+        IncreaseMAC = 4,        
+        IncreaseAccuracy = 5,   
+        IncreaseAgility = 6,    
+        IncreaseSpeed = 7,      
+        IncreaseLucky = 8,      
         
-        // 属性减益
-        DecreaseHP = 10,        // 减少生命上限
-        DecreaseMP = 11,        // 减少魔法上限
-        DecreaseDC = 12,        // 减少攻击力
-        DecreaseAC = 13,        // 减少防御力
-        DecreaseMAC = 14,       // 减少魔防
-        DecreaseAccuracy = 15,  // 减少准确
-        DecreaseAgility = 16,   // 减少敏捷
-        DecreaseSpeed = 17,     // 减少移速
+        DecreaseHP = 10,        
+        DecreaseMP = 11,        
+        DecreaseDC = 12,        
+        DecreaseAC = 13,        
+        DecreaseMAC = 14,       
+        DecreaseAccuracy = 15,  
+        DecreaseAgility = 16,   
+        DecreaseSpeed = 17,     
         
-        // 持续效果
-        HPRegen = 20,           // 生命恢复
-        MPRegen = 21,           // 魔法恢复
-        Poison = 22,            // 中毒
-        Burn = 23,              // 燃烧
-        Bleed = 24,             // 流血
+        HPRegen = 20,           
+        MPRegen = 21,           
+        Poison = 22,            
+        Burn = 23,              
+        Bleed = 24,             
         
-        // 控制效果
-        Stun = 30,              // 眩晕
-        Freeze = 31,            // 冰冻
-        Sleep = 32,             // 睡眠
-        Silence = 33,           // 沉默
-        Root = 34,              // 定身
-        Slow = 35,              // 减速
+        Stun = 30,              
+        Freeze = 31,            
+        Sleep = 32,             
+        Silence = 33,           
+        Root = 34,              
+        Slow = 35,              
         
-        // 特殊效果
-        Invincible = 40,        // 无敌
-        Shield = 41,            // 护盾
-        Invisible = 42,         // 隐身
-        DamageReflect = 43,     // 伤害反射
-        Vampire = 44,           // 吸血
-        CriticalUp = 45,        // 暴击提升
-        ExpUp = 46              // 经验加成
+        Invincible = 40,        
+        Shield = 41,            
+        Invisible = 42,         
+        DamageReflect = 43,     
+        Vampire = 44,           
+        CriticalUp = 45,        
+        ExpUp = 46              
     }
 
-    /// <summary>
-    /// Buff定义
-    /// </summary>
     public class BuffDefinition
     {
         public int BuffId { get; set; }
@@ -93,22 +76,17 @@ namespace GameServer
         public BuffEffectType EffectType { get; set; }
         public int IconId { get; set; }
         
-        // 效果数值
         public int Value { get; set; }
         public float Percentage { get; set; }
         
-        // 持续时间
-        public int Duration { get; set; }          // 持续时间(毫秒)
-        public int TickInterval { get; set; }      // 生效间隔(毫秒)
+        public int Duration { get; set; }          
+        public int TickInterval { get; set; }      
         
-        // 堆叠
         public int MaxStack { get; set; } = 1;
-        public bool RefreshDuration { get; set; } = true;  // 重复施加时刷新时间
+        public bool RefreshDuration { get; set; } = true;  
         
-        // 互斥
-        public List<int> MutexBuffs { get; set; } = new();  // 互斥Buff列表
+        public List<int> MutexBuffs { get; set; } = new();  
         
-        // 能否移除
         public bool CanDispel { get; set; } = true;
         public bool CanPurge { get; set; } = true;
         
@@ -130,15 +108,12 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// Buff实例
-    /// </summary>
     public class BuffInstance
     {
         public long InstanceId { get; set; }
         public BuffDefinition Definition { get; set; }
-        public ICombatEntity Caster { get; set; }     // 施法者
-        public ICombatEntity Target { get; set; }     // 目标
+        public ICombatEntity Caster { get; set; }     
+        public ICombatEntity Target { get; set; }     
         public int StackCount { get; set; } = 1;
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
@@ -204,9 +179,6 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// Buff管理器（单个实体的Buff列表）
-    /// </summary>
     public class BuffManager
     {
         private readonly ICombatEntity _owner;
@@ -223,7 +195,6 @@ namespace GameServer
         {
             lock (_lock)
             {
-                // 检查互斥
                 foreach (var mutexBuffId in definition.MutexBuffs)
                 {
                     if (_buffs.ContainsKey(mutexBuffId))
@@ -232,10 +203,8 @@ namespace GameServer
                     }
                 }
 
-                // 检查是否已存在
                 if (_buffs.TryGetValue(definition.BuffId, out var existingBuff))
                 {
-                    // 刷新时间或增加层数
                     if (definition.MaxStack > 1)
                     {
                         existingBuff.AddStack();
@@ -246,12 +215,10 @@ namespace GameServer
                     return true;
                 }
 
-                // 创建新Buff实例
                 var instanceId = System.Threading.Interlocked.Increment(ref _nextInstanceId);
                 var buff = new BuffInstance(definition, caster, _owner, instanceId);
                 _buffs[definition.BuffId] = buff;
 
-                // 应用Buff效果
                 ApplyBuffEffect(buff);
 
                 LogManager.Default.Info($"{_owner.Name} 获得Buff: {definition.Name} 持续{definition.Duration/1000}秒");
@@ -265,7 +232,6 @@ namespace GameServer
             {
                 if (_buffs.TryGetValue(buffId, out var buff))
                 {
-                    // 移除Buff效果
                     RemoveBuffEffect(buff);
                     
                     _buffs.Remove(buffId);
@@ -284,14 +250,12 @@ namespace GameServer
 
                 foreach (var buff in _buffs.Values)
                 {
-                    // 检查过期
                     if (buff.CheckExpired())
                     {
                         expiredBuffs.Add(buff.Definition.BuffId);
                         continue;
                     }
 
-                    // 检查Tick效果
                     if (buff.ShouldTick())
                     {
                         ApplyTickEffect(buff);
@@ -299,7 +263,6 @@ namespace GameServer
                     }
                 }
 
-                // 移除过期Buff
                 foreach (var buffId in expiredBuffs)
                 {
                     RemoveBuff(buffId);
@@ -523,9 +486,6 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// Buff定义管理器
-    /// </summary>
     public class BuffDefinitionManager
     {
         private static BuffDefinitionManager? _instance;
@@ -540,12 +500,11 @@ namespace GameServer
 
         private void InitializeDefaultBuffs()
         {
-            // 增益Buff
             AddDefinition(new BuffDefinition(1001, "力量祝福", BuffEffectType.IncreaseDC)
             {
                 Description = "增加攻击力",
                 Value = 5,
-                Duration = 300000, // 5分钟
+                Duration = 300000, 
                 IconId = 1
             });
 
@@ -569,7 +528,7 @@ namespace GameServer
             {
                 Description = "增加幸运值",
                 Value = 3,
-                Duration = 600000, // 10分钟
+                Duration = 600000, 
                 IconId = 4
             });
 
@@ -578,7 +537,7 @@ namespace GameServer
                 Description = "持续恢复生命值",
                 Value = 5,
                 Duration = 30000,
-                TickInterval = 1000, // 每秒恢复
+                TickInterval = 1000, 
                 IconId = 5
             });
 
@@ -611,7 +570,7 @@ namespace GameServer
             AddDefinition(new BuffDefinition(1009, "暴击强化", BuffEffectType.CriticalUp)
             {
                 Description = "提高暴击率",
-                Value = 20, // 20%
+                Value = 20, 
                 Duration = 60000,
                 IconId = 9
             });
@@ -619,12 +578,11 @@ namespace GameServer
             AddDefinition(new BuffDefinition(1010, "经验加成", BuffEffectType.ExpUp)
             {
                 Description = "增加获得的经验",
-                Percentage = 1.5f, // 150%
-                Duration = 1800000, // 30分钟
+                Percentage = 1.5f, 
+                Duration = 1800000, 
                 IconId = 10
             });
 
-            // 减益Debuff
             AddDefinition(new BuffDefinition(2001, "中毒", BuffEffectType.Poison)
             {
                 Description = "持续损失生命值",
@@ -673,12 +631,11 @@ namespace GameServer
             AddDefinition(new BuffDefinition(2006, "减速", BuffEffectType.Slow)
             {
                 Description = "移动速度降低",
-                Value = 30, // 30%
+                Value = 30, 
                 Duration = 5000,
                 IconId = 26
             });
 
-            // 控制效果
             AddDefinition(new BuffDefinition(3001, "眩晕", BuffEffectType.Stun)
             {
                 Description = "无法移动和攻击",

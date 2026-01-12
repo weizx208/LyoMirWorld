@@ -3,9 +3,9 @@ using Microsoft.Data.Sqlite;
 
 namespace MirCommon.Database
 {
-    /// <summary>
-    /// SQLite数据库实现
-    /// </summary>
+    
+    
+    
     public class SQLiteDatabase : BaseDatabase
     {
         public SQLiteDatabase(string connectionString) : base(connectionString)
@@ -27,17 +27,17 @@ namespace MirCommon.Database
         {
             try
             {
-                // 确保SQLite数据库文件存在
+                
                 var builder = new SqliteConnectionStringBuilder(_connectionString);
                 var dataSource = builder.DataSource;
                 
                 if (!string.IsNullOrEmpty(dataSource) && !System.IO.File.Exists(dataSource))
                 {
-                    // 创建数据库文件
+                    
                     using var connection = new SqliteConnection(_connectionString);
                     connection.Open();
                     
-                    // 创建必要的表
+                    
                     CreateTables(connection);
                     
                     connection.Close();
@@ -53,14 +53,14 @@ namespace MirCommon.Database
             }
         }
         
-        /// <summary>
-        /// 创建必要的表
-        /// </summary>
+        
+        
+        
         private void CreateTables(SqliteConnection connection)
         {
             using var cmd = connection.CreateCommand();
             
-            // 创建账号表（使用SQL文件中的表结构）
+            
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS TBL_ACCOUNT (
                     ACCOUNT TEXT PRIMARY KEY,
@@ -78,7 +78,7 @@ namespace MirCommon.Database
                 )";
             cmd.ExecuteNonQuery();
             
-            // 创建角色表（使用SQL文件中的表结构）
+            
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS TBL_CHARACTER_INFO (
                     ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -134,7 +134,7 @@ namespace MirCommon.Database
                 )";
             cmd.ExecuteNonQuery();
             
-            // 创建物品表（使用SQL文件中的表结构）
+            
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS TBL_CHARACTER_ITEM (
                     ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -171,7 +171,7 @@ namespace MirCommon.Database
                 )";
             cmd.ExecuteNonQuery();
             
-            // 创建技能表（使用SQL文件中的表结构）
+            
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS TBL_CHARACTER_MAGIC (
                     CHARID INTEGER NOT NULL DEFAULT 0,
@@ -183,7 +183,7 @@ namespace MirCommon.Database
                 )";
             cmd.ExecuteNonQuery();
             
-            // 创建社区表（使用SQL文件中的表结构）
+            
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS TBL_CHARACTER_COMMUNITY (
                     OWNERID INTEGER PRIMARY KEY,
@@ -205,7 +205,7 @@ namespace MirCommon.Database
                 )";
             cmd.ExecuteNonQuery();
             
-            // 创建任务表（使用SQL文件中的表结构）
+            
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS TBL_CHARACTER_TASK (
                     CHARID INTEGER NOT NULL DEFAULT 0,
@@ -234,7 +234,7 @@ namespace MirCommon.Database
                 )";
             cmd.ExecuteNonQuery();
             
-            // 创建索引
+            
             cmd.CommandText = "CREATE INDEX IF NOT EXISTS idx_character_info_account ON TBL_CHARACTER_INFO(ACCOUNT)";
             cmd.ExecuteNonQuery();
             

@@ -4,17 +4,18 @@ using MirCommon.Utils;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 掉落物品管理器
-    /// 负责管理游戏中的掉落物品
-    /// </summary>
+    
+    
+    
+    
+    
     public class DownItemMgr
     {
         private static DownItemMgr? _instance;
         
-        /// <summary>
-        /// 获取DownItemMgr单例实例
-        /// </summary>
+        
+        
+        
         public static DownItemMgr Instance
         {
             get
@@ -33,9 +34,9 @@ namespace GameServer
         private readonly Queue<DownItemObject> _deleteItemQueue;
         private readonly object _lock = new();
 
-        /// <summary>
-        /// 私有构造函数
-        /// </summary>
+        
+        
+        
         private DownItemMgr()
         {
             _currentFreeIndex = 0;
@@ -44,9 +45,10 @@ namespace GameServer
             _deleteItemQueue = new Queue<DownItemObject>(2000);
         }
 
-        /// <summary>
-        /// 创建新的掉落物品对象
-        /// </summary>
+        
+        
+        
+        
         public DownItemObject? NewDownItemObject(ItemInstance item, ushort x, ushort y, uint ownerId = 0)
         {
             lock (_lock)
@@ -58,7 +60,7 @@ namespace GameServer
                     return null;
                 }
 
-                // 分配ID
+                
                 uint id = GetNextId();
                 if (id == 0)
                 {
@@ -77,9 +79,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 删除掉落物品对象
-        /// </summary>
+        
+        
+        
+        
         public bool DeleteDownItemObject(DownItemObject? downItem)
         {
             if (downItem == null)
@@ -95,15 +98,16 @@ namespace GameServer
                 }
                 else
                 {
-                    // 队列满，直接删除
+                    
                     return DeleteDownItemObjectImmediate(downItem);
                 }
             }
         }
 
-        /// <summary>
-        /// 立即删除掉落物品对象
-        /// </summary>
+        
+        
+        
+        
         public bool DeleteDownItemObjectImmediate(DownItemObject? downItem)
         {
             if (downItem == null)
@@ -124,9 +128,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 掉落物品到地图
-        /// </summary>
+        
+        
+        
+        
         public bool DropItem(LogicMap map, ItemInstance item, ushort x, ushort y, uint ownerId = 0)
         {
             try
@@ -156,14 +161,15 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 玩家掉落物品到地图
-        /// </summary>
+        
+        
+        
+        
         public bool HumanDropItem(LogicMap map, ItemInstance item, ushort x, ushort y, HumanPlayer actionPlayer)
         {
             try
             {
-                var downItem = NewDownItemObject(item, x, y, 0); // 玩家掉落物品没有所有者
+                var downItem = NewDownItemObject(item, x, y, 0); 
                 if (downItem == null)
                 {
                     LogManager.Default.Warning($"创建玩家掉落物品失败: 物品={item.Definition.Name}, 位置=({x},{y})");
@@ -189,13 +195,22 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 拾取物品
-        /// </summary>
+        
+        
+        
+        
         public bool PickupItem(LogicMap map, DownItemObject downItem, HumanPlayer actionPlayer)
         {
             try
             {
+                
+                uint ownerId = downItem.GetOwnerId();
+                if (ownerId != 0 && ownerId != actionPlayer.GetDBId())
+                {
+                    
+                    return false;
+                }
+
                 if (!map.RemoveObject(downItem))
                 {
                     LogManager.Default.Warning($"无法从地图移除掉落物品: 地图={map.MapId}, 位置=({downItem.X},{downItem.Y})");
@@ -206,22 +221,25 @@ namespace GameServer
                 bool success = true;
                 uint x = downItem.X;
                 uint y = downItem.Y;
-                
-                // 检查是否是金币
+
                 if (downItem.IsGold())
                 {
-                    LogManager.Default.Debug($"玩家拾取金币: 玩家={actionPlayer.Name}, 位置=({x},{y})");
-                    
-                    // 尝试将物品添加到玩家背包
-                    if (!actionPlayer.AddItem(item))
+                    uint gold = downItem.GetGoldAmount();
+                    if (gold == 0) gold = 1;
+
+                    LogManager.Default.Debug($"玩家拾取金币: 玩家={actionPlayer.Name}, 金额={gold}, 位置=({x},{y})");
+                    success = actionPlayer.AddGold(gold);
+
+                    if (success)
                     {
-                        success = false;
+                        DeleteItemFromManager(item);
                     }
                 }
                 else
                 {
-                    // 普通物品拾取
-                    if (!actionPlayer.AddItem(item))
+                    
+                    
+                    if (!actionPlayer.Inventory.TryAddItemNoStack(item, out _))
                     {
                         success = false;
                     }
@@ -234,7 +252,7 @@ namespace GameServer
                 }
                 else
                 {
-                    // 放回地图
+                    
                     if (!map.AddObject(downItem, (int)x, (int)y))
                     {
                         DeleteItemFromManager(item);
@@ -252,9 +270,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 删除地面物品
-        /// </summary>
+        
+        
+        
+        
         public bool DeleteGroundItem(LogicMap? map, DownItemObject downItem, bool deleteItem = true)
         {
             if (map == null)
@@ -270,7 +289,7 @@ namespace GameServer
 
                 if (deleteItem)
                 {
-                    // 从物品管理器中删除物品
+                    
                     DeleteItemFromManager(downItem.GetItem());
                 }
 
@@ -285,9 +304,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 更新删除对象队列
-        /// </summary>
+        
+        
+        
+        
         public void UpdateDeletedObject()
         {
             lock (_lock)
@@ -298,23 +318,24 @@ namespace GameServer
                 var downItem = _deleteItemQueue.Dequeue();
                 if (downItem != null)
                 {
-                    // 检查删除计时器是否超时（10秒）
+                    
                     if (downItem.IsDelTimerTimeOut(10000))
                     {
                         DeleteDownItemObjectImmediate(downItem);
                     }
                     else
                     {
-                        // 未超时，重新放回队列
+                        
                         _deleteItemQueue.Enqueue(downItem);
                     }
                 }
             }
         }
 
-        /// <summary>
-        /// 更新掉落物品
-        /// </summary>
+        
+        
+        
+        
         public void UpdateDownItem()
         {
             lock (_lock)
@@ -327,7 +348,7 @@ namespace GameServer
                 
                 foreach (var id in keys)
                 {
-                    if (count >= 100) // 每次更新最多100个
+                    if (count >= 100) 
                         break;
 
                     if (_downItemList.TryGetValue(id, out var downItem))
@@ -342,9 +363,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取掉落物品数量
-        /// </summary>
+        
+        
+        
+        
         public int GetCount()
         {
             lock (_lock)
@@ -353,12 +375,12 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取下一个可用的ID
-        /// </summary>
+        
+        
+        
         private uint GetNextId()
         {
-            // 简单的ID分配策略
+            
             uint id = ++_currentFreeIndex;
             while (_downItemList.ContainsKey(id) && id < uint.MaxValue)
             {
@@ -370,7 +392,7 @@ namespace GameServer
                 _currentFreeIndex = 1;
                 id = 1;
                 
-                // 如果仍然冲突，寻找空闲ID
+                
                 for (uint i = 1; i < uint.MaxValue; i++)
                 {
                     if (!_downItemList.ContainsKey(i))
@@ -385,9 +407,9 @@ namespace GameServer
             return id;
         }
 
-        /// <summary>
-        /// 根据ID获取掉落物品对象
-        /// </summary>
+        
+        
+        
         public DownItemObject? GetDownItemObject(uint id)
         {
             lock (_lock)
@@ -397,9 +419,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取所有掉落物品对象
-        /// </summary>
+        
+        
+        
         public List<DownItemObject> GetAllDownItemObjects()
         {
             lock (_lock)
@@ -408,9 +430,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 清理所有掉落物品
-        /// </summary>
+        
+        
+        
         public void ClearAll()
         {
             lock (_lock)
@@ -433,21 +455,25 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取物品类别
-        /// </summary>
+        
+        
+        
+        
         private ItemClass? GetItemClass(ItemInstance item)
         {
-            // 实际实现应该从ItemManager获取
+            
+            
             return new ItemClass();
         }
 
-        /// <summary>
-        /// 从物品管理器中删除物品
-        /// </summary>
+        
+        
+        
+        
         private void DeleteItemFromManager(ItemInstance item)
         {
-            // 实际实现应该调用ItemManager.Instance.DeleteItem
+            
+            
             LogManager.Default.Debug($"从物品管理器删除物品: {item.Definition?.Name}, MakeIndex={item.GetMakeIndex()}");
         }
     }

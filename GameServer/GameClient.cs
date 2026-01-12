@@ -12,54 +12,60 @@ using System.Threading;
 using System.Threading.Tasks;
 using static Mysqlx.Expect.Open.Types.Condition.Types;
 
-// 类型别名
+
 using Player = GameServer.HumanPlayer;
 
 namespace GameServer
 {
-    // 物品位置常量（item_db_flag）
+    
     public enum ItemDataFlag
     {
-        IDF_GROUND = 0,     // 地面
-        IDF_BAG = 1,        // 背包
-        IDF_EQUIPMENT = 2,  // 装备
-        IDF_NPC = 3,        // NPC
-        IDF_BANK = 4,       // 仓库
-        IDF_CACHE = 5,      // 缓存
-        IDF_PETBANK = 6,    // 宠物仓库（锻造）
-        IDF_UPGRADE = 7,    // 升级
+        IDF_GROUND = 0,     
+        IDF_BAG = 1,        
+        IDF_EQUIPMENT = 2,  
+        IDF_NPC = 3,        
+        IDF_BANK = 4,       
+        IDF_CACHE = 5,      
+        IDF_PETBANK = 6,    
+        IDF_UPGRADE = 7,    
     }
 
-    /// <summary>
-    /// 游戏客户端连接
-    /// </summary>
+    
+    
+    
     public partial class GameClient
     {
-        private readonly TcpClient _client;//已验证有效
+        private readonly TcpClient _client;
         private readonly GameServerApp _server;
         private readonly GameWorld _world;
-        private readonly NetworkStream _stream;//可发送，已验证有效
+        private readonly NetworkStream _stream;
         private Player? _player;
         private readonly string _dbServerAddress;
         private readonly int _dbServerPort;
 
-        // 客户端状态管理
+        
         private ClientState _state = ClientState.GSUM_NOTVERIFIED;
         private MirCommon.EnterGameServer _enterInfo = new MirCommon.EnterGameServer();
         private uint _clientKey = 0;
-        private uint _nextClientKey = 1;
+        private static int _nextClientKey = 0;
 
-        // 额外状态字段
+        
         private int _gmLevel = 0;
         private bool _scrollTextMode = false;
         private bool _noticeMode = false;
         private bool _competlyQuit = false;
         private readonly System.Diagnostics.Stopwatch _hlTimer = System.Diagnostics.Stopwatch.StartNew();
 
-        // 首次登录处理类型常量（EP_FIRSTLOGINPROCESS）
+        
+        private readonly List<byte> _verifyRawBuffer = new();
+
+        
+        private readonly List<byte> _codedRawBuffer = new();
+
+        
         public const int EP_FIRSTLOGINPROCESS = 1;
 
-        // 数据加载状态跟踪
+        
         private bool _bagLoaded = false;
         private bool _equipmentLoaded = false;
         private bool _magicLoaded = false;
@@ -67,6 +73,9 @@ namespace GameServer
         private bool _upgradeItemLoaded = false;
         private bool _petBankLoaded = false;
         private bool _bankLoaded = false;
+
+        
+        private readonly List<ItemInstance> _bankCache = new();
 
         public GameClient(TcpClient client, GameServerApp server, GameWorld world, string dbServerAddress, int dbServerPort)
         {
@@ -76,21 +85,21 @@ namespace GameServer
             _dbServerAddress = dbServerAddress;
             _dbServerPort = dbServerPort;
             _stream = client.GetStream();
-            _clientKey = _nextClientKey++;
+            _clientKey = unchecked((uint)Interlocked.Increment(ref _nextClientKey));
         }
 
-        /// <summary>
-        /// 获取客户端ID（getId）
-        /// </summary>
+        
+        
+        
         public uint GetId()
         {
             return _clientKey;
         }
 
-        /// <summary>
-        /// 单个传世客户端消息处理循环
-        /// </summary>
-        /// <returns></returns>
+        
+        
+        
+        
         public async Task ProcessAsync()
         {
             byte[] buffer = new byte[8192];
@@ -100,29 +109,33 @@ namespace GameServer
             {
                 try
                 {
-                    // 检查_stream是否已被释放
+                    
                     if (_stream == null || !_stream.CanRead)
                     {
-                        LogManager.Default.Warning("NetworkStream已被释放或不可读，退出处理循环");
+                        string remote = _client.Client?.RemoteEndPoint?.ToString() ?? "<unknown>";
+                        string playerName = _player?.Name ?? "<unverified>";
+                        LogManager.Default.Warning($"NetworkStream已被释放或不可读，退出处理循环: remote={remote}, player={playerName}, state={_state}");
                         break;
                     }
 
-                    //阻塞读取客户端消息
+                    
                     int bytesRead = await _stream.ReadAsync(buffer, 0, buffer.Length);
                     if (bytesRead == 0)
                     {
-                        // 连接正常关闭
+                        
                         networkError.SetError(NetworkErrorCode.ME_SOCKETCLOSED, "连接正常关闭");
-                        LogManager.Default.Info($"客户端连接正常关闭: {networkError.GetFullErrorMessage()}");
+                        string remote = _client.Client?.RemoteEndPoint?.ToString() ?? "<unknown>";
+                        string playerName = _player?.Name ?? "<unverified>";
+                        LogManager.Default.Info($"客户端连接正常关闭: remote={remote}, player={playerName}, state={_state}, {networkError.GetFullErrorMessage()}");
                         break;
                     }
 
-                    //客户端接收消息处理
+                    
                     var result = await ProcessMessageWithErrorHandling(buffer, bytesRead, networkError);
                     if (!result.IsSuccess)
                     {
                         LogManager.Default.Warning($"处理消息失败: {result.ErrorMessage}");
-                        // 根据错误类型决定是否断开连接
+                        
                         if (result.ErrorCode == NetworkErrorCode.ME_SOCKETCLOSED ||
                             result.ErrorCode == NetworkErrorCode.ME_CONNECTIONRESET ||
                             result.ErrorCode == NetworkErrorCode.ME_CONNECTIONABORTED)
@@ -133,16 +146,20 @@ namespace GameServer
                 }
                 catch (ObjectDisposedException)
                 {
-                    // NetworkStream已被释放，正常退出
-                    LogManager.Default.Info("NetworkStream已被释放，退出处理循环");
+                    
+                    string remote = _client.Client?.RemoteEndPoint?.ToString() ?? "<unknown>";
+                    string playerName = _player?.Name ?? "<unverified>";
+                    LogManager.Default.Info($"NetworkStream已被释放，退出处理循环: remote={remote}, player={playerName}, state={_state}");
                     break;
                 }
                 catch (SocketException ex)
                 {
                     networkError.SetErrorFromSocketException(ex);
-                    LogManager.Default.Warning($"网络错误: {networkError.GetFullErrorMessage()}");
+                    string remote = _client.Client?.RemoteEndPoint?.ToString() ?? "<unknown>";
+                    string playerName = _player?.Name ?? "<unverified>";
+                    LogManager.Default.Warning($"网络错误: remote={remote}, player={playerName}, state={_state}, {networkError.GetFullErrorMessage()}");
 
-                    // 根据错误类型决定是否断开连接
+                    
                     if (ex.SocketErrorCode == SocketError.ConnectionReset ||
                         ex.SocketErrorCode == SocketError.ConnectionAborted ||
                         ex.SocketErrorCode == SocketError.Shutdown)
@@ -153,50 +170,42 @@ namespace GameServer
                 catch (Exception ex)
                 {
                     networkError.SetErrorFromException(ex);
-                    LogManager.Default.Error($"处理客户端错误: {networkError.GetFullErrorMessage()}");
+                    string remote = _client.Client?.RemoteEndPoint?.ToString() ?? "<unknown>";
+                    string playerName = _player?.Name ?? "<unverified>";
+                    LogManager.Default.Error($"处理客户端错误: remote={remote}, player={playerName}, state={_state}, {networkError.GetFullErrorMessage()}");
                     break;
                 }
             }
 
-            // 玩家断开，从世界移除
+            
             OnDisconnect();
         }
 
-        /// <summary>
-        /// 传世客户端接收消息处理
-        /// </summary>
-        /// <param name="data"></param>
-        /// <param name="length"></param>
-        /// <param name="networkError"></param>
-        /// <returns></returns>
+        
+        
+        
+        
+        
+        
+        
         private async Task<NetworkResult> ProcessMessageWithErrorHandling(byte[] data, int length, NetworkError networkError)
         {
-            /*
-              关于状态变更：
-            1、初始值：_state→GSUM_NOTVERIFIED（1）；
-            2、客户端消息GSUM_NOTVERIFIED状态下触发：OnVerifyString()，其中_state→GSUM_WAITINGDBINFO（2），然后发送DM_GETCHARDBINFO到DB；
-            3、数据库服务器DM_GETCHARDBINFO消息触发：向客户端发送第一个对话框，_state→GSUM_WAITINGCONFIRM（3）；
-            4、客户端消息GSUM_WAITINGCONFIRM状态下触发：HandleConfirmFirstDialog()，接收第一个对话框，_state→GSUM_VERIFIED（4）；
-            5、以后客户端消息均命中GSUM_VERIFIED状态下方法。
-            */
-
             try
             {
-                // 专门处理客户端状态切换消息（OnCodedMsg）
+                
                 if (_state != ClientState.GSUM_VERIFIED)
                 {
                     switch (_state)
                     {
                         case ClientState.GSUM_NOTVERIFIED:
                             {
-                                // 直接调用OnVerifyString处理验证字符串
-                                string verifyString = Encoding.GetEncoding("GBK").GetString(data, 0, length).TrimEnd('\0');
-                                await OnVerifyString(verifyString);
+                                
+                                await HandleVerifyBytesAsync(data, length);
                                 return NetworkResult.Success(length);
                             }
                         case ClientState.GSUM_WAITINGCONFIRM:
                             {
-                                // 等待确认状态，只处理CM_CONFIRMFIRSTDIALOG消息
+                                
                                 bool decodeSuccess = GameMessageHandler.DecodeGameMessageOrign(data, length, out var msg, out var payload);
                                 if (decodeSuccess)
                                 {
@@ -207,9 +216,15 @@ namespace GameServer
                                         await HandleConfirmFirstDialog(msg, payload);
                                         return NetworkResult.Success(length);
                                     }
+                                    else if (msg.wCmd == GameMessageHandler.ClientCommands.CM_PING)
+                                    {
+                                        
+                                        await HandlePing(msg, payload);
+                                        return NetworkResult.Success(length);
+                                    }
                                     else
                                     {
-                                        // 如果不是确认消息，忽略
+                                        
                                         LogManager.Default.Info($"等待确认状态，忽略非确认消息: 0x{msg.wCmd:X4}");
                                         return NetworkResult.Success(length);
                                     }
@@ -218,21 +233,21 @@ namespace GameServer
                                 {
                                     LogManager.Default.Warning("等待确认状态，解码消息失败，尝试检查是否为简单确认消息");
 
-                                    // 尝试检查是否是简单的确认消息（可能不是编码消息）
-                                    // 客户端可能发送的是简单的确认消息，而不是完整的编码消息
+                                    
+                                    
                                     if (length >= 2)
                                     {
-                                        // 检查是否是CM_CONFIRMFIRSTDIALOG (0x3fa) 的简单形式
-                                        // 0x3fa = 1018 (十进制)
-                                        // 消息可能是简单的二进制格式
+                                        
+                                        
+                                        
                                         ushort possibleCmd = 0;
                                         if (length >= 2)
                                         {
                                             possibleCmd = BitConverter.ToUInt16(data, 0);
-                                            // 检查字节序
+                                            
                                             if (possibleCmd != GameMessageHandler.ClientCommands.CM_CONFIRMFIRSTDIALOG && length >= 2)
                                             {
-                                                // 尝试小端序
+                                                
                                                 possibleCmd = (ushort)((data[1] << 8) | data[0]);
                                             }
                                         }
@@ -240,24 +255,24 @@ namespace GameServer
                                         if (possibleCmd == GameMessageHandler.ClientCommands.CM_CONFIRMFIRSTDIALOG)
                                         {
                                             LogManager.Default.Info($"检测到简单确认消息: CM_CONFIRMFIRSTDIALOG (0x3fa)");
-                                            // 创建一个假的MirMsgOrign来处理
+                                            
                                             var fakeMsg = new MirMsgOrign
                                             {
                                                 dwFlag = 0,
                                                 wCmd = GameMessageHandler.ClientCommands.CM_CONFIRMFIRSTDIALOG,
                                                 wParam = new ushort[3] { 0, 0, 0 },
-                                                //data = new byte[4]
+                                                
                                             };
                                             await HandleConfirmFirstDialog(fakeMsg, Array.Empty<byte>());
                                             return NetworkResult.Success(length);
                                         }
                                     }
 
-                                    // 尝试检查是否是字符串形式的确认消息
+                                    
                                     string messageStr = Encoding.GetEncoding("GBK").GetString(data, 0, length).TrimEnd('\0');
                                     LogManager.Default.Info($"原始消息内容: '{messageStr}' (长度: {messageStr.Length})");
 
-                                    // 检查是否包含确认相关的字符串
+                                    
                                     if (messageStr.Contains("confirm", StringComparison.OrdinalIgnoreCase) ||
                                         messageStr.Contains("ok", StringComparison.OrdinalIgnoreCase) ||
                                         messageStr.Contains("确认", StringComparison.OrdinalIgnoreCase))
@@ -268,23 +283,23 @@ namespace GameServer
                                             dwFlag = 0,
                                             wCmd = GameMessageHandler.ClientCommands.CM_CONFIRMFIRSTDIALOG,
                                             wParam = new ushort[3] { 0, 0, 0 },
-                                            //data = new byte[4]
+                                            
                                         };
                                         await HandleConfirmFirstDialog(fakeMsg, Array.Empty<byte>());
                                         return NetworkResult.Success(length);
                                     }
 
-                                    // 尝试手动解码消息（调试用）
+                                    
                                     LogManager.Default.Info($"尝试手动解码消息: 长度={length}");
                                     string hexData = BitConverter.ToString(data, 0, Math.Min(length, 32));
                                     LogManager.Default.Info($"消息十六进制: {hexData}");
 
-                                    // 检查是否是编码消息（以'#'开头，以'!'结尾）
+                                    
                                     if (length >= 3 && data[0] == '#' && data[length - 1] == '!')
                                     {
                                         LogManager.Default.Info("检测到编码消息格式（#开头，!结尾），尝试手动解码");
 
-                                        // 手动调用DecodeGameMessageOrign并捕获异常
+                                        
                                         try
                                         {
                                             bool manualDecodeSuccess = GameMessageHandler.DecodeGameMessageOrign(data, length, out var manualMsg, out var manualPayload);
@@ -302,14 +317,15 @@ namespace GameServer
                                             {
                                                 LogManager.Default.Warning("手动解码仍然失败");
 
-                                                // 如果解码失败，但消息格式正确（#开头，!结尾），尝试直接处理为确认消息
+                                                
+                                                
                                                 LogManager.Default.Info("解码失败，但消息格式正确，尝试直接处理为确认第一个对话框");
                                                 var fakeMsg = new MirMsgOrign
                                                 {
                                                     dwFlag = 0,
                                                     wCmd = GameMessageHandler.ClientCommands.CM_CONFIRMFIRSTDIALOG,
                                                     wParam = new ushort[3] { 0, 0, 0 },
-                                                    //data = new byte[4]
+                                                    
                                                 };
                                                 await HandleConfirmFirstDialog(fakeMsg, Array.Empty<byte>());
                                                 return NetworkResult.Success(length);
@@ -319,14 +335,14 @@ namespace GameServer
                                         {
                                             LogManager.Default.Error($"手动解码异常: {decodeEx.Message}");
 
-                                            // 解码异常，但消息格式正确，尝试直接处理为确认消息
+                                            
                                             LogManager.Default.Info("解码异常，但消息格式正确，尝试直接处理为确认第一个对话框");
                                             var fakeMsg = new MirMsgOrign
                                             {
                                                 dwFlag = 0,
                                                 wCmd = GameMessageHandler.ClientCommands.CM_CONFIRMFIRSTDIALOG,
                                                 wParam = new ushort[3] { 0, 0, 0 },
-                                                //data = new byte[4]
+                                                
                                             };
                                             await HandleConfirmFirstDialog(fakeMsg, Array.Empty<byte>());
                                             return NetworkResult.Success(length);
@@ -338,22 +354,25 @@ namespace GameServer
                                 }
                             }
                         case ClientState.GSUM_WAITINGDBINFO:
-                            // 该消息在DB消息中处理并继续变更状态，此处忽略消息
-                            LogManager.Default.Debug("等待数据库信息状态，忽略消息");
-                            return NetworkResult.Success(length);
+                            {
+                                
+                                bool decodeSuccess = GameMessageHandler.DecodeGameMessageOrign(data, length, out var msg, out var payload);
+                                if (decodeSuccess && msg.wCmd == GameMessageHandler.ClientCommands.CM_PING)
+                                {
+                                    await HandlePing(msg, payload);
+                                    return NetworkResult.Success(length);
+                                }
+
+                                
+                                LogManager.Default.Debug("等待数据库信息状态，忽略消息");
+                                return NetworkResult.Success(length);
+                            }
                     }
                 }
 
-                // 4、已验证状态：处理游戏消息（ProcClientMsg）
-                bool decodeSuccess2 = GameMessageHandler.DecodeGameMessageOrign(data, length, out var msg2, out var payload2);
-                if (!decodeSuccess2)
-                {
-                    networkError.SetError(NetworkErrorCode.ME_FAIL, "解码游戏消息失败");
-                    return NetworkResult.Failure(NetworkErrorCode.ME_FAIL, "解码游戏消息失败");
-                }
-
-                //处理切换为GSUM_VERIFIED状态之后的客户端消息
-                await HandleGameMessage(msg2, payload2);
+                
+                
+                await HandleVerifiedBytesAsync(data, length);
                 return NetworkResult.Success(length);
             }
             catch (Exception ex)
@@ -364,18 +383,18 @@ namespace GameServer
         }
 
 
-        /// <summary>
-        /// 从BDServer中接收消息的方法专用于OnVerifyString中
-        /// 处理数据库消息（OnDBMsg）
-        /// </summary>
+        
+        
+        
+        
         private async Task OnDBMsg(MirMsg pMsg, int datasize)
         {
             try
             {
                 LogManager.Default.Info($"接收DB消息OnDBMsg: {(DbMsg)pMsg.wCmd}-{pMsg.wParam}-{pMsg.dwFlag}-{pMsg.data.Length}");
 
-                // 验证消息是否属于当前客户端
-                if (pMsg.wCmd != (ushort)DbMsg.DM_GETCHARDBINFO && !IsMessageForMe(pMsg)) //DM_GETCHARDBINFO需要处理，不判断归属
+                
+                if (pMsg.wCmd != (ushort)DbMsg.DM_GETCHARDBINFO && !IsMessageForMe(pMsg)) 
                 {
                     LogManager.Default.Debug($"消息不属于本客户端，忽略: clientKey={_clientKey}, msgFlag={pMsg.dwFlag}");
                     return;
@@ -385,146 +404,241 @@ namespace GameServer
                 {
                     case (ushort)DbMsg.DM_QUERYTASKINFO:
                         {
-                            // 修复：检查clientKey匹配
-                            // DBServer发送时：wParam1=clientKey低16位, wParam2=clientKey高16位, wParam3=charId低16位
+                            
                             uint key = (uint)((pMsg.wParam[1] << 16) | pMsg.wParam[0]);
-                            if (key == _clientKey && _player != null)
+                            ushort ret = pMsg.wParam[2];
+
+                            if (key != _clientKey)
                             {
-                                var taskInfo = BytesToStruct<MirCommon.Database.TaskInfo>(pMsg.data);
-                                _player.OnTaskInfo(taskInfo);
-                                LogManager.Default.Debug($"处理任务信息消息: 任务ID={taskInfo.dwTaskId}, 状态={taskInfo.dwState}");
+                                LogManager.Default.Warning($"DM_QUERYTASKINFO clientKey不匹配: 期望={_clientKey}, 收到={key}");
+                                break;
+                            }
+
+                            if (_player == null)
+                            {
+                                LogManager.Default.Warning("DM_QUERYTASKINFO: 玩家对象为空，跳过解析");
                                 _taskInfoLoaded = true;
                                 CheckAllDataLoaded();
+                                break;
+                            }
+
+                            if (ret == (ushort)SERVER_ERROR.SE_OK)
+                            {
+                                try
+                                {
+                                    var tasks = MirCommon.Database.DatabaseSerializer.DeserializeTaskInfos(pMsg.data);
+                                    foreach (var t in tasks)
+                                    {
+                                        _player.OnTaskInfo(t);
+                                    }
+                                    LogManager.Default.Debug($"处理任务信息完成: 数量={tasks.Length}");
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogManager.Default.Error($"解析任务信息失败: {ex.Message}");
+                                }
                             }
                             else
                             {
-                                LogManager.Default.Warning($"DM_QUERYTASKINFO clientKey不匹配: 期望={_clientKey}, 收到={key}");
+                                LogManager.Default.Warning($"DM_QUERYTASKINFO 返回码: {ret}");
                             }
+
+                            _taskInfoLoaded = true;
+                            CheckAllDataLoaded();
                         }
                         break;
                     case (ushort)DbMsg.DM_QUERYUPGRADEITEM:
                         {
-                            // 修复：clientKey由wParam[0]（低16位）和wParam[1]（高16位）组成
-                            // wParam[2]是charId的低16位，用于检查是否有数据
+                            
                             uint key = (uint)((pMsg.wParam[1] << 16) | pMsg.wParam[0]);
-                            if (key == _clientKey && pMsg.wParam[2] > 0)
+                            ushort count = pMsg.wParam[2];
+
+                            if (key != _clientKey)
                             {
-                                if (_player != null)
+                                LogManager.Default.Warning($"DM_QUERYUPGRADEITEM clientKey不匹配: 期望={_clientKey}, 收到={key}");
+                                break;
+                            }
+
+                            if (_player != null && count > 0 && pMsg.data != null && pMsg.data.Length > 0)
+                            {
+                                try
                                 {
                                     var dbItem = BytesToStruct<MirCommon.Database.DBITEM>(pMsg.data);
                                     _player.SetUpgradeItem(dbItem.item);
                                     LogManager.Default.Debug($"设置升级物品: 物品ID={dbItem.item.dwMakeIndex}");
-                                    _upgradeItemLoaded = true;
-                                    LogManager.Default.Debug($"升级物品数据加载完成");
-                                    CheckAllDataLoaded();
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogManager.Default.Error($"解析升级物品失败: {ex.Message}");
                                 }
                             }
-                            else
-                            {
-                                LogManager.Default.Warning($"DM_QUERYUPGRADEITEM clientKey不匹配或charId为0: 期望={_clientKey}, 收到={key}, charId={pMsg.wParam[2]}");
-                            }
+
+                            _upgradeItemLoaded = true;
+                            LogManager.Default.Debug("升级物品数据加载完成");
+                            CheckAllDataLoaded();
                         }
                         break;
                     case (ushort)DbMsg.DM_QUERYMAGIC:
                         {
-                            // 修复：移除标志位检查，直接使用wParam[2]的低8位作为技能索引
-                            // DBServer发送时：wParam1=clientKey低16位, wParam2=clientKey高16位, wParam3=charId低16位
-                            // 但这里需要的是技能索引，所以使用wParam[2]的低8位
+                            
                             uint key = (uint)((pMsg.wParam[1] << 16) | pMsg.wParam[0]);
-                            if (key == _clientKey)  // 移除(pMsg.wParam[2] & 0x8000) == 0检查
-                            {
-                                if (_player != null)
-                                {
-                                    var magicDb = BytesToStruct<MirCommon.Database.MAGICDB>(pMsg.data);
-                                    _player.SetMagic(magicDb, (byte)(pMsg.wParam[2] & 0xFF)); // 只使用低8位
-                                    _player.SendMagicList();
-                                    LogManager.Default.Debug($"设置技能: 技能ID={magicDb.wMagicId}, 等级={magicDb.btCurLevel}");
-                                    _magicLoaded = true;
-                                    LogManager.Default.Debug($"技能数据加载完成");
-                                    CheckAllDataLoaded();
-                                }
-                            }
-                            else
+                            ushort countOrErr = pMsg.wParam[2];
+                            bool magicOk = false;
+
+                            if (key != _clientKey)
                             {
                                 LogManager.Default.Warning($"DM_QUERYMAGIC clientKey不匹配: 期望={_clientKey}, 收到={key}");
+                                break;
                             }
+
+                            if ((countOrErr & 0x8000) != 0)
+                            {
+                                LogManager.Default.Warning($"DM_QUERYMAGIC 返回错误: 0x{countOrErr:X4}");
+                                try { _player?.MarkMagicLoadedForSave(false); } catch { }
+                                _magicLoaded = true;
+                                CheckAllDataLoaded();
+                                break;
+                            }
+
+                            if (_player != null)
+                            {
+                                try
+                                {
+                                    var magics = MirCommon.Database.DatabaseSerializer.DeserializeMagicDbs(pMsg.data);
+                                    for (int i = 0; i < magics.Length; i++)
+                                    {
+                                        _player.SetMagic(magics[i], (byte)i);
+                                    }
+                                    _player.SendMagicList();
+                                    LogManager.Default.Debug($"技能数量={magics.Length}");
+                                    magicOk = true;
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogManager.Default.Error($"解析技能数据失败: {ex.Message}");
+                                }
+                            }
+
+                            try { _player?.MarkMagicLoadedForSave(magicOk); } catch { }
+                            _magicLoaded = true;
+                            LogManager.Default.Debug("技能数据加载完成");
+                            CheckAllDataLoaded();
                         }
                         break;
                     case (ushort)DbMsg.DM_QUERYITEMS:
                         {
-                            if (pMsg.dwFlag == (ushort)SERVER_ERROR.SE_OK)
-                            {
-                                // 处理物品数据
-                                // 数据格式：DBITEM数组（DBServer发送的是纯DBITEM数组，没有clientKey）
-                                int itemCount = pMsg.wParam[2];
-                                byte btFlag = (byte)pMsg.wParam[1];
+                            
+                            byte btFlag = (byte)pMsg.wParam[1];
+                            int itemCount = pMsg.wParam[2];
 
-                                // 计算DBITEM结构体大小
-                                int dbitemSize = System.Runtime.InteropServices.Marshal.SizeOf<MirCommon.Database.DBITEM>();
-                                int expectedSize = itemCount * dbitemSize;
+                            void MarkContainerLoadedOnError()
+                            {
                                 
-                                // 检查是否有物品数据
-                                if (itemCount == 0)
+                                switch (btFlag)
                                 {
-                                    // 没有物品，直接调用OnDBItem处理空数组
-                                    LogManager.Default.Info($"DM_QUERYITEMS: 没有物品数据，itemCount=0, btFlag={btFlag}");
-                                    var emptyItems = Array.Empty<MirCommon.Database.DBITEM>();
-                                    OnDBItem(emptyItems, 0, btFlag);
+                                    case (byte)ItemDataFlag.IDF_BAG:
+                                        _bagLoaded = true;
+                                        break;
+                                    case (byte)ItemDataFlag.IDF_EQUIPMENT:
+                                        _equipmentLoaded = true;
+                                        break;
+                                    case (byte)ItemDataFlag.IDF_BANK:
+                                        _bankLoaded = true;
+                                        break;
+                                    case (byte)ItemDataFlag.IDF_PETBANK:
+                                        _petBankLoaded = true;
+                                        break;
                                 }
-                                else if (datasize >= expectedSize)
-                                {
-                                    // 转换为DBITEM数组
-                                    var dbItems = new MirCommon.Database.DBITEM[itemCount];
-                                    for (int i = 0; i < itemCount; i++)
-                                    {
-                                        dbItems[i] = BytesToStruct<MirCommon.Database.DBITEM>(
-                                            pMsg.data, i * dbitemSize, dbitemSize);
-                                    }
-
-                                    // 处理物品数据
-                                    OnDBItem(dbItems, itemCount, btFlag);
-                                }
-                                else
-                                {
-                                    LogManager.Default.Error($"DM_QUERYITEMS数据大小不足: 期望{expectedSize}字节, 实际{datasize}字节");
-                                    // 即使数据大小不足，也尝试处理空数组，避免卡住
-                                    var emptyItems = Array.Empty<MirCommon.Database.DBITEM>();
-                                    OnDBItem(emptyItems, 0, btFlag);
-                                }
+                                CheckAllDataLoaded();
                             }
-                            else
+
+                            void FailCriticalContainer(string reason)
                             {
-                                LogManager.Default.Error($"DM_QUERYITEMS返回错误: {pMsg.wParam[0]}");
-                                // 即使返回错误，也尝试处理空数组，避免卡住
-                                int itemCount = pMsg.wParam[2];
-                                byte btFlag = (byte)pMsg.wParam[1];
+                                
+                                if (btFlag == (byte)ItemDataFlag.IDF_BAG || btFlag == (byte)ItemDataFlag.IDF_EQUIPMENT)
+                                {
+                                    LogManager.Default.Error($"关键物品数据加载失败: btFlag={btFlag}, reason={reason}");
+                                    SendMsg2(0, ProtocolCmd.SM_ERRORDIALOG, 0, 0, 0, "读取角色物品数据失败，请重新登录！");
+                                    Disconnect(2000);
+                                    return;
+                                }
+
+                                MarkContainerLoadedOnError();
+                            }
+
+                            if (pMsg.dwFlag != (uint)SERVER_ERROR.SE_OK)
+                            {
+                                LogManager.Default.Error($"DM_QUERYITEMS返回错误: {pMsg.dwFlag}");
+                                FailCriticalContainer($"ret={pMsg.dwFlag}");
+                                break;
+                            }
+
+                            if (pMsg.data == null || pMsg.data.Length < 4)
+                            {
+                                LogManager.Default.Error($"DM_QUERYITEMS数据长度不足: {pMsg.data?.Length ?? 0}字节");
+                                FailCriticalContainer("data<4");
+                                break;
+                            }
+
+                            uint keyInData = BitConverter.ToUInt32(pMsg.data, 0);
+                            if (keyInData != _clientKey)
+                            {
+                                LogManager.Default.Warning($"DM_QUERYITEMS key不匹配: 期望={_clientKey}, 收到={keyInData}");
+                                FailCriticalContainer($"keyMismatch expected={_clientKey} got={keyInData}");
+                                break;
+                            }
+
+                            if (itemCount == 0)
+                            {
+                                LogManager.Default.Info($"DM_QUERYITEMS: 没有物品数据，btFlag={btFlag}");
                                 var emptyItems = Array.Empty<MirCommon.Database.DBITEM>();
                                 OnDBItem(emptyItems, 0, btFlag);
+                                break;
                             }
+
+                            int dbitemSize = System.Runtime.InteropServices.Marshal.SizeOf<MirCommon.Database.DBITEM>();
+                            int expectedSize = 4 + itemCount * dbitemSize;
+
+                            if (datasize < expectedSize)
+                            {
+                                LogManager.Default.Error($"DM_QUERYITEMS数据大小不足: 期望{expectedSize}字节, 实际{datasize}字节");
+                                FailCriticalContainer($"sizeMismatch expected={expectedSize} got={datasize}");
+                                break;
+                            }
+
+                            var dbItems = new MirCommon.Database.DBITEM[itemCount];
+                            int baseOffset = 4;
+                            for (int i = 0; i < itemCount; i++)
+                            {
+                                dbItems[i] = BytesToStruct<MirCommon.Database.DBITEM>(pMsg.data, baseOffset + i * dbitemSize, dbitemSize);
+                            }
+
+                            OnDBItem(dbItems, itemCount, btFlag);
                         }
                         break;
                     case (ushort)DbMsg.DM_GETCHARDBINFO:
                         {
-                            // DM_GETCHARDBINFO是服务器级别消息，dwFlag应该为0
-                            // DBServer返回时，clientKey在CHARDBINFO结构体的dwClientKey字段中
-                            // 首先检查数据库错误
+                            
+                            
+                            
+                            
                             if (pMsg.dwFlag != (ushort)SERVER_ERROR.SE_OK)
                             {
                                 LogManager.Default.Error($"DM_GETCHARDBINFO返回失败: wParam[0]={pMsg.wParam[0]}, 数据长度={pMsg.data?.Length ?? 0}字节");
                                 SendMsg2(0, ProtocolCmd.SM_ERRORDIALOG, 0, 0, 0, "读取数据库失败，请联系管理员解决！");
-                                //Disconnect(2000);
+                                
                                 break;
                             }
 
-                            // 检查数据长度是否足够
-                            if (pMsg.data == null || pMsg.data.Length < 136) // CHARDBINFO结构大小
+                            
+                            if (pMsg.data == null || pMsg.data.Length < 136) 
                             {
                                 LogManager.Default.Error($"DM_GETCHARDBINFO数据长度不足: 期望至少136字节, 实际={pMsg.data?.Length ?? 0}字节");
                                 SendMsg2(0, ProtocolCmd.SM_ERRORDIALOG, 0, 0, 0, "角色数据格式错误！");
                                 break;
                             }
 
-                            // 解析角色数据库信息（CHARDBINFO）
+                            
                             var charDbInfo = BytesToStruct<MirCommon.Database.CHARDBINFO>(pMsg.data);
                             if (charDbInfo.dwClientKey != _clientKey)
                             {
@@ -532,14 +646,14 @@ namespace GameServer
                                 break;
                             }
 
-                            // 创建玩家对象（CREATEHUMANDESC）
+                            
                             var createDesc = new CREATEHUMANDESC
                             {
                                 dbinfo = charDbInfo,
-                                pClientObj = IntPtr.Zero 
+                                pClientObj = IntPtr.Zero  
                             };
 
-                            // 从_enterInfo获取账号和角色名
+                            
                             string account = _enterInfo.GetAccount();
                             string playerName = _enterInfo.GetName();
 
@@ -555,33 +669,34 @@ namespace GameServer
                                 LogManager.Default.Warning($"角色名为空，使用默认角色名: {playerName}");
                             }
 
-                            // 检查角色是否已登录（FindbyName）
+                            
                             if (FindPlayerByName(playerName) != null)
                             {
                                 LogManager.Default.Error($"角色已登录1: {playerName}");
                                 SendMsg2(0, ProtocolCmd.SM_ERRORDIALOG, 0, 0, 0, "您登陆的角色已经登陆该服务器！");
-                                //Disconnect(1000);
+                                
                                 break;
                             }
 
-                            // 创建新玩家（NewPlayer）
-                            // 注意：这里需要根据实际实现调整HumanPlayerMgr.NewPlayer方法的参数
-                            // 假设NewPlayer方法接受账号、角色名和角色ID
-                            uint charId = charDbInfo.dwDBId;//接收从DB返回的ID值
-                            _player = HumanPlayerMgr.Instance.NewPlayer(account, playerName, charId, null);//从数据库返回的角色信息创建角色
+                            
+                            
+                            
+                            uint charId = charDbInfo.dwDBId;
+                            
+                            _player = HumanPlayerMgr.Instance.NewPlayer(account, playerName, charId, _client);
                             if (_player == null)
                             {
                                 LogManager.Default.Error($"创建玩家对象失败: 账号={account}, 角色名={playerName}, 角色ID={charId}");
-                                //Disconnect();
+                                
                                 break;
                             }
 
-                            // 设置发送消息委托，让HumanPlayer可以通过GameClient发送消息
+                            
                             _player.SetSendMessageDelegate((uint dwFlag, ushort wCmd, ushort w1, ushort w2, ushort w3, byte[]? payload) =>
                             {
                                 try
                                 {
-                                    // 使用GameClient的SendMsg方法发送消息
+                                    
                                     SendMsg2(dwFlag, wCmd, w1, w2, w3, payload);
                                 }
                                 catch (Exception ex)
@@ -590,132 +705,43 @@ namespace GameServer
                                 }
                             });
 
-                            // 初始化玩家（Init）
+                            
                             if (!_player.Init(createDesc))
                             {
                                 LogManager.Default.Error($"初始化玩家失败: {playerName}");
                                 HumanPlayerMgr.Instance.DeletePlayer(_player);
                                 _player = null;
                                 SendMsg2(0, ProtocolCmd.SM_ERRORDIALOG, 0, 0, 0, "初始化失败！");
-                                //Disconnect(1000);
+                                
                                 break;
                             }
 
-                            // 加载变量（LoadVars）
+                            
                             _player.LoadVars();
 
-                            // 发送第一个对话框（SendFirstDlg）
+                            
                             SendFirstDlg(GameWorld.Instance.GetNotice());
 
-                            // 设置状态为等待确认
+                            
                             _state = ClientState.GSUM_WAITINGCONFIRM;
                             LogManager.Default.Info($"已设置状态为GSUM_WAITINGCONFIRM，等待玩家确认第一个对话框: {playerName}");
 
-                            // 查询其他数据
-                            LogManager.Default.Info($"已设置状态为GSUM_WAITINGCONFIRM，等待玩家确认第一个对话框后查询其他数据: 角色ID={charId}");
+                            
+                            
+                            
+                            
+                            
 
-
-                            //LogManager.Default.Info($"开始查询其他数据: 角色ID={charId}");
-                            //// 异步查询所有数据
-                            //_ = Task.Run(async () =>
-                            //{
-                            //    try
-                            //    {
-                            //        // 使用新的短连接
-                            //        using var dbClient = new MirCommon.Database.DBServerClient(_dbServerAddress, _dbServerPort);
-                            //        if (!await dbClient.ConnectAsync())
-                            //        {
-                            //            LogManager.Default.Error("无法连接到DBServer查询其他数据");
-                            //            return;
-                            //        }
-
-                            //        ////使用长连接
-                            //        //var dbClient = _server.GetDbServerClient();
-
-                            //        uint serverId = 1; // 服务器ID，默认为1
-
-                            //        // 1. 查询背包物品 (IDF_BAG = 1)
-                            //        LogManager.Default.Debug($"查询背包物品: 角色ID={charId}");
-                            //        await dbClient.SendQueryItem(serverId, _clientKey, charId, (byte)ItemDataFlag.IDF_BAG, 0);
-
-                            //        // 2. 查询装备物品 (IDF_EQUIPMENT = 2)
-                            //        LogManager.Default.Debug($"查询装备物品: 角色ID={charId}");
-                            //        await dbClient.SendQueryItem(serverId, _clientKey, charId, (byte)ItemDataFlag.IDF_EQUIPMENT, 0);
-
-                            //        // 3. 查询技能数据
-                            //        LogManager.Default.Debug($"查询技能数据: 角色ID={charId}");
-                            //        await dbClient.SendQueryMagic(serverId, _clientKey, charId);
-
-                            //        // 4. 查询任务信息
-                            //        LogManager.Default.Debug($"查询任务信息: 角色ID={charId}");
-                            //        await dbClient.QueryTaskInfo(serverId, _clientKey, charId);
-
-                            //        // 5. 查询升级物品 (IDF_UPGRADE = 7)
-                            //        LogManager.Default.Debug($"查询升级物品: 角色ID={charId}");
-                            //        await dbClient.SendQueryUpgradeItem(serverId, _clientKey, charId);
-
-                            //        // 6. 查询宠物仓库物品 (IDF_PETBANK = 6)
-                            //        LogManager.Default.Debug($"查询宠物仓库物品: 角色ID={charId}");
-                            //        await dbClient.SendQueryItem(serverId, _clientKey, charId, (byte)ItemDataFlag.IDF_PETBANK, 0);
-
-                            //        // 7. 查询仓库物品 (IDF_BANK = 4)
-                            //        LogManager.Default.Debug($"查询仓库物品: 角色ID={charId}");
-                            //        await dbClient.SendQueryItem(serverId, _clientKey, charId, (byte)ItemDataFlag.IDF_BANK, 0);
-
-                            //        LogManager.Default.Info($"所有数据查询请求已发送: 角色ID={charId}");
-                            //    }
-                            //    catch (Exception ex)
-                            //    {
-                            //        LogManager.Default.Error($"查询其他数据失败: {ex.Message}");
-                            //    }
-                            //});
-
-                            ////使用长连接
-                            //var dbClient = _server.GetDbServerClient();
-                            //// 服务器ID，默认为1
-                            //uint serverId = 1;
-
-                            //LogManager.Default.Info($"向DBServer发送 DM_QUERYMAGIC 查询技能数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
-                            //await dbClient.SendQueryMagic(serverId, _clientKey, _player.GetDBId());
-
-                            //LogManager.Default.Info($"向DBServer发送 DM_QUERYITEMS 查询装备数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
-                            //await dbClient.SendQueryItem(serverId, _clientKey, _player.GetDBId(), (byte)ItemDataFlag.IDF_EQUIPMENT, 20);
-
-                            //LogManager.Default.Info($"向DBServer发送 DM_QUERYUPGRADEITEM 查询升级物品数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
-                            //await dbClient.SendQueryUpgradeItem(serverId, _clientKey, _player.GetDBId());
-
-                            //// 注意：Inventory类可能没有GetCountLimit方法，使用MaxSlots代替
-                            //int bagLimit = 40; // 默认背包大小
-                            //if (_player.GetBag() != null)
-                            //{
-                            //    // 尝试获取背包限制，如果Inventory类有MaxSlots属性则使用它
-                            //    // 否则使用默认值
-                            //    bagLimit = 40; // 默认值
-                            //}
-                            //LogManager.Default.Info($"向DBServer发送 DM_QUERYITEMS 查询背包数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
-                            //await dbClient.SendQueryItem(serverId, _clientKey, _player.GetDBId(), (byte)ItemDataFlag.IDF_BAG, bagLimit);
-
-                            //LogManager.Default.Info($"向DBServer发送 DM_QUERYITEMS 查询仓库数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
-                            //await dbClient.SendQueryItem(serverId, _clientKey, _player.GetDBId(), (byte)ItemDataFlag.IDF_BANK, 100);
-
-                            //LogManager.Default.Info($"向DBServer发送 DM_QUERYITEMS 查询宠物仓库数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
-                            //await dbClient.SendQueryItem(serverId, _clientKey, _player.GetDBId(), (byte)ItemDataFlag.IDF_PETBANK, 10);
-
-                            //LogManager.Default.Info($"向DBServer发送 DM_QUERYTASKINFO 查询任务数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
-                            //await dbClient.QueryTaskInfo(serverId, _clientKey, _player.GetDBId());
-
-                            //if (_player.IsFirstLogin)
-                            //{
-                            //    LogManager.Default.Info($"向客户端发送 EP_FIRSTLOGINPROCESS");
-                            //    _player.AddProcess(EP_FIRSTLOGINPROCESS, 0, 0, 0, 0, 20, 1, null);
-                            //}
-
-                            LogManager.Default.Info($"已处理确认第一个对话框，等待数据库响应: {_player.Name}");
+                            
+                            
+                            
+                            
+                            
                         }
                         break;
                     case (ushort)DbMsg.DM_CREATEITEM:
                         {
-                            // 处理创建物品
+                            
                             var createItem = BytesToStruct<MirCommon.CREATEITEM>(pMsg.data);
                             if (createItem.dwClientKey != _clientKey)
                                 break;
@@ -728,14 +754,20 @@ namespace GameServer
                             uint dwKey = (uint)(pMsg.wParam[0] | (pMsg.wParam[1] << 16));
                             if (dwKey == _clientKey && _player != null)
                             {
-                                // 处理社区信息
-                                // 注意：这里需要根据实际实现调整
-                                LogManager.Default.Debug($"处理社区信息");
+                                
+                                try
+                                {
+                                    _player.OnCommunityInfo(pMsg.data ?? Array.Empty<byte>());
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogManager.Default.Error($"处理社区信息失败: {ex.Message}");
+                                }
                             }
                         }
                         break;
                     default:
-                        // 未知消息，调用服务器处理
+                        
                         LogManager.Default.Debug($"未知数据库消息: 0x{pMsg.wCmd:X4}");
                         break;
                 }
@@ -748,264 +780,272 @@ namespace GameServer
             await Task.CompletedTask;
         }
 
-        //private async Task ProcessMessage(byte[] data, int length)
-        //{
-        //    try
-        //    {
-        //        int parsedSize = 0;
-        //        int msgPtr = 0;
-        //        do
-        //        {
-        //            parsedSize = GameMessageHandler.ParseSingleMessage(data, msgPtr, length - msgPtr,
-        //                async (msg, payload) =>
-        //                {
-        //                    await HandleGameMessage(msg, payload);
-        //                });
-        //            if (parsedSize > 0)
-        //            {
-        //                msgPtr += parsedSize;
-        //            }
-        //        } while (parsedSize > 0 && msgPtr < length);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        LogManager.Default.Error($"解析消息失败: {ex.Message}");
-        //    }
-
-        //    await Task.CompletedTask;
-        //}
-
-        /// <summary>
-        /// 处理与传世客户端的消息
-        /// </summary>
-        /// <param name="msg"></param>
-        /// <param name="payload"></param>
-        /// <returns></returns>
+        
+        
+        
+        
+        
+        
         private async Task HandleGameMessage(MirMsgOrign msg, byte[] payload)
         {
             try
             {
-                // 记录接收到的消息（调试用）
+                
                 LogManager.Default.Debug($"处理客户端消息: 0x{msg.wCmd:X4} (十进制: {msg.wCmd}), Flag: 0x{msg.dwFlag:X8}");
 
-                // 0xc02, 0xc03, 0x5eb2, 0x9999, 0x6a, 0x3ef, 0x8810, 0x8897, 0x0c00, 0x1000, 0xbc7, 0x43, 0x44, 0x42, 
-                // CM_QUERYSTARTPRIVATESHOP, 0x6891, 0x40, 0xaaa, 0x40e, 0xbcd, 0x408, 0x407, 0x51, CM_DELETEGROUPMEMBER, 
-                // CM_CHANGEGROUPMODE, 0X3F7, 0x3f5, 0x3f4, 0X3FD, 0x041f, 0x40f, 0x410, 0x411, 0x412, 0x40b, 0x40d, 0x40c, 
-                // 0xbd2, 0xbd0, 0xbd1, 0xbcb, 0xbca, 0x8d00, 0x3f0, SM_DROPGOLD, 0x3ee, 0x409, 0x3f6, 0x45, 0x3ff, 0x400, 
-                // 0x3f3, 0x3f2, 0x3f1, 0x52, CM_SPELLSKILL, CM_CANCELTRADE, CM_PUTTRADEGOLD, CM_QUERYTRADEEND, CM_PUTTRADEITEM, 
-                // CM_QUERYTRADE, CM_TAKEONITEM, CM_TAKEOFFITEM, CM_DROPITEM, CM_PICKUPITEM, CM_STOP, CM_SAY, 0x3d3, CM_TURN, 
-                // CM_WALK, CM_GETMEAL, 0xba0, CM_ATTACK, CM_RUN
+                
+                if (_player != null && _state == ClientState.GSUM_VERIFIED && _player.IsDead)
+                {
+                    bool allowed = msg.wCmd == GameMessageHandler.ClientCommands.CM_RESTARTGAME
+                                   || msg.wCmd == GameMessageHandler.ClientCommands.CM_SAY
+                                   || msg.wCmd == GameMessageHandler.ClientCommands.CM_SETBAGITEMPOS
+                                   || msg.wCmd == GameMessageHandler.ClientCommands.CM_COMPLETELYQUIT;
 
+                    if (!allowed)
+                    {
+                        _player.SaySystem("你已经死亡");
+                        return;
+                    }
+                }
+
+                
+                
+                
+                
+                
+                
+                
+                
+                
+
+                
                 bool handled = false;
 
+                
                 switch (msg.wCmd)
                 {
-                    case GameMessageHandler.ClientCommands.CM_PUTITEMTOPETBAG: // 0xc02: 放入宠物仓库
+                    case GameMessageHandler.ClientCommands.CM_PUTITEMTOPETBAG: 
                         await HandlePutItemToPetBag(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_GETITEMFROMPETBAG: // 0xc03: 从宠物仓库取出
+                    case GameMessageHandler.ClientCommands.CM_GETITEMFROMPETBAG: 
                         await HandleGetItemFromPetBag(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_DELETETASK: // 0x5eb2: 删除任务
+                    case GameMessageHandler.ClientCommands.CM_DELETETASK: 
                         await HandleDeleteTask(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_GMCOMMAND: // 0x9999: GM命令测试
+                    case GameMessageHandler.ClientCommands.CM_GMCOMMAND: 
                         await HandleGMTestCommand(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_COMPLETELYQUIT: // 0x6a: 完全退出
+                    case GameMessageHandler.ClientCommands.CM_COMPLETELYQUIT: 
                         await HandleCompletelyQuit(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_CUTBODY: // 0x3ef: 切割尸体
+                    case GameMessageHandler.ClientCommands.CM_CUTBODY: 
                         await HandleCutBody(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_PUTITEM: // 0x8810: 放入物品
+                    case GameMessageHandler.ClientCommands.CM_PUTITEM: 
                         await HandlePutItem(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_SHOWPETINFO: // 0x8897: 显示宠物信息
+                    case GameMessageHandler.ClientCommands.CM_SHOWPETINFO: 
                         await HandleShowPetInfo(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_QUERYTIME: // 0x0c00: 查询时间
+                    case GameMessageHandler.ClientCommands.CM_QUERYTIME: 
                         await HandleQueryTime(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_MARKET: // 0x1000: 市场消息
+                    case GameMessageHandler.ClientCommands.CM_MARKET: 
                         await HandleMarketMessage(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_MINE: // 0xbc7: 挖矿
+                    case GameMessageHandler.ClientCommands.CM_MINE: 
                         await HandleMine(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_DELETEFRIEND: // 0x43: 删除好友
+                    case GameMessageHandler.ClientCommands.CM_DELETEFRIEND: 
                         await HandleDeleteFriend(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_REPLYADDFRIEND: // 0x44: 回复添加好友请求
+                    case GameMessageHandler.ClientCommands.CM_REPLYADDFRIEND: 
                         await HandleReplyAddFriendRequest(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_ADDFRIEND: // 0x42: 添加好友
+                    case GameMessageHandler.ClientCommands.CM_ADDFRIEND: 
                         await HandleAddFriend(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_CREATEGUILD: // 0x6891: 创建行会/输入确认
+                    case GameMessageHandler.ClientCommands.CM_CREATEGUILD: 
                         await HandleCreateGuildOrInputConfirm(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_RIDEHORSE: // 0x40: 骑马
+                    case GameMessageHandler.ClientCommands.CM_RIDEHORSE: 
                         await HandleRideHorse(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_REPLYADDTOGUILD: // 0xaaa: 回复加入行会请求
+                    case GameMessageHandler.ClientCommands.CM_REPLYADDTOGUILD: 
                         await HandleReplyAddToGuildRequest(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_INVITETOGUILD: // 0x40e: 邀请加入行会
+                    case GameMessageHandler.ClientCommands.CM_INVITETOGUILD: 
                         await HandleInviteToGuild(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_ZUOYI: // 0xbcd: 作揖/切换聊天频道
+                    case GameMessageHandler.ClientCommands.CM_ZUOYI: 
                         await HandleZuoyi(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_TAKEBANKITEM: // 0x408: 从仓库取出
+                    case GameMessageHandler.ClientCommands.CM_TAKEBANKITEM: 
                         await HandleTakeBankItem(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_PUTBANKITEM: // 0x407: 放入仓库
+                    case GameMessageHandler.ClientCommands.CM_PUTBANKITEM: 
                         await HandlePutBankItem(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_QUERYCOMMUNITY: // 0x51: 查询社区信息
+                    case GameMessageHandler.ClientCommands.CM_QUERYCOMMUNITY: 
                         await HandleQueryCommunity(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_REMOVEGUILDMEMBER: // 0x40f: 删除行会成员
+                    case GameMessageHandler.ClientCommands.CM_REMOVEGUILDMEMBER: 
                         await HandleDeleteGuildMember(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_EDITGUILDNOTICE: // 0x410: 编辑行会公告
+                    case GameMessageHandler.ClientCommands.CM_EDITGUILDNOTICE: 
                         await HandleEditGuildNotice(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_EDITGUILDTITLE: // 0x411: 编辑行会封号
+                    case GameMessageHandler.ClientCommands.CM_EDITGUILDTITLE: 
                         await HandleEditGuildTitle(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_QUERYGUILDEXP: // 0x412: 查询行会经验
+                    case GameMessageHandler.ClientCommands.CM_QUERYGUILDEXP: 
                         await HandleQueryGuildExp(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_QUERYGUILDINFO: // 0x40b: 请求行会信息
+                    case GameMessageHandler.ClientCommands.CM_QUERYGUILDINFO: 
                         await HandleQueryGuildInfo(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_QUERYGUILDMEMBERLIST: // 0x40d: 请求行会成员列表
+                    case GameMessageHandler.ClientCommands.CM_QUERYGUILDMEMBERLIST: 
                         await HandleQueryGuildMemberList(msg, payload);
                         handled = true;
                         break;
-                    // case 0x40c: // 请求行会首页（已废弃）
-                    //     // 已废弃，不处理
-                    //     handled = true;
-                    //     break;
-                    case GameMessageHandler.ClientCommands.CM_SPECIALHIT_POJISHIELD: // 0xbd2: 破击/破盾
+                    
+                    
+                    
+                    
+                    case GameMessageHandler.ClientCommands.CM_SPECIALHIT_POJISHIELD: 
                         await HandleSpecialHit(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_SPECIALHIT_HALFMOON: // 0xbd0: 半月
+                    case GameMessageHandler.ClientCommands.CM_SPECIALHIT_HALFMOON: 
                         await HandleSpecialHit(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_SPECIALHIT_FIRE: // 0xbd1: 烈火
+                    case GameMessageHandler.ClientCommands.CM_SPECIALHIT_FIRE: 
                         await HandleSpecialHit(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_SPECIALHIT_ASSASSINATE: // 0xbcb: 刺杀
+                    case GameMessageHandler.ClientCommands.CM_SPECIALHIT_ASSASSINATE: 
                         await HandleSpecialHit(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_SPECIALHIT_KILL: // 0xbca: 攻杀
+                    case GameMessageHandler.ClientCommands.CM_SPECIALHIT_KILL: 
                         await HandleSpecialHit(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_QUERYHISTORYADDR: // 0x8d00: 查询历史地址
+                    case GameMessageHandler.ClientCommands.CM_QUERYHISTORYADDR: 
                         await HandleQueryHistoryAddress(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_SETMAGICKEY: // 0x3f0: 设置技能快捷键
+                    case GameMessageHandler.ClientCommands.CM_SETMAGICKEY: 
                         await HandleSetMagicKey(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_USEITEM: // 0x3ee: 使用物品
+                    case GameMessageHandler.ClientCommands.CM_USEITEM: 
                         await HandleUseItem(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_QUERYMINIMAP: // 0x409: 查询小地图
+                    case GameMessageHandler.ClientCommands.CM_QUERYMINIMAP: 
                         await HandleQueryMinimap(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_BUYITEM: // 0x3f6: 购买物品
+                    case GameMessageHandler.ClientCommands.CM_BUYITEM: 
                         await HandleBuyItem(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_SETBAGITEMPOS: // 0x45: 设置背包物品位置
+                    case GameMessageHandler.ClientCommands.CM_SELLITEM: 
+                        await HandleSellItem(msg, payload);
+                        handled = true;
+                        break;
+                    case GameMessageHandler.ClientCommands.CM_QUERYITEMSELLPRICE: 
+                        await HandleQueryItemSellPrice(msg, payload);
+                        handled = true;
+                        break;
+                    case GameMessageHandler.ClientCommands.CM_QUERYITEMLIST: 
+                        await HandleQueryItemList(msg, payload);
+                        handled = true;
+                        break;
+                    case GameMessageHandler.ClientCommands.CM_SETBAGITEMPOS: 
                         await HandleSetBagItemPos(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_REPAIRITEM: // 0x3ff: 修理物品
+                    case GameMessageHandler.ClientCommands.CM_REPAIRITEM: 
                         await HandleRepairItem(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_QUERYREPAIRPRICE: // 0x400: 查询修理价格
+                    case GameMessageHandler.ClientCommands.CM_QUERYREPAIRPRICE: 
                         await HandleQueryRepairPrice(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_SELECTLINK: // 0x3f3: 选择链接
+                    case GameMessageHandler.ClientCommands.CM_SELECTLINK: 
                         await HandleSelectLink(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_NPCTALK: // 0x3f2: NPC对话/查看个人商店
+                    case GameMessageHandler.ClientCommands.CM_NPCTALK: 
                         await HandleNPCTalkOrViewPrivateShop(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_RESTARTGAME: // 0x3f1: 重启游戏
+                    case GameMessageHandler.ClientCommands.CM_RESTARTGAME: 
                         await HandleRestartGame(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_VIEWEQUIPMENT: // 0x52: 查看装备
+                    case GameMessageHandler.ClientCommands.CM_VIEWEQUIPMENT: 
                         await HandleViewEquipment(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_PING: // 0x3d3: Ping响应
+                    case GameMessageHandler.ClientCommands.CM_PING: 
+                        await HandlePing(msg, payload);
+                        handled = true;
+                        break;
+                    case 0x3d4: 
                         await HandlePingResponse(msg, payload);
                         handled = true;
                         break;
-                    case GameMessageHandler.ClientCommands.CM_TRAINHORSE: // 0xba0: 训练马匹
+                    case GameMessageHandler.ClientCommands.CM_TRAINHORSE: 
                         await HandleTrainHorse(msg, payload);
                         handled = true;
                         break;
                     default:
-                        // 如果未在上述特定消息中处理，则使用原有的switch处理
+                        
                         handled = false;
                         break;
                 }
 
                 if (!handled)
                 {
-                    // 使用原有的switch处理其他消息
+                    
                     switch (msg.wCmd)
                     {
-                        //case GameMessageHandler.ClientCommands.CM_ENTERGAME:
-                        //    await HandleEnterGame(payload);
-                        //    break;
+                        
+                        
+                        
                         case GameMessageHandler.ClientCommands.CM_WALK:
                             await HandleWalkMessage(msg, payload);
                             break;
@@ -1027,9 +1067,9 @@ namespace GameServer
                         case GameMessageHandler.ClientCommands.CM_STOP:
                             await HandleStopMessage(msg, payload);
                             break;
-                        //case GameMessageHandler.ClientCommands.CM_CONFIRMFIRSTDIALOG: //不会命中，之前被拦截了，另行处理
-                        //    await HandleConfirmFirstDialog(msg, payload);
-                        //    break;
+                        
+                        
+                        
                         case GameMessageHandler.ClientCommands.CM_SELECTLINK:
                             await HandleSelectLink(msg, payload);
                             break;
@@ -1081,6 +1121,9 @@ namespace GameServer
                         case GameMessageHandler.ClientCommands.CM_PING:
                             await HandlePing(msg, payload);
                             break;
+                        case 0x3d4: 
+                            await HandlePingResponse(msg, payload);
+                            break;
                         case GameMessageHandler.ClientCommands.CM_QUERYTIME:
                             await HandleQueryTime(msg, payload);
                             break;
@@ -1119,6 +1162,7 @@ namespace GameServer
                             break;
                         case GameMessageHandler.ClientCommands.CM_TRAINHORSE:
                             await HandleTrainHorse(msg, payload);
+                            handled = true;
                             break;
                         case GameMessageHandler.ClientCommands.CM_SPECIALHIT_KILL:
                         case GameMessageHandler.ClientCommands.CM_SPECIALHIT_ASSASSINATE:
@@ -1135,9 +1179,9 @@ namespace GameServer
                             break;
                         default:
                             Console.WriteLine($"未处理的消息命令: 0x{msg.wCmd:X4}");
-                            // 记录未知消息但不中断连接
+                            
                             LogManager.Default.Info($"未知消息: 0x{msg.wCmd:X4} (十进制: {msg.wCmd})");
-                            // 发送未知命令响应
+                            
                             SendUnknownCommandResponse(msg.wCmd);
                             break;
                     }
@@ -1146,7 +1190,7 @@ namespace GameServer
             catch (Exception ex)
             {
                 LogManager.Default.Error($"处理游戏消息失败: {ex.Message}");
-                // 发送错误响应
+                
                 SendErrorMessage($"处理命令 0x{msg.wCmd:X4} 失败: {ex.Message}");
             }
         }
@@ -1155,41 +1199,56 @@ namespace GameServer
         {
             if (_player == null) return;
 
-            var builder = new PacketBuilder();
-            builder.WriteUInt32(_player.ObjectId);
-            builder.WriteUInt16(ProtocolCmd.SM_ENTERGAMEOK);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteUInt16(0);
-            builder.WriteInt32(_player.MapId);
-            builder.WriteInt32(_player.X);
-            builder.WriteInt32(_player.Y);
-
-            byte[] packet = builder.Build();
-            _stream.Write(packet, 0, packet.Length);
-            _stream.Flush();
+            
+            
+            var payload = new PacketBuilder();
+            payload.WriteInt32(_player.MapId);
+            payload.WriteInt32(_player.X);
+            payload.WriteInt32(_player.Y);
+            SendMsg2(_player.ObjectId, ProtocolCmd.SM_ENTERGAMEOK, 0, 0, 0, payload.Build());
         }
 
-        // 发送消息的辅助方法（SendActionResult）
+        
+        
+        
+        private void TrySendEnterGameOk()
+        {
+            if (_player == null)
+                return;
+
+            if (_player.GetSystemFlag((int)MirCommon.SystemFlag.SF_ENTERGAMESENT))
+                return;
+
+            
+            if (!_player.GetSystemFlag((int)MirCommon.SystemFlag.SF_BAGLOADED) ||
+                !_player.GetSystemFlag((int)MirCommon.SystemFlag.SF_EQUIPMENTLOADED))
+            {
+                return;
+            }
+
+            SendEnterGameOk();
+            _player.SetSystemFlag((int)MirCommon.SystemFlag.SF_ENTERGAMESENT, true);
+        }
+
+        
         private void SendActionResult(int x, int y, bool success)
         {
             if (_player == null) return;
 
-            // if(bSuccess) sprintf(szMsg, "#+G/%d/%d!", x, y);
-            //          else sprintf(szMsg, "#+FL/%d/%d!", x, y);
-            string message = success ? $"+G/{x}/{y}!" : $"+FL/{x}/{y}!";
-
-            // 编码消息并发送
-            byte[] encodedMessage = GameMessageHandler.EncodeGameMessageOrign(
-                GameMessageHandler.CreateMessage2(_player.ObjectId, 0),
-                Encoding.GetEncoding("GBK").GetBytes(message));
-
-            if (encodedMessage.Length > 0)
+            
+            
+            string message = success ? $"#+G/{x}/{y}!" : $"#+FL/{x}/{y}!";
+            byte[] textBytes = Encoding.GetEncoding("GBK").GetBytes(message);
+            
+            lock (_stream)
             {
-                _stream.Write(encodedMessage, 0, encodedMessage.Length);
+                _stream.Write(textBytes, 0, textBytes.Length);
                 _stream.Flush();
             }
+
+            
         }
+
 
         private void SendStopMessage()
         {
@@ -1199,14 +1258,16 @@ namespace GameServer
                 GameMessageHandler.ServerCommands.SM_STOP, 0, 0, 0);
         }
 
-        /// <summary>
-        /// 发送第一个对话框（SendFirstDlg），证实客户端读取正常
-        /// </summary>
+        
+        
+        
         private void SendFirstDlg(string message)
         {
             try
             {
-                // 发送第一个对话框消息
+                
+                
+                
                 byte[] payload = Encoding.GetEncoding("GBK").GetBytes(message);
                 GameMessageHandler.SendSimpleMessage2(_stream, 0, GameMessageHandler.ServerCommands.SM_FIRSTDIALOG, 0, 0, 0, payload);
                 LogManager.Default.Info($"已发送第一个对话框: {message}");
@@ -1216,30 +1277,63 @@ namespace GameServer
                 LogManager.Default.Error($"发送第一个对话框失败: {ex.Message}");
             }
 
-            //try
-            //{
-            //    byte[] payload = Encoding.GetEncoding("GBK").GetBytes(message);
-            //    GameMessageHandler.SendSimpleMessage(_stream, 0, GameMessageHandler.ServerCommands.SM_FIRSTDIALOG, 0, 0, 0, payload);
-            //    LogManager.Default.Info($"已发送第一个对话框: {message}");
-            //}
-            //catch (Exception ex)
-            //{
-            //    LogManager.Default.Error($"发送第一个对话框失败: {ex.Message}");
-            //}
         }
 
-        private void SendEquipItemResult(bool success, int pos, uint itemId)
+        private void SendEquipItemResult(bool success, int pos, uint dwMakeIndex)
         {
+            if (_player == null) return;
+
+            
             ushort cmd = success ? GameMessageHandler.ServerCommands.SM_TAKEON_OK :
                 GameMessageHandler.ServerCommands.SM_TAKEON_FAIL;
-            GameMessageHandler.SendSimpleMessage2(_stream, itemId, cmd, 0, 0, 0);
+
+            uint dwFlag = success ? _player.GetFeather() : 0xffffffffu;
+            GameMessageHandler.SendSimpleMessage2(_stream, dwFlag, cmd, 0, 0, 0);
+
+            if (!success) return;
+
+            _player.SendFeatureChanged();
+            _player.UpdateProp();
+            _player.UpdateSubProp();
+            _player.SendStatusChanged();
+
+            try
+            {
+                var equip = _player.Equipment.GetItem((EquipSlot)pos);
+                if (equip != null)
+                    _player.SendDuraChanged(pos, equip.Durability, equip.MaxDurability);
+                else
+                    _player.SendDuraChanged(pos, 0, 0);
+            }
+            catch { }
         }
 
-        private void SendUnEquipItemResult(bool success, int pos, uint itemId)
+        private void SendUnEquipItemResult(bool success, int pos, uint dwMakeIndex)
         {
+            if (_player == null) return;
+
+            
             ushort cmd = success ? GameMessageHandler.ServerCommands.SM_TAKEOFF_OK :
                 GameMessageHandler.ServerCommands.SM_TAKEOFF_FAIL;
-            GameMessageHandler.SendSimpleMessage2(_stream, itemId, cmd, 0, 0, 0);
+
+            uint dwFlag = success ? _player.GetFeather() : 0xffffffffu;
+            GameMessageHandler.SendSimpleMessage2(_stream, dwFlag, cmd, 0, 0, 0);
+
+            if (!success) return;
+
+            
+            GameMessageHandler.SendSimpleMessage2(_stream, 0, 0x26c, 0, 0, 0);
+
+            _player.SendFeatureChanged();
+            _player.UpdateProp();
+            _player.UpdateSubProp();
+            _player.SendStatusChanged();
+
+            try
+            {
+                _player.SendDuraChanged(pos, 0, 0);
+            }
+            catch { }
         }
 
         private void SendDropItemResult(bool success, uint itemId)
@@ -1251,26 +1345,42 @@ namespace GameServer
 
         private void SendPickupItemResult(bool success)
         {
-            // 发送拾取结果
+            
             if (success)
             {
-                // 发送重量变化消息
-                GameMessageHandler.SendSimpleMessage2(_stream, 0,
-                    GameMessageHandler.ServerCommands.SM_WEIGHTCHANGED, 0, 0, 0);
+                _player?.SendWeightChanged();
             }
         }
 
         private void SendChatMessage(Player targetPlayer, string speaker, string message)
         {
-            // 构建聊天消息
-            byte[] payload = System.Text.Encoding.GetEncoding("GBK").GetBytes($"{speaker}:{message}");
-            GameMessageHandler.SendSimpleMessage2(_stream, targetPlayer.ObjectId,
-                GameMessageHandler.ServerCommands.SM_CHAT, 0, 0, 0, payload);
+            if (_player == null) return;
+
+            
+            
+            try
+            {
+                
+                string text = $"{speaker}: {message}";
+                byte[] payload = Encoding.GetEncoding("GBK").GetBytes(text);
+                if (payload.Length > 120)
+                {
+                    Array.Resize(ref payload, 120);
+                }
+
+                
+                targetPlayer.SendMsg(_player.ObjectId,
+                    MirCommon.ProtocolCmd.SM_CHAT, 0xff00, 0, 0, payload);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"发送聊天消息失败: target={targetPlayer?.Name} - {ex.Message}");
+            }
         }
 
-        /// <summary>
-        /// 将字节数组转换为结构体
-        /// </summary>
+        
+        
+        
         private T BytesToStruct<T>(byte[] bytes) where T : struct
         {
             int size = System.Runtime.InteropServices.Marshal.SizeOf<T>();
@@ -1289,149 +1399,149 @@ namespace GameServer
             }
         }
 
-        ///// <summary>
-        ///// 将字节数组转换为结构体（处理大端序）
-        ///// </summary>
-        //private T BytesToStruct<T>(byte[] bytes) where T : struct
-        //{
-        //    int size = System.Runtime.InteropServices.Marshal.SizeOf<T>();
-        //    if (bytes.Length < size)
-        //        throw new ArgumentException($"字节数组长度不足: {bytes.Length} < {size}");
-
-        //    // 注意：网络传输通常使用大端序，而Windows系统使用小端序
-        //    // 这里需要根据实际情况处理字节序转换
-        //    // 对于EnterGameServer和LoginEnter结构体，字段可能是大端序
-
-        //    // 创建一个新的字节数组，用于存储转换后的数据
-        //    byte[] convertedBytes = new byte[size];
-        //    Array.Copy(bytes, 0, convertedBytes, 0, size);
-
-        //    // 假设结构体中的uint字段是大端序，需要转换为小端序
-        //    if (typeof(T) == typeof(MirCommon.EnterGameServer))
-        //    {
-        //        // EnterGameServer结构体字段布局：
-        //        // byte szAccount[12] (偏移量0)
-        //        // uint nLoginId (偏移量12)
-        //        // uint nSelCharId (偏移量16)
-        //        // uint nClientId (偏移量20)
-        //        // uint dwEnterTime (偏移量24)
-        //        // byte szName[32] (偏移量28)
-        //        // uint dwSelectCharServerId (偏移量60)
-
-        //        // 转换uint字段（4字节）从大端序到小端序
-        //        // 注意：szAccount[12]是字节数组，不需要转换
-        //        // uint字段的偏移量：12, 16, 20, 24, 60
-        //        int[] uintOffsets = { 12, 16, 20, 24, 60 };
-        //        foreach (int offset in uintOffsets)
-        //        {
-        //            if (offset + 4 <= convertedBytes.Length)
-        //            {
-        //                // 反转字节顺序（大端序 -> 小端序）
-        //                Array.Reverse(convertedBytes, offset, 4);
-        //            }
-        //        }
-        //    }
-        //    else if (typeof(T) == typeof(MirCommon.LoginEnter))
-        //    {
-        //        // LoginEnter结构体字段布局（根据MirDefine.cs）：
-        //        // byte szAccount[12] (偏移量0)
-        //        // uint nLid (偏移量12)
-        //        // uint nSid (偏移量16)
-        //        // uint dwEnterTime (偏移量20)
-        //        // uint nListId (偏移量24)
-
-        //        // 转换uint字段（4字节）从大端序到小端序
-        //        // 注意：szAccount[12]是字节数组，不需要转换
-        //        // uint字段的偏移量：12, 16, 20, 24
-        //        int[] uintOffsets = { 12, 16, 20, 24 };
-        //        foreach (int offset in uintOffsets)
-        //        {
-        //            if (offset + 4 <= convertedBytes.Length)
-        //            {
-        //                // 反转字节顺序（大端序 -> 小端序）
-        //                Array.Reverse(convertedBytes, offset, 4);
-        //            }
-        //        }
-        //    }
-        //    else if (typeof(T) == typeof(MirCommon.Database.CHARDBINFO))
-        //    {
-        //        // CHARDBINFO结构体字段布局（根据DatabaseStructs.cs）：
-        //        // uint dwClientKey (偏移量0) - 第一个字段！
-        //        // char szName[20] (偏移量4)
-        //        // uint dwDBId (偏移量24)
-        //        // uint mapid (偏移量28)
-        //        // ushort x (偏移量32)
-        //        // ushort y (偏移量34)
-        //        // ... 其他字段
-
-        //        // 转换uint字段（4字节）从大端序到小端序
-        //        // 注意：dwClientKey是第一个字段，偏移量0
-        //        // 其他uint字段也需要转换
-        //        // 根据结构体定义，需要转换的uint字段偏移量：0, 24, 28, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124, 128, 132
-
-        //        int[] uintOffsets = { 0, 24, 28, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96, 100, 104, 108, 112, 116, 120, 124, 128, 132 };
-        //        foreach (int offset in uintOffsets)
-        //        {
-        //            if (offset + 4 <= convertedBytes.Length)
-        //            {
-        //                // 反转字节顺序（大端序 -> 小端序）
-        //                Array.Reverse(convertedBytes, offset, 4);
-        //            }
-        //        }
-
-        //        // 转换ushort字段（2字节）从大端序到小端序
-        //        // ushort字段偏移量：32(x), 34(y), 46(wLevel)
-        //        int[] ushortOffsets = { 32, 34, 46 };
-        //        foreach (int offset in ushortOffsets)
-        //        {
-        //            if (offset + 2 <= convertedBytes.Length)
-        //            {
-        //                // 反转字节顺序（大端序 -> 小端序）
-        //                Array.Reverse(convertedBytes, offset, 2);
-        //            }
-        //        }
-        //    }
-
-        //    IntPtr ptr = System.Runtime.InteropServices.Marshal.AllocHGlobal(size);
-        //    try
-        //    {
-        //        System.Runtime.InteropServices.Marshal.Copy(convertedBytes, 0, ptr, size);
-        //        return System.Runtime.InteropServices.Marshal.PtrToStructure<T>(ptr)!;
-        //    }
-        //    finally
-        //    {
-        //        System.Runtime.InteropServices.Marshal.FreeHGlobal(ptr);
-        //    }
-        //}
-
-        /// <summary>
-        /// 断开连接处理（OnDisconnect）
-        /// </summary>
+        
+        
+        
         public void OnDisconnect()
         {
             try
             {
-                // 玩家断开，从世界移除
                 if (_player != null)
                 {
-                    LogManager.Default.Info($"玩家断开连接: {_player.Name}");
-
-                    // 执行断开连接逻辑（OnDisconnect）
-                    // 1. 从地图移除
-                    _world.RemovePlayer(_player.ObjectId);
-                    var map = _world.GetMap(_player.MapId);
-                    map?.RemovePlayer(_player.ObjectId);
-
-                    // 2. 保存数据到数据库
-                    SavePlayerDataToDB();
-
-                    // 3. 清理资源
-                    CleanupPlayerResources();
-
+                    var player = _player;
+                    
                     _player = null;
+                    LogManager.Default.Info($"玩家断开连接: {player.Name}");
+
+                    try
+                    {
+                        HumanPlayerMgr.Instance.DeletePlayer(player);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Default.Warning($"OnDisconnect提前从HumanPlayerMgr移除失败: {player.Name} - {ex.Message}");
+                    }
+
+                    
+                    if (!_competlyQuit && _state == ClientState.GSUM_VERIFIED)
+                    {
+                        try
+                        {
+                            var sc = _server.GetServerCenterClient();
+                            if (sc != null)
+                            {
+                                byte[] enterBytes = StructToBytes(_enterInfo);
+                                ushort targetIndex = (ushort)_enterInfo.dwSelectCharServerId;
+                                byte sendType = (byte)MirCommon.ProtocolCmd.MST_SINGLE;
+
+                                bool sent = sc.SendMsgAcrossServerAsync(
+                                    clientId: 0,
+                                    cmd: MirCommon.ProtocolCmd.MAS_RESTARTGAME,
+                                    sendType: sendType,
+                                    targetIndex: targetIndex,
+                                    binaryData: enterBytes
+                                ).GetAwaiter().GetResult();
+
+                                if (sent)
+                                {
+                                    LogManager.Default.Info($"OnDisconnect已发送MAS_RESTARTGAME: targetIndex={targetIndex}");
+                                }
+                                else
+                                {
+                                    LogManager.Default.Warning($"OnDisconnect发送MAS_RESTARTGAME失败: targetIndex={targetIndex}");
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Default.Warning($"OnDisconnect发送MAS_RESTARTGAME异常: {ex.Message}");
+                        }
+                    }
+
+                    
+                    try
+                    {
+                        
+                        
+                        if (player is ScriptTarget scriptTarget)
+                        {
+                            SystemScript.Instance.Execute(scriptTarget, "Logout");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Default.Warning($"执行Logout脚本失败: {player.Name} - {ex.Message}");
+                    }
+
+                    
+                    try
+                    {
+                        
+                        
+                        player.Guild = null;
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Default.Warning($"行会下线处理失败: {player.Name} - {ex.Message}");
+                    }
+
+                    
+                    try
+                    {
+                        var trade = player.CurrentTrade ?? TradeManager.Instance.GetPlayerTrade(player);
+                        trade?.End(player, TradeEndType.Cancel);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Default.Warning($"交易取消处理失败: {player.Name} - {ex.Message}");
+                    }
+
+                    
+                    try
+                    {
+                        var group = GroupObjectManager.Instance.GetPlayerGroup(player);
+                        group?.DelMember(player);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Default.Warning($"组队离队处理失败: {player.Name} - {ex.Message}");
+                    }
+
+                    
+                    try
+                    {
+                        player.PetSystem?.CleanPets();
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Default.Warning($"清理宠物失败: {player.Name} - {ex.Message}");
+                    }
+
+                    
+                    try
+                    {
+                        var dbClient = _server.GetDbServerClient();
+                        player.UpdateToDB(dbClient);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Default.Warning($"保存玩家数据失败: {player.Name} - {ex.Message}");
+                    }
+
+                    
+                    try
+                    {
+                        _world.RemovePlayer(player.ObjectId);
+                        var map = _world.GetMap(player.MapId);
+                        map?.RemovePlayer(player.ObjectId);
+                        player.CurrentMap?.RemoveObject(player);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Default.Warning($"从地图移除失败: {player.Name} - {ex.Message}");
+                    }
                 }
 
-                // 关闭网络连接
                 Disconnect();
             }
             catch (Exception ex)
@@ -1440,17 +1550,17 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 保存玩家数据到数据库
-        /// </summary>
+        
+        
+        
         private void SavePlayerDataToDB()
         {
             if (_player == null) return;
 
             try
             {
-                // 这里实现保存玩家数据到数据库的逻辑
-                // SavePlayerData
+                
+                
                 LogManager.Default.Info($"保存玩家数据: {_player.Name}");
             }
             catch (Exception ex)
@@ -1459,17 +1569,17 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 清理玩家资源
-        /// </summary>
+        
+        
+        
         private void CleanupPlayerResources()
         {
             if (_player == null) return;
 
             try
             {
-                // 这里实现清理玩家资源的逻辑
-                // CleanupPlayerResources
+                
+                
                 LogManager.Default.Info($"清理玩家资源: {_player.Name}");
             }
             catch (Exception ex)
@@ -1478,14 +1588,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送未知命令响应
-        /// </summary>
+        
+        
+        
         private void SendUnknownCommandResponse(ushort command)
         {
             try
             {
-                // 发送未知命令响应
+                
                 GameMessageHandler.SendSimpleMessage2(_stream, 0,
                     GameMessageHandler.ServerCommands.SM_UNKNOWN_COMMAND, 0, 0, 0);
             }
@@ -1495,14 +1605,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送错误消息
-        /// </summary>
+        
+        
+        
         private void SendErrorMessage(string message)
         {
             try
             {
-                // 发送错误消息
+                
                 byte[] payload = System.Text.Encoding.GetEncoding("GBK").GetBytes(message);
                 GameMessageHandler.SendSimpleMessage2(_stream, 0,
                     GameMessageHandler.ServerCommands.SM_ERROR, 0, 0, 0, payload);
@@ -1515,30 +1625,30 @@ namespace GameServer
 
         #region 处理客户端验证
 
-        /// <summary>
-        /// 处理验证字符串（OnVerifyString）
-        /// </summary>
+        
+        
+        
         private async Task OnVerifyString(string verifyString)
         {
             try
             {
                 LogManager.Default.Info($"处理验证字符串: {verifyString}");
 
-                // 检查是否是编码字符串（以"#"开头，以"!"结尾）
+                
                 if (verifyString.StartsWith("#") && verifyString.EndsWith("!"))
                 {
-                    // 解码字符串
+                    
                     string decodedString = DecodeVerifyString(verifyString);
                     if (string.IsNullOrEmpty(decodedString))
                     {
                         LogManager.Default.Warning($"解码验证字符串失败: {verifyString}");
-                        //Disconnect();
+                        
                         return;
                     }
 
                     LogManager.Default.Info($"解码后的验证字符串: {decodedString}");
 
-                    // 处理解码后的字符串
+                    
                     await ProcessDecodedString(decodedString);
                     return;
                 }
@@ -1546,23 +1656,184 @@ namespace GameServer
             catch (Exception ex)
             {
                 LogManager.Default.Error($"处理验证字符串失败: {ex.Message}");
-                //Disconnect();
+                
             }
         }
 
-        /// <summary>
-        /// 解码验证字符串（ParseMessage）
-        /// </summary>
+        private sealed record VerifyInfo(uint LoginId, string CharName, uint SelCharId, string Version, bool IsNewVersion);
+
+        private static bool TryParseVerifyInfo(string decodedString, out VerifyInfo info)
+        {
+            info = new VerifyInfo(0, string.Empty, 0, string.Empty, false);
+            if (string.IsNullOrWhiteSpace(decodedString))
+                return false;
+
+            string p = decodedString.TrimEnd('\0').Trim();
+            bool isNew = p.StartsWith("***", StringComparison.Ordinal);
+            if (isNew)
+                p = p.Substring(3);
+
+            var parts = p.Split('/', StringSplitOptions.None);
+
+            if (isNew)
+            {
+                
+                if (parts.Length != 5)
+                    return false;
+
+                if (!uint.TryParse(parts[0], out uint loginId))
+                    return false;
+
+                string charName = parts[1];
+                if (!uint.TryParse(parts[2], out uint selCharId))
+                    return false;
+
+                string version = parts[3];
+
+                
+                if (!int.TryParse(parts[4], out _))
+                    return false;
+
+                info = new VerifyInfo(loginId, charName, selCharId, version, true);
+                return true;
+            }
+
+            
+            if (parts.Length == 3 &&
+                uint.TryParse(parts[0], out uint oldLoginId) &&
+                uint.TryParse(parts[2], out uint oldSelCharId))
+            {
+                info = new VerifyInfo(oldLoginId, parts[1], oldSelCharId, string.Empty, false);
+                return true;
+            }
+
+            return false;
+        }
+
+        private async Task HandleVerifyBytesAsync(byte[] data, int length)
+        {
+            if (length <= 0)
+                return;
+
+            
+            if (_verifyRawBuffer.Count > 8192)
+            {
+                LogManager.Default.Warning($"验证缓冲区过大({_verifyRawBuffer.Count})，清空并重新同步");
+                _verifyRawBuffer.Clear();
+            }
+
+            _verifyRawBuffer.AddRange(data.Take(length));
+
+            var candidates = new List<(string VerifyString, string Decoded, VerifyInfo Info)>();
+
+            while (true)
+            {
+                int endIndex = _verifyRawBuffer.IndexOf((byte)'!');
+                if (endIndex < 0)
+                    break;
+
+                
+                byte[] frame = _verifyRawBuffer.Take(endIndex + 1).ToArray();
+                _verifyRawBuffer.RemoveRange(0, endIndex + 1);
+
+                int startIndex = Array.IndexOf(frame, (byte)'#');
+                if (startIndex < 0)
+                    continue;
+
+                string verifyString = Encoding.GetEncoding("GBK").GetString(frame, startIndex, frame.Length - startIndex).TrimEnd('\0').Trim();
+                if (!verifyString.StartsWith("#", StringComparison.Ordinal) || !verifyString.EndsWith("!", StringComparison.Ordinal))
+                    continue;
+
+                string decoded = DecodeVerifyString(verifyString);
+                if (string.IsNullOrEmpty(decoded))
+                {
+                    LogManager.Default.Warning($"解码验证字符串失败: {verifyString}");
+                    continue;
+                }
+
+                LogManager.Default.Info($"解码后的验证字符串: {decoded}");
+
+                if (TryParseVerifyInfo(decoded, out var info))
+                {
+                    candidates.Add((verifyString, decoded, info));
+                }
+            }
+
+            if (candidates.Count == 0)
+                return;
+
+            
+            var chosen = candidates.LastOrDefault(c => _server.GetEnterInfo(c.Info.LoginId) != null);
+            if (chosen.Info != null && chosen.Info.LoginId != 0)
+            {
+                await ProcessDecodedString(chosen.Decoded);
+                _verifyRawBuffer.Clear();
+                return;
+            }
+
+            
+            await ProcessDecodedString(candidates[^1].Decoded);
+            _verifyRawBuffer.Clear();
+        }
+
+        private async Task HandleVerifiedBytesAsync(byte[] data, int length)
+        {
+            if (length <= 0)
+                return;
+
+            
+            if (_codedRawBuffer.Count > 65536)
+            {
+                LogManager.Default.Warning($"消息缓冲区过大({_codedRawBuffer.Count})，清空并重新同步");
+                _codedRawBuffer.Clear();
+            }
+
+            _codedRawBuffer.AddRange(data.Take(length));
+
+            while (true)
+            {
+                int startIndex = _codedRawBuffer.IndexOf((byte)'#');
+                if (startIndex < 0)
+                {
+                    
+                    _codedRawBuffer.Clear();
+                    break;
+                }
+
+                
+                if (startIndex > 0)
+                    _codedRawBuffer.RemoveRange(0, startIndex);
+
+                int endIndex = _codedRawBuffer.IndexOf((byte)'!');
+                if (endIndex < 0)
+                    break; 
+
+                byte[] frame = _codedRawBuffer.Take(endIndex + 1).ToArray();
+                _codedRawBuffer.RemoveRange(0, endIndex + 1);
+
+                if (!GameMessageHandler.DecodeGameMessageOrign(frame, frame.Length, out var msg, out var payload))
+                {
+                    LogManager.Default.Warning($"已验证状态解码失败，丢弃帧: len={frame.Length}");
+                    continue;
+                }
+
+                await HandleGameMessage(msg, payload);
+            }
+        }
+
+        
+        
+        
         private string DecodeVerifyString(string encodedString)
         {
             try
             {
-                // 编码字符串格式：以"#"开头，以"!"结尾
-                // 例如："#5ll<kpqVuprMzpk^HMFIWFM?nooWvqpXnro?nprVuqrNyqq?vr=!"
-                // ParseMessage函数逻辑：
-                // 1. 检查字符串是否以"#"开头，以"!"结尾
-                // 2. 如果"#"后面的第一个字符是数字（0-9），则跳过这个数字
-                // 3. 然后调用_UnGameCode解码
+                
+                
+                
+                
+                
+                
 
                 if (string.IsNullOrEmpty(encodedString) || encodedString.Length < 3)
                 {
@@ -1570,23 +1841,23 @@ namespace GameServer
                     return string.Empty;
                 }
 
-                // 去掉"#"和"!"，获取编码部分
+                
                 string encodedPart = encodedString.Substring(1, encodedString.Length - 2);
 
-                // 检查"#"后面的第一个字符是否是数字
-                // if( *pStart >= '0' && *pStart <= '9' )pStart++;
+                
+                
                 if (encodedPart.Length > 0 && encodedPart[0] >= '0' && encodedPart[0] <= '9')
                 {
-                    // 跳过开头的数字字符
+                    
                     encodedPart = encodedPart.Substring(1);
                     LogManager.Default.Debug($"跳过开头的数字字符，剩余编码部分: {encodedPart}");
                 }
 
-                // 将字符串转换为字节数组
+                
                 byte[] encodedBytes = Encoding.GetEncoding("GBK").GetBytes(encodedPart);
 
-                // 解码字节数组
-                byte[] decodedBytes = new byte[encodedBytes.Length * 2]; // 足够大的缓冲区
+                
+                byte[] decodedBytes = new byte[encodedBytes.Length * 2]; 
                 int decodedSize = MirCommon.GameCodecOrign.UnGameCodeOrign(encodedBytes, decodedBytes);
 
                 if (decodedSize <= 0)
@@ -1595,7 +1866,7 @@ namespace GameServer
                     return string.Empty;
                 }
 
-                // 将解码后的字节数组转换为字符串
+                
                 string decodedString = Encoding.GetEncoding("GBK").GetString(decodedBytes, 0, decodedSize).TrimEnd('\0');
 
                 LogManager.Default.Debug($"解码成功: 原始='{encodedString}', 解码后='{decodedString}'");
@@ -1608,18 +1879,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 处理解码后的字符串
-        /// </summary>
+        
+        
+        
         private async Task ProcessDecodedString(string decodedString)
         {
             try
             {
                 LogManager.Default.Debug($"处理解码后的字符串: '{decodedString}'");
-
-                // 处理新老版本客户端的不同格式
-                // 新版本（1.9）格式：***loginid/角色名字/selectcharid/20041118/0 (5个参数)
-                // 老版本（1.8）格式：?selcharid/20050720/0 (3个参数) 或 selcharid/20050720/0
 
                 string p = decodedString;
                 bool isNewVersion = false;
@@ -1630,31 +1897,8 @@ namespace GameServer
                     isNewVersion = true;
                     LogManager.Default.Debug($"检测到以***开头");
                 }
-                //else
-                //{
-                //    // 尝试自动检测格式
-                //    // 如果包含3个参数，可能是老版本
-                //    // 如果包含5个参数，可能是新版本
-                //    string[] testParams = p.Split('/');
-                //    if (testParams.Length == 3)
-                //    {
-                //        isOldVersion = true;
-                //        LogManager.Default.Debug($"自动检测为老版本（1.8）客户端格式，3个参数");
-                //    }
-                //    else if (testParams.Length == 5)
-                //    {
-                //        isNewVersion = true;
-                //        LogManager.Default.Debug($"自动检测为新版本（1.9）客户端格式，5个参数");
-                //    }
-                //    else
-                //    {
-                //        LogManager.Default.Warning($"无法识别的验证字符串格式: '{decodedString}'");
-                //        //Disconnect();
-                //        return;
-                //    }
-                //}
 
-                // 解析参数
+                
                 string[] paramsArray = p.Split('/');
 
                 uint loginId = 0;
@@ -1664,58 +1908,45 @@ namespace GameServer
 
                 if (isNewVersion && paramsArray.Length == 5)
                 {
-                    // 新版本格式：loginid/角色名字/selectcharid/20041118/0
+                    
                     loginId = uint.Parse(paramsArray[0]);
                     charName = paramsArray[1];
                     selCharId = uint.Parse(paramsArray[2]);
                     version = paramsArray[3];
-                    // paramsArray[4] 是 "0" (未知)
+                    
 
                     LogManager.Default.Info($"验证字符串解析成功: loginId={loginId}, charName={charName}, selCharId={selCharId}, version={version}");
                 }
-                //else if (isOldVersion && paramsArray.Length == 3)
-                //{
-                //    // 老版本格式：selcharid/20050720/0
-                //    // 注意：老版本没有loginId和charName，只有selCharId
-                //    selCharId = uint.Parse(paramsArray[0]);
-                //    version = paramsArray[1];
-                //    // paramsArray[2] 是 "0" (未知)
-
-                //    LogManager.Default.Info($"验证字符串解析成功: selCharId={selCharId}, version={version}");
-
-                //    loginId = selCharId; // 临时使用selCharId作为loginId
-                //    charName = $"Player_{selCharId}"; // 临时角色名
-                //}
                 else
                 {
                     LogManager.Default.Warning($"验证字符串参数数量错误: {paramsArray.Length}, 期望: 新版本5个参数或老版本3个参数");
-                    //Disconnect();
+                    
                     return;
                 }
 
-                //设置状态为GSUM_WAITINGDBINFO__：验证成功后立即设置
+                
                 _state = ClientState.GSUM_WAITINGDBINFO;
                 LogManager.Default.Info($"已设置状态为GSUM_WAITINGDBINFO，等待数据库返回角色信息");
 
-                // 检查ServerCenter是否提供了进入信息
-                // 从GameServerApp的字典中获取进入信息
+                
+                
                 string account;
                 string serverName = _server.GetServerName();
 
-                // 从服务器获取进入信息
+                
                 LogManager.Default.Info($"开始从服务器获取进入信息，登录ID={loginId}");
                 var enterInfo = _server.GetEnterInfo(loginId);
                 if (enterInfo != null)
                 {
-                    // 使用从ServerCenter获取的账号
+                    
                     account = enterInfo.Value.GetAccount();
                     LogManager.Default.Info($"使用ServerCenter提供的账号: '{account}' (登录ID={loginId})");
 
-                    // 保存进入信息到本地字段
+                    
                     _enterInfo = enterInfo.Value;
                     LogManager.Default.Info($"已设置_enterInfo: 账号='{_enterInfo.GetAccount()}', 角色名='{_enterInfo.GetName()}', 登录ID={_enterInfo.nLoginId}, 选择角色ID={_enterInfo.nSelCharId}");
 
-                    // 验证角色名是否匹配
+                    
                     if (isNewVersion && _enterInfo.GetName() != charName)
                     {
                         LogManager.Default.Error($"角色名不匹配: ServerCenter提供='{_enterInfo.GetName()}', 客户端发送='{charName}'");
@@ -1724,88 +1955,68 @@ namespace GameServer
                         return;
                     }
 
-                    //// 对于老版本，更新charName为ServerCenter提供的角色名
-                    //if (isOldVersion)
-                    //{
-                    //    charName = _enterInfo.GetName();
-                    //    LogManager.Default.Info($"老版本客户端，使用ServerCenter提供的角色名: '{charName}'");
-                    //}
-
-                    // 从服务器字典中移除进入信息（已经使用）
+                    
                     _server.RemoveEnterInfo(loginId);
                     LogManager.Default.Info($"已从服务器字典移除进入信息，登录ID={loginId}");
                 }
                 else
                 {
-                    // ServerCenter没有提供账号信息
+                    
                     if (isNewVersion)
                     {
-                        // 新版本：使用备选方案
+                        
                         account = $"char_{loginId}";
                         LogManager.Default.Warning($"ServerCenter未提供账号，使用备选账号: {account}");
                     }
                     else
                     {
-                        // 老版本：使用selCharId作为账号
+                        
                         account = $"old_{selCharId}";
                         LogManager.Default.Warning($"老版本客户端，ServerCenter未提供账号，使用selCharId作为账号: {account}");
                     }
 
-                    // 设置进入信息
+                    
                     _enterInfo.nLoginId = loginId;
                     _enterInfo.nSelCharId = selCharId;
                     _enterInfo.SetName(charName);
-                    _enterInfo.dwSelectCharServerId = 1; // 默认选择角色服务器ID
+                    _enterInfo.dwSelectCharServerId = 1; 
                     LogManager.Default.Info($"已设置进入信息: 登录ID={loginId}, 选择角色ID={selCharId}, 角色名={charName}");
                 }
 
-                // 查询数据库信息（SendQueryDbInfo）
+                
                 LogManager.Default.Info($"开始查询数据库信息1: 角色={charName}, 账号={account}, 服务器={serverName}");
 
-                // 使用GameServerApp的DBServerClient
+                
                 var dbClient = _server.GetDbServerClient();
                 if (dbClient == null)
                 {
                     LogManager.Default.Error("无法获取DBServerClient");
                     SendMsg2(0, ProtocolCmd.SM_ERRORDIALOG, 0, 0, 0, "数据库错误！");
-                    //Disconnect(1000);
+                    
                     return;
                 }
 
-                // 使用现有的GetCharDBInfoBytesAsync方法来查询数据库信息，传递clientKey以便DBServer能正确返回消息
-                // 注意：这里charId参数传递0，因为此时还不知道角色ID，DBServer会从数据库查询并返回角色ID
+                
+                
                 LogManager.Default.Info($"开始查询数据库信息: 角色={charName}, 账号={account}");
 
-                byte[]? charData = await dbClient.GetCharDBInfoBytesAsync(account, serverName, charName, _clientKey, 0);//ChaDBid从数据库回传，这里给0
+                byte[]? charData = await dbClient.GetCharDBInfoBytesAsync2(account, serverName, charName, _clientKey, 0);
                 if (charData != null)
                 {
-                    //// 查询数据库后设置状态为GSUM_WAITINGDBINFO
-                    //_state = ClientState.GSUM_WAITINGDBINFO;
-                    //LogManager.Default.Info($"已设置状态为GSUM_WAITINGDBINFO，等待数据库返回角色信息");
-
-                    //// 直接处理数据库响应，而不是等待OnDBMsg
-                    //// 创建一个临时的MirMsg来模拟OnDBMsg的调用
-                    //var tempMsg = new MirMsg
-                    //{
-                    //    dwFlag = 0,
-                    //    wCmd = (ushort)DbMsg.DM_GETCHARDBINFO,
-                    //    wParam = new ushort[3] { (ushort)SERVER_ERROR.SE_OK, 0, 0 },
-                    //    data = charData
-                    //};
-                    //// 调用OnDBMsg处理角色数据
-                    //await OnDBMsg(tempMsg, charData.Length);
+                    
+                    
                 }
                 else
                 {
                     LogManager.Default.Error($"查询数据库信息失败: {charName}");
                     SendMsg2(0, ProtocolCmd.SM_ERRORDIALOG, 0, 0, 0, "查询数据库信息失败！");
-                    //Disconnect(1000);
+                    
                 }
             }
             catch (Exception ex)
             {
                 LogManager.Default.Error($"处理解码后的字符串失败: {ex.Message}");
-                //Disconnect();
+                
             }
 
             await Task.CompletedTask;
@@ -1813,9 +2024,9 @@ namespace GameServer
 
         #endregion
 
-        /// <summary>
-        /// 发送消息（SendMsg）
-        /// </summary>
+        
+        
+        
         private void SendMsg(uint dwFlag, ushort wCmd, ushort wParam1, ushort wParam2, ushort wParam3, string? message = null)
         {
             try
@@ -1834,9 +2045,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送消息（SendMsg）
-        /// </summary>
+        
+        
+        
         private void SendMsg2(uint dwFlag, ushort wCmd, ushort wParam1, ushort wParam2, ushort wParam3, string? message = null)
         {
             try
@@ -1855,24 +2066,9 @@ namespace GameServer
             }
         }
 
-        ///// <summary>
-        ///// 发送消息（字节数组payload版本）
-        ///// </summary>
-        //private void SendMsg(uint dwFlag, ushort wCmd, ushort wParam1, ushort wParam2, ushort wParam3, byte[]? payload)
-        //{
-        //    try
-        //    {
-        //        GameMessageHandler.SendSimpleMessage(_stream, dwFlag, wCmd, wParam1, wParam2, wParam3, payload);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        LogManager.Default.Error($"发送消息失败: {ex.Message}");
-        //    }
-        //}
-
-        /// <summary>
-        /// 发送消息（字节数组payload版本）
-        /// </summary>
+        
+        
+        
         private void SendMsg2(uint dwFlag, ushort wCmd, ushort wParam1, ushort wParam2, ushort wParam3, byte[]? payload)
         {
             try
@@ -1885,9 +2081,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 断开连接（带延迟）
-        /// </summary>
+        
+        
+        
         private void Disconnect(int delayMs = 0)
         {
             if (delayMs > 0)
@@ -1904,9 +2100,9 @@ namespace GameServer
             catch { }
         }
 
-        /// <summary>
-        /// 断开连接
-        /// </summary>
+        
+        
+        
         public void Disconnect()
         {
             try
@@ -1917,14 +2113,14 @@ namespace GameServer
             catch { }
         }
 
-        /// <summary>
-        /// 根据角色名查找玩家（FindbyName）
-        /// </summary>
+        
+        
+        
         private Player? FindPlayerByName(string charName)
         {
             try
             {
-                // 使用HumanPlayerMgr查找玩家（FindbyName）
+                
                 return HumanPlayerMgr.Instance.FindByName(charName);
             }
             catch (Exception ex)
@@ -1934,9 +2130,68 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 处理数据库物品数据（OnDBItem）
-        /// </summary>
+        private static string NormalizeItemName(string? rawName)
+        {
+            if (string.IsNullOrEmpty(rawName))
+                return string.Empty;
+
+            int nul = rawName.IndexOf('\0');
+            if (nul >= 0)
+                rawName = rawName.Substring(0, nul);
+
+            return rawName.Trim();
+        }
+
+        private ItemInstance? CreateItemInstanceFromDbItem(in MirCommon.Database.DBITEM dbItem)
+        {
+            try
+            {
+                var item = dbItem.item;
+                string name = NormalizeItemName(item.baseitem.szName);
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    LogManager.Default.Warning($"DBITEM缺少物品名称: makeIndex={item.dwMakeIndex}");
+                    return null;
+                }
+
+                var def = ItemManager.Instance.GetDefinitionByName(name);
+                if (def == null)
+                {
+                    LogManager.Default.Warning($"未找到物品定义: '{name}' (makeIndex={item.dwMakeIndex})");
+                    return null;
+                }
+
+                var instance = ItemManager.Instance.CreateItem(def.ItemId, 1);
+                if (instance == null)
+                    return null;
+
+                instance.Durability = item.wCurDura;
+                instance.MaxDurability = item.wMaxDura;
+                if (item.dwMakeIndex != 0)
+                    instance.InstanceId = item.dwMakeIndex;
+
+                
+                instance.EnhanceLevel = item.baseitem.btUpgradeTimes;
+                instance.DressColor = (byte)(item.baseitem.btFlag & 0x0F);
+
+                
+                instance.UsingStartTime = (uint)(item.baseitem.Ac1 |
+                    (item.baseitem.Ac2 << 8) |
+                    (item.baseitem.Mac1 << 16) |
+                    (item.baseitem.Mac2 << 24));
+
+                return instance;
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Warning($"DBITEM转换为ItemInstance失败: {ex.Message}");
+                return null;
+            }
+        }
+
+        
+        
+        
         private void OnDBItem(MirCommon.Database.DBITEM[] pItemArray, int nCount, byte btFlag)
         {
             try
@@ -1949,60 +2204,129 @@ namespace GameServer
                     return;
                 }
 
-                // 根据标志处理不同类型的物品
+                
+                if (nCount > 1 && pItemArray != null)
+                {
+                    Array.Sort(pItemArray, 0, Math.Min(nCount, pItemArray.Length), Comparer<MirCommon.Database.DBITEM>.Create((a, b) => a.wPos.CompareTo(b.wPos)));
+                }
+
+                
                 switch (btFlag)
                 {
                     case (byte)ItemDataFlag.IDF_BANK:
                         {
                             LogManager.Default.Info($"处理仓库物品: {nCount}个");
+
+                            _bankCache.Clear();
                             for (int i = 0; i < nCount; i++)
                             {
-                                // 这里需要根据实际实现调整
-                                // _player.AddBankItem(pItemArray[i].item, false);
-                                LogManager.Default.Debug($"处理仓库物品: {i + 1}/{nCount}");
+                                var inst = CreateItemInstanceFromDbItem(pItemArray[i]);
+                                if (inst != null)
+                                    _bankCache.Add(inst);
                             }
-                            // 设置仓库数据加载完成
+
+                            
                             _bankLoaded = true;
-                            LogManager.Default.Debug($"仓库数据加载完成");
+                            LogManager.Default.Debug($"仓库数据加载完成(缓存条目={_bankCache.Count})");
                             CheckAllDataLoaded();
                         }
                         break;
                     case (byte)ItemDataFlag.IDF_BAG:
                         {
                             LogManager.Default.Info($"处理背包物品: {nCount}个");
+
                             _player.SetSystemFlag((int)MirCommon.SystemFlag.SF_BAGLOADED, true);
+
+                            
+                            _player.Inventory.Clear();
+
+                            
                             for (int i = 0; i < nCount; i++)
                             {
-                                // 这里需要根据实际实现调整
-                                // var item = pItemArray[i].item;
-                                // _player.AddBagItem(pItemArray[i].item, true);
-                                // pItemArray[i].item = item;
-                                LogManager.Default.Debug($"处理背包物品: {i + 1}/{nCount}");
+                                var inst = CreateItemInstanceFromDbItem(pItemArray[i]);
+                                if (inst == null)
+                                    continue;
+
+                                int pos = pItemArray[i].wPos;
+                                bool placed = false;
+
+                                if (pos >= 0 && pos < _player.Inventory.MaxSlots)
+                                {
+                                    placed = _player.Inventory.TrySetItem(pos, inst);
+                                }
+
+                                
+                                if (!placed)
+                                {
+                                    placed = _player.Inventory.TryAddItemNoStack(inst, out int fallbackSlot);
+                                    if (placed)
+                                    {
+                                        LogManager.Default.Warning($"背包装载pos冲突/越界，已落到空位: makeIndex={pItemArray[i].item.dwMakeIndex}, dbPos={pItemArray[i].wPos}, slot={fallbackSlot}");
+                                    }
+                                }
+
+                                if (!placed)
+                                {
+                                    LogManager.Default.Warning($"背包装载失败(可能已满): makeIndex={pItemArray[i].item.dwMakeIndex}, pos={pItemArray[i].wPos}");
+                                }
                             }
-                            // 设置背包数据加载完成
+
                             _bagLoaded = true;
-                            LogManager.Default.Debug($"背包数据加载完成");
-                            // 发送背包信息和位置信息
+                            LogManager.Default.Debug("背包数据加载完成");
+
+                            
                             SendBagItems(pItemArray, nCount);
+                            TrySendEnterGameOk();
                             CheckAllDataLoaded();
                         }
                         break;
                     case (byte)ItemDataFlag.IDF_EQUIPMENT:
                         {
                             LogManager.Default.Info($"处理装备物品: {nCount}个");
+
                             _player.SetSystemFlag((int)MirCommon.SystemFlag.SF_EQUIPMENTLOADED, true);
+
+                            
+                            try
+                            {
+                                for (int s = 0; s < (int)EquipSlot.Max; s++)
+                                {
+                                    try { _player.Equipment.Unequip((EquipSlot)s); } catch { }
+                                }
+                            }
+                            catch { }
+
                             for (int i = 0; i < nCount; i++)
                             {
-                                // 这里需要根据实际实现调整
-                                // var item = pItemArray[i].item;
-                                // _player.EquipItem(pItemArray[i].pos, pItemArray[i].item, true);
-                                // pItemArray[i].item = item;
-                                LogManager.Default.Debug($"处理装备物品: {i + 1}/{nCount}");
+                                var dbItem = pItemArray[i];
+                                var inst = CreateItemInstanceFromDbItem(dbItem);
+                                if (inst == null)
+                                    continue;
+
+                                int posInt = dbItem.wPos;
+                                if (posInt < 0) posInt = 0;
+                                if (posInt >= (int)EquipSlot.Max) posInt = (int)EquipSlot.Max - 1;
+                                var slot = (EquipSlot)posInt;
+
+                                bool equipped = false;
+                                try
+                                {
+                                    equipped = _player.Equipment.Equip(slot, inst);
+                                }
+                                catch (Exception ex)
+                                {
+                                    LogManager.Default.Warning($"装备装载异常: pos={dbItem.wPos}, err={ex.Message}");
+                                }
+
+                                if (!equipped)
+                                {
+                                    _player.Inventory.AddItem(inst);
+                                }
                             }
-                            // 设置装备数据加载完成
+
                             _equipmentLoaded = true;
-                            LogManager.Default.Debug($"装备数据加载完成");
-                            // 发送装备信息
+                            LogManager.Default.Debug("装备数据加载完成");
+
                             SendEquipments();
                             CheckAllDataLoaded();
                         }
@@ -2010,18 +2334,14 @@ namespace GameServer
                     case (byte)ItemDataFlag.IDF_PETBANK:
                         {
                             LogManager.Default.Info($"处理宠物仓库物品: {nCount}个");
-                            // 从DBITEM数组中提取Item数组
                             var items = new MirCommon.Item[nCount];
                             for (int i = 0; i < nCount; i++)
                             {
                                 items[i] = pItemArray[i].item;
                             }
-                            // 调用HumanPlayer的OnPetBank方法
                             _player.OnPetBank(items, nCount);
-                            LogManager.Default.Debug($"处理宠物仓库物品: {nCount}个");
-                            // 设置宠物仓库数据加载完成
                             _petBankLoaded = true;
-                            LogManager.Default.Debug($"宠物仓库数据加载完成");
+                            LogManager.Default.Debug("宠物仓库数据加载完成");
                             CheckAllDataLoaded();
                         }
                         break;
@@ -2036,9 +2356,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 处理创建物品（OnCreateItem）
-        /// </summary>
+        
+        
+        
         private void OnCreateItem(MirCommon.Item item, int pos, byte btFlag)
         {
             try
@@ -2051,17 +2371,80 @@ namespace GameServer
                     return;
                 }
 
+                
+                
+                ItemInstance? instance = null;
+                try
+                {
+                    string name = NormalizeItemName(item.baseitem.szName);
+                    if (string.IsNullOrWhiteSpace(name))
+                        throw new InvalidOperationException("物品名称为空");
+
+                    var def = ItemManager.Instance.GetDefinitionByName(name);
+                    if (def == null)
+                        throw new InvalidOperationException($"未找到物品定义: {name}");
+
+                    instance = ItemManager.Instance.CreateItem(def.ItemId, 1);
+                    if (instance != null)
+                    {
+                        instance.Durability = item.wCurDura;
+                        instance.MaxDurability = item.wMaxDura;
+
+                        
+                        
+                        if (item.dwMakeIndex != 0)
+                            instance.InstanceId = item.dwMakeIndex;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    LogManager.Default.Warning($"创建ItemInstance失败，后续仅记录: {ex.Message}");
+                }
+
                 if (btFlag == (byte)ItemDataFlag.IDF_BAG)
                 {
-                    // 这里需要根据实际实现调整
-                    // _player.AddBagItem(item);
-                    LogManager.Default.Debug($"创建背包物品: 位置={pos}");
+                    
+                    if (instance == null)
+                    {
+                        LogManager.Default.Warning($"创建背包物品失败(实例为空): makeIndex={item.dwMakeIndex}");
+                        return;
+                    }
+
+                    bool added = _player.AddItem(instance);
+                    if (!added)
+                    {
+                        
+                        LogManager.Default.Warning($"背包已满，尝试掉落物品: makeIndex={item.dwMakeIndex}");
+                        if (_player.CurrentMap != null)
+                        {
+                            DownItemMgr.Instance.DropItem(_player.CurrentMap, instance, (ushort)_player.X, (ushort)_player.Y, _player.ObjectId);
+                        }
+                    }
+                    else
+                    {
+                        
+                        SendWeightChangedMessage();
+                    }
+
+                    LogManager.Default.Debug($"创建背包物品完成: 位置={pos}, makeIndex={item.dwMakeIndex}");
                 }
                 else
                 {
-                    // 这里需要根据实际实现调整
-                    // _player.DropItem(item);
-                    LogManager.Default.Debug($"创建掉落物品: 位置={pos}");
+                    
+                    if (instance == null)
+                    {
+                        LogManager.Default.Warning($"创建掉落物品失败(实例为空): makeIndex={item.dwMakeIndex}");
+                        return;
+                    }
+
+                    if (_player.CurrentMap == null)
+                    {
+                        LogManager.Default.Warning($"玩家不在地图上，无法掉落物品: {item.dwMakeIndex}");
+                        return;
+                    }
+
+                    DownItemMgr.Instance.DropItem(_player.CurrentMap, instance, (ushort)_player.X, (ushort)_player.Y, _player.ObjectId);
+                    LogManager.Default.Debug($"创建掉落物品完成: makeIndex={item.dwMakeIndex}");
                 }
             }
             catch (Exception ex)
@@ -2070,9 +2453,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送背包物品（SendBagItems）
-        /// </summary>
+        
+        
+        
         private void SendBagItems(MirCommon.Database.DBITEM[] pItems, int count)
         {
             try
@@ -2081,58 +2464,64 @@ namespace GameServer
 
                 LogManager.Default.Info($"发送背包物品: {count}个");
 
-                // 限制数量
+                
                 if (count > 100) count = 100;
 
-                // 创建ItemClient数组
+                
                 var items = new MirCommon.ItemClient[count];
                 for (int i = 0; i < count; i++)
                 {
-                    // 将DBITEM.item转换为ItemClient
+                    
                     var dbItem = pItems[i];
+                    var inst = CreateItemInstanceFromDbItem(in dbItem);
+
+                    var baseItem = dbItem.item.baseitem;
+                    uint makeIndex = dbItem.item.dwMakeIndex;
+                    ushort curDura = dbItem.item.wCurDura;
+                    ushort maxDura = dbItem.item.wMaxDura;
+                    if (inst != null)
+                    {
+                        baseItem = ItemPacketBuilder.BuildBaseItem(inst);
+                        makeIndex = unchecked((uint)inst.InstanceId);
+                        curDura = (ushort)Math.Clamp(inst.Durability, 0, ushort.MaxValue);
+                        maxDura = (ushort)Math.Clamp(inst.MaxDurability, 0, ushort.MaxValue);
+                    }
+
                     items[i] = new MirCommon.ItemClient
                     {
-                        baseitem = dbItem.item.baseitem,
-                        dwMakeIndex = dbItem.item.dwMakeIndex,
-                        wCurDura = dbItem.item.wCurDura,
-                        wMaxDura = dbItem.item.wMaxDura
+                        baseitem = baseItem,
+                        dwMakeIndex = makeIndex,
+                        wCurDura = curDura,
+                        wMaxDura = maxDura
                     };
                     LogManager.Default.Debug($"转换物品 {i + 1}/{count}: ID={dbItem.item.dwMakeIndex}, 名称={dbItem.item.baseitem.szName}");
                 }
 
-                // 发送背包物品消息（使用SM_BAGINFO命令）
-                // 注意：SM_BAGINFO命令需要发送ITEMCLIENT数组
+                
+                
                 byte[] itemsData = StructArrayToBytes(items);
                 LogManager.Default.Info($"发送背包物品数据: ItemClient数组大小={itemsData.Length}字节, 物品数量={count}, 每个ItemClient大小={System.Runtime.InteropServices.Marshal.SizeOf<MirCommon.ItemClient>()}字节");
                 SendMsg2(_player.ObjectId, GameMessageHandler.ServerCommands.SM_BAGINFO, 0, 0, (ushort)count, itemsData);
 
-                // 发送重量变化
+                
                 SendWeightChangedMessage();
 
-                // 发送物品位置信息
-                var itempos = new MirCommon.Database.BAGITEMPOS[count];
+                
                 var bagItemPos = new MirCommon.BAGITEMPOS[count];
                 for (int i = 0; i < count; i++)
                 {
-                    itempos[i] = new MirCommon.Database.BAGITEMPOS
-                    {
-                        dwItemIndex = pItems[i].item.dwMakeIndex,
-                        btFlag = pItems[i].btFlag,
-                        wPos = pItems[i].wPos
-                    };
-                    
-                    // 转换为HumanPlayer需要的BAGITEMPOS格式
                     bagItemPos[i] = new MirCommon.BAGITEMPOS
                     {
                         ItemId = pItems[i].item.dwMakeIndex,
                         wPos = pItems[i].wPos
                     };
                     
-                    LogManager.Default.Debug($"设置物品位置 {i + 1}/{count}: ID={itempos[i].dwItemIndex}, 位置={itempos[i].wPos}, 标志={itempos[i].btFlag}");
+                    LogManager.Default.Debug($"设置物品位置 {i + 1}/{count}: ID={bagItemPos[i].ItemId}, 位置={bagItemPos[i].wPos}");
                 }
 
                 _player.SetBagItemPos(bagItemPos, count);
-                byte[] itemposData = StructArrayToBytes(itempos);
+                
+                byte[] itemposData = StructArrayToBytes(bagItemPos);
                 SendMsg2(0, GameMessageHandler.ServerCommands.SM_SETITEMPOSITION, 0, 0, (ushort)count, itemposData);
             }
             catch (Exception ex)
@@ -2141,9 +2530,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送装备信息（SendEquipments）
-        /// </summary>
+        
+        
+        
         private void SendEquipments()
         {
             try
@@ -2156,15 +2545,29 @@ namespace GameServer
                 var equipments = new MirCommon.EQUIPMENT[20];
                 int count = _player.GetEquipments(equipments);
 
-                SendMsg2(0, GameMessageHandler.ServerCommands.SM_EQUIPMENTS, 0, 0, 0, null, equipments);
+                
+                if (count < 0) count = 0;
+                if (count > equipments.Length) count = equipments.Length;
+
+                var sendEquipments = new MirCommon.EQUIPMENT[count];
+                if (count > 0)
+                {
+                    Array.Copy(equipments, sendEquipments, count);
+                }
+
+                byte[] equipData = StructArrayToBytes(sendEquipments);
+                SendMsg2(0, GameMessageHandler.ServerCommands.SM_EQUIPMENTS, 0, 0, 0, equipData);
+
+                
+                _player.SendAllEquipmentDura();
 
                 _player.SendFeatureChanged();
                 _player.UpdateProp();
                 _player.UpdateSubProp();
                 _player.SendStatusChanged();
 
-                // 发送进入游戏成功消息
-                SendEnterGameOk();
+                
+                TrySendEnterGameOk();
             }
             catch (Exception ex)
             {
@@ -2172,56 +2575,16 @@ namespace GameServer
             }
         }
 
-        ///// <summary>
-        ///// 发送消息（带数据）
-        ///// </summary>
-        //private void SendMsg(uint dwFlag, ushort wCmd, ushort wParam1, ushort wParam2, ushort wParam3, byte[]? payload, object? data = null)
-        //{
-        //    try
-        //    {
-        //        if (data != null)
-        //        {
-        //            // 将对象序列化为字节数组
-        //            int size = System.Runtime.InteropServices.Marshal.SizeOf(data);
-        //            byte[] dataBytes = new byte[size];
-        //            IntPtr ptr = System.Runtime.InteropServices.Marshal.AllocHGlobal(size);
-        //            try
-        //            {
-        //                System.Runtime.InteropServices.Marshal.StructureToPtr(data, ptr, false);
-        //                System.Runtime.InteropServices.Marshal.Copy(ptr, dataBytes, 0, size);
-        //            }
-        //            finally
-        //            {
-        //                System.Runtime.InteropServices.Marshal.FreeHGlobal(ptr);
-        //            }
-
-        //            GameMessageHandler.SendSimpleMessage(_stream, dwFlag, wCmd, wParam1, wParam2, wParam3, dataBytes);
-        //        }
-        //        else if (payload != null)
-        //        {
-        //            GameMessageHandler.SendSimpleMessage(_stream, dwFlag, wCmd, wParam1, wParam2, wParam3, payload);
-        //        }
-        //        else
-        //        {
-        //            GameMessageHandler.SendSimpleMessage(_stream, dwFlag, wCmd, wParam1, wParam2, wParam3);
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        LogManager.Default.Error($"发送消息失败: {ex.Message}");
-        //    }
-        //}
-
-        /// <summary>
-        /// 发送消息（带数据）
-        /// </summary>
+        
+        
+        
         private void SendMsg2(uint dwFlag, ushort wCmd, ushort wParam1, ushort wParam2, ushort wParam3, byte[]? payload, object? data = null)
         {
             try
             {
                 if (data != null)
                 {
-                    // 将对象序列化为字节数组
+                    
                     int size = System.Runtime.InteropServices.Marshal.SizeOf(data);
                     byte[] dataBytes = new byte[size];
                     IntPtr ptr = System.Runtime.InteropServices.Marshal.AllocHGlobal(size);
@@ -2252,9 +2615,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 从字节数组的指定偏移量转换为结构体
-        /// </summary>
+        
+        
+        
         private T BytesToStruct<T>(byte[] bytes, int offset, int size) where T : struct
         {
             if (offset + size > bytes.Length)
@@ -2265,18 +2628,16 @@ namespace GameServer
             return BytesToStruct<T>(slice);
         }
 
-        /// <summary>
-        /// 发送重量变化消息
-        /// </summary>
+        
+        
+        
         private void SendWeightChangedMessage()
         {
             try
             {
                 if (_player == null) return;
 
-                // 发送重量变化消息
-                GameMessageHandler.SendSimpleMessage2(_stream, 0,
-                    GameMessageHandler.ServerCommands.SM_WEIGHTCHANGED, 0, 0, 0);
+                _player.SendWeightChanged();
             }
             catch (Exception ex)
             {
@@ -2284,9 +2645,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 将结构体数组转换为字节数组
-        /// </summary>
+        
+        
+        
         private byte[] StructArrayToBytes<T>(T[] array) where T : struct
         {
             if (array == null || array.Length == 0)
@@ -2312,9 +2673,27 @@ namespace GameServer
             return result;
         }
 
-        /// <summary>
-        /// 检查所有数据是否已加载（CheckAllDataLoaded）
-        /// </summary>
+        private static byte[] StructToBytes<T>(T structure) where T : struct
+        {
+            int size = System.Runtime.InteropServices.Marshal.SizeOf<T>();
+            byte[] bytes = new byte[size];
+            IntPtr ptr = System.Runtime.InteropServices.Marshal.AllocHGlobal(size);
+            try
+            {
+                System.Runtime.InteropServices.Marshal.StructureToPtr(structure, ptr, false);
+                System.Runtime.InteropServices.Marshal.Copy(ptr, bytes, 0, size);
+            }
+            finally
+            {
+                System.Runtime.InteropServices.Marshal.FreeHGlobal(ptr);
+            }
+
+            return bytes;
+        }
+
+        
+        
+        
         private void CheckAllDataLoaded()
         {
             try
@@ -2323,14 +2702,15 @@ namespace GameServer
 
                 LogManager.Default.Debug($"检查数据加载状态: 背包={_bagLoaded}, 装备={_equipmentLoaded}, 技能={_magicLoaded}, 任务={_taskInfoLoaded}, 升级物品={_upgradeItemLoaded}, 宠物仓库={_petBankLoaded}, 仓库={_bankLoaded}");
 
-                // 检查所有必需的数据是否已加载
-                // 1. 背包数据 (_bagLoaded)
-                // 2. 装备数据 (_equipmentLoaded)
-                // 3. 技能数据 (_magicLoaded)
-                // 4. 任务数据 (_taskInfoLoaded)
-                // 5. 升级物品数据 (_upgradeItemLoaded)
-                // 6. 宠物仓库数据 (_petBankLoaded)
-                // 7. 仓库数据 (_bankLoaded)
+                
+                
+                
+                
+                
+                
+                
+                
+                
 
                 bool allDataLoaded = _bagLoaded && _equipmentLoaded && _magicLoaded &&
                                     _taskInfoLoaded && _upgradeItemLoaded &&
@@ -2340,37 +2720,78 @@ namespace GameServer
                 {
                     LogManager.Default.Info($"所有数据已加载完成: {_player.Name}");
 
-                    // 所有数据加载完成，执行后续操作
+                    
+                    
 
-                    // 1. 设置玩家状态为已加载完成
+                    
                     _player.SetSystemFlag((int)MirCommon.SystemFlag.SF_ALLDATALOADED, true);
 
-                    // 2. 发送进入游戏成功消息（如果还没有发送）
-                    if (!_player.GetSystemFlag((int)MirCommon.SystemFlag.SF_ENTERGAMESENT))
-                    {
-                        SendEnterGameOk();
-                        _player.SetSystemFlag((int)MirCommon.SystemFlag.SF_ENTERGAMESENT, true);
-                    }
+                    
+                    
+                    TrySendEnterGameOk();
 
-                    // 3. 更新玩家属性
+                    
                     _player.UpdateProp();
                     _player.UpdateSubProp();
 
-                    // 4. 发送状态变化
+                    
                     _player.SendStatusChanged();
 
-                    // 5. 发送特征变化
+                    
                     _player.SendFeatureChanged();
 
-                    // 6. 发送重量变化
+                    
                     SendWeightChangedMessage();
 
-                    // 7. 如果是第一次登录，执行首次登录处理
+                    
                     if (_player.IsFirstLogin)
                     {
-                        LogManager.Default.Info($"玩家第一次登录: {_player.Name}");
-                        // 这里可以添加首次登录的特殊处理
-                        // 例如：发送欢迎消息、赠送新手物品等
+                        try
+                        {
+                            LogManager.Default.Info($"玩家第一次登录: {_player.Name}");
+
+                            var first = GameWorld.Instance.GetFirstLoginInfo();
+                            if (first != null)
+                            {
+                                
+                                if (first.Level > 0 && _player.Level < first.Level)
+                                {
+                                    _player.Level = (byte)Math.Clamp(first.Level, 1, 255);
+                                }
+
+                                if (first.Gold > 0 && _player.Gold < first.Gold)
+                                {
+                                    _player.Gold = first.Gold;
+                                    _player.SendMoneyChanged(MoneyType.Gold);
+                                }
+
+                                
+                                foreach (var it in first.Items)
+                                {
+                                    if (it == null || string.IsNullOrWhiteSpace(it.ItemName))
+                                        continue;
+
+                                    int giveCount = Math.Max(1, it.Count);
+                                    for (int i = 0; i < giveCount; i++)
+                                    {
+                                        if (!_player.CreateBagItem(it.ItemName, silence: false))
+                                        {
+                                            LogManager.Default.Warning($"首次登录发放物品失败: player={_player.Name}, item={it.ItemName}");
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+
+                            
+                            _player.IsFirstLogin = false;
+                            var dbClient = _server.GetDbServerClient();
+                            _player.UpdateToDB(dbClient);
+                        }
+                        catch (Exception ex)
+                        {
+                            LogManager.Default.Warning($"首次登录处理失败: {_player.Name} - {ex.Message}");
+                        }
                     }
 
                     LogManager.Default.Info($"玩家数据加载完成: {_player.Name}");
@@ -2386,16 +2807,16 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 处理DBServer消息（从GameServerApp分发）
-        /// </summary>
+        
+        
+        
         public void HandleDbServerMessage(MirCommon.MirMsg msg)
         {
             try
             {
                 LogManager.Default.Info($"GameClient收到转发的DBServer消息: Cmd=0x{msg.wCmd:X4}, Flag=0x{msg.dwFlag:X8}, w1={msg.wParam[0]}, w2={msg.wParam[1]}, w3={msg.wParam[2]}, 数据长度={msg.data?.Length ?? 0}字节");
 
-                // 调用现有的OnDBMsg方法处理消息
+                
                 _ = OnDBMsg(msg, msg.data?.Length ?? 0);
             }
             catch (Exception ex)
@@ -2404,37 +2825,50 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取客户端Key
-        /// </summary>
+        
+        
+        
         public uint GetClientKey()
         {
             return _clientKey;
         }
 
-        /// <summary>
-        /// 检查消息是否属于当前客户端（IsMessageForMe）
-        /// </summary>
+        
+        
+        
         private bool IsMessageForMe(MirMsg pMsg)
         {
             try
             {
-                // DBServer返回的消息使用dwFlag字段标识目标客户端
-                // 如果dwFlag == 0，消息是发给服务器的
-                // 如果dwFlag != 0，消息是发给特定客户端的，dwFlag就是clientKey
                 
-                // 对于客户端级别消息，dwFlag应该等于_clientKey
-                if (pMsg.dwFlag != 0)
+                
+                
+                
+                
+
+                if (pMsg.wCmd == (ushort)DbMsg.DM_QUERYITEMS)
                 {
-                    return pMsg.dwFlag == _clientKey;
+                    if (pMsg.data == null || pMsg.data.Length < 4) return false;
+                    uint keyInData = BitConverter.ToUInt32(pMsg.data, 0);
+                    return keyInData == _clientKey;
                 }
-                
-                // 对于服务器级别消息（dwFlag == 0），需要进一步检查
-                // 某些服务器级别消息可能包含clientKey在wParam中
-                // 例如：DM_GETCHARDBINFO消息，clientKey在wParam1和wParam2中
-                
-                // 检查clientKey
-                // DBServer发送时：wParam1=clientKey低16位, wParam2=clientKey高16位
+
+                if (pMsg.wCmd == (ushort)DbMsg.DM_GETCHARDBINFO)
+                {
+                    if (pMsg.data == null || pMsg.data.Length < 4) return false;
+                    try
+                    {
+                        var charDbInfo = BytesToStruct<MirCommon.Database.CHARDBINFO>(pMsg.data);
+                        return charDbInfo.dwClientKey == _clientKey;
+                    }
+                    catch
+                    {
+                        
+                        uint keyFallback = (uint)((pMsg.wParam[1] << 16) | pMsg.wParam[0]);
+                        return keyFallback == _clientKey;
+                    }
+                }
+
                 uint key = (uint)((pMsg.wParam[1] << 16) | pMsg.wParam[0]);
                 return key == _clientKey;
             }
@@ -2443,6 +2877,157 @@ namespace GameServer
                 LogManager.Default.Error($"检查消息归属失败: {ex.Message}");
                 return false;
             }
+        }
+
+        private async Task HandleZuoyi(MirMsgOrign msg, byte[] payload)
+        {
+            
+            
+            await Task.CompletedTask;
+        }
+
+        private async Task HandleChangeGroupMode(MirMsgOrign msg, byte[] payload)
+        {
+            
+            
+            await Task.CompletedTask;
+        }
+
+        private async Task HandleQueryAddGroupMember(MirMsgOrign msg, byte[] payload)
+        {
+            if (_player == null)
+            {
+                await Task.CompletedTask;
+                return;
+            }
+
+            
+            string targetName = payload != null && payload.Length > 0
+                ? Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0')
+                : string.Empty;
+
+            if (string.IsNullOrWhiteSpace(targetName))
+            {
+                _player.SaySystem("玩家名为空");
+                return;
+            }
+
+            var target = HumanPlayerMgr.Instance.FindByName(targetName);
+            if (target == null)
+            {
+                _player.SaySystem("玩家不存在");
+                return;
+            }
+
+            
+            var group = GroupObjectManager.Instance.GetPlayerGroup(_player);
+            if (group == null)
+            {
+                group = GroupObjectManager.Instance.CreateGroup(_player, target);
+                if (group == null)
+                    _player.SaySystem("无法创建小组");
+            }
+            else
+            {
+                if (!group.AddMember(target))
+                    _player.SaySystem("无法加入小组");
+            }
+
+            await Task.CompletedTask;
+        }
+
+        private async Task HandleDeleteGroupMember(MirMsgOrign msg, byte[] payload)
+        {
+            if (_player == null)
+            {
+                await Task.CompletedTask;
+                return;
+            }
+
+            string targetName = payload != null && payload.Length > 0
+                ? Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0')
+                : string.Empty;
+
+            var group = GroupObjectManager.Instance.GetPlayerGroup(_player);
+            if (group == null)
+            {
+                _player.SaySystem("您没有加入小组");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(targetName))
+            {
+                
+                group.LeaveMember(_player);
+                return;
+            }
+
+            var target = HumanPlayerMgr.Instance.FindByName(targetName);
+            if (target == null)
+            {
+                _player.SaySystem("玩家不存在");
+                return;
+            }
+
+            
+            if (!group.IsLeader(_player))
+            {
+                _player.SaySystem("只有队长才能踢人");
+                return;
+            }
+
+            group.DelMember(target);
+            await Task.CompletedTask;
+        }
+
+        private async Task HandleQueryStartPrivateShop(MirMsgOrign msg, byte[] payload)
+        {
+            if (_player == null)
+            {
+                await Task.CompletedTask;
+                return;
+            }
+
+            
+            string shopName = payload != null && payload.Length > 0
+                ? Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0')
+                : string.Empty;
+
+            if (string.IsNullOrWhiteSpace(shopName))
+                shopName = $"{_player.Name}的摊位";
+
+            var stall = StallManager.Instance.GetPlayerStall(_player.ObjectId);
+            if (stall == null)
+            {
+                stall = StallManager.Instance.CreateStall(
+                    _player.ObjectId,
+                    _player.Name,
+                    shopName,
+                    (uint)_player.MapId,
+                    (ushort)_player.X,
+                    (ushort)_player.Y);
+            }
+
+            if (stall == null)
+            {
+                _player.SaySystem("无法开启个人商店");
+                return;
+            }
+
+            StallManager.Instance.OpenStall(stall.StallId, _player.ObjectId);
+            _player.SaySystem($"个人商店已开启: {stall.Name}");
+
+            await Task.CompletedTask;
+        }
+
+        
+        private async Task HandleQueryTime(MirMsgOrign msg, byte[] payload)
+        {
+            
+            uint currentTime = (uint)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
+            GameMessageHandler.SendSimpleMessage2(_stream, currentTime,
+                GameMessageHandler.ServerCommands.SM_TIMERESPONSE, 0, 0, 0);
+            await Task.CompletedTask;
         }
     }
 }

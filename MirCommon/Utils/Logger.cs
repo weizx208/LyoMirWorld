@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace MirCommon.Utils
 {
-    /// <summary>
-    /// 日志级别
-    /// </summary>
+    
+    
+    
     public enum LogLevel
     {
         Debug,
@@ -18,9 +18,9 @@ namespace MirCommon.Utils
         Fatal
     }
 
-    /// <summary>
-    /// 日志消息
-    /// </summary>
+    
+    
+    
     public class LogMessage
     {
         public DateTime Timestamp { get; set; }
@@ -30,9 +30,9 @@ namespace MirCommon.Utils
         public Exception? Exception { get; set; }
     }
 
-    /// <summary>
-    /// 日志记录器
-    /// </summary>
+    
+    
+    
     public class Logger : IDisposable
     {
         private readonly string _logDirectory;
@@ -110,7 +110,7 @@ namespace MirCommon.Utils
             }
             catch (OperationCanceledException)
             {
-                // 正常关闭
+                
             }
         }
 
@@ -118,7 +118,7 @@ namespace MirCommon.Utils
         {
             string formattedMessage = FormatMessage(message);
 
-            // 写入控制台
+            
             if (_writeToConsole)
             {
                 ConsoleColor originalColor = Console.ForegroundColor;
@@ -127,7 +127,7 @@ namespace MirCommon.Utils
                 Console.ForegroundColor = originalColor;
             }
 
-            // 写入文件
+            
             if (_writeToFile)
             {
                 string logFile = Path.Combine(_logDirectory, $"log_{DateTime.Now:yyyyMMdd}.txt");
@@ -137,7 +137,7 @@ namespace MirCommon.Utils
                 }
                 catch
                 {
-                    // 忽略文件写入错误
+                    
                 }
             }
         }
@@ -185,7 +185,7 @@ namespace MirCommon.Utils
                 }
                 catch
                 {
-                    // 忽略超时
+                    
                 }
 
                 _messageQueue.Dispose();
@@ -195,9 +195,9 @@ namespace MirCommon.Utils
         }
     }
 
-    /// <summary>
-    /// 全局日志管理器
-    /// </summary>
+    
+    
+    
     public static class LogManager
     {
         private static Logger? _defaultLogger;

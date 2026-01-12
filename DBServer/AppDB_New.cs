@@ -6,18 +6,12 @@ using SERVER_ERROR = MirCommon.SERVER_ERROR;
 
 namespace DBServer
 {
-    /// <summary>
-    /// 新的数据库操作类，支持多种数据库
-    /// </summary>
     public class AppDB_New
     {
         private readonly IDatabase _database;
         private readonly ErrorHandler? _errorHandler;
         private readonly ConnectionHealthChecker? _healthChecker;
         
-        /// <summary>
-        /// 从配置创建数据库实例
-        /// </summary>
         public AppDB_New(string dbType, string server, string database, string userId, string password, string sqlitePath = "")
         {
             var config = DatabaseConfig.FromConfigString(dbType, server, database, userId, password, sqlitePath);
@@ -26,9 +20,6 @@ namespace DBServer
             _healthChecker = new ConnectionHealthChecker(_errorHandler, TimeSpan.FromMinutes(1));
         }
         
-        /// <summary>
-        /// 从数据库配置创建实例
-        /// </summary>
         public AppDB_New(DatabaseConfig config)
         {
             _database = DatabaseFactory.CreateDatabaseFromConfig(config);
@@ -36,33 +27,21 @@ namespace DBServer
             _healthChecker = new ConnectionHealthChecker(_errorHandler, TimeSpan.FromMinutes(1));
         }
         
-        /// <summary>
-        /// 启动健康检查
-        /// </summary>
         public void StartHealthCheck()
         {
             _healthChecker?.Start();
         }
         
-        /// <summary>
-        /// 停止健康检查
-        /// </summary>
         public void StopHealthCheck()
         {
             _healthChecker?.Stop();
         }
         
-        /// <summary>
-        /// 获取错误统计信息
-        /// </summary>
         public ErrorStatistics? GetErrorStatistics()
         {
             return _errorHandler?.GetErrorStatistics();
         }
         
-        /// <summary>
-        /// 打开数据库连接
-        /// </summary>
         public SERVER_ERROR OpenDataBase()
         {
             if (_errorHandler == null)
@@ -74,9 +53,6 @@ namespace DBServer
             return (SERVER_ERROR)result;
         }
         
-        /// <summary>
-        /// 检查账号密码
-        /// </summary>
         public SERVER_ERROR CheckAccount(string account, string password)
         {
             if (_errorHandler == null)
@@ -87,10 +63,6 @@ namespace DBServer
             var result = _errorHandler.ExecuteWithRetry(() => (MirCommon.SERVER_ERROR)_database.CheckAccount(account, password), "检查账号密码");
             return (SERVER_ERROR)result;
         }
-        
-        /// <summary>
-        /// 检查账号是否存在
-        /// </summary>
         public SERVER_ERROR CheckAccountExist(string account)
         {
             if (_errorHandler == null)
@@ -102,9 +74,6 @@ namespace DBServer
             return (SERVER_ERROR)result;
         }
         
-        /// <summary>
-        /// 创建账号
-        /// </summary>
         public SERVER_ERROR CreateAccount(string account, string password, string name, string birthday,
                                          string q1, string a1, string q2, string a2, string email,
                                          string phoneNumber, string mobilePhoneNumber, string idCard)
@@ -120,18 +89,13 @@ namespace DBServer
             return (SERVER_ERROR)result;
         }
         
-        /// <summary>
-        /// 修改密码
-        /// </summary>
         public SERVER_ERROR ChangePassword(string account, string oldPassword, string newPassword)
         {
             try
             {
-                // 先验证旧密码
                 if (CheckAccount(account, oldPassword) != SERVER_ERROR.SE_OK)
                     return SERVER_ERROR.SE_FAIL;
                 
-                // 修改密码逻辑在数据库实现中处理
                 return _database.ChangePassword(account, oldPassword, newPassword);
             }
             catch
@@ -140,17 +104,11 @@ namespace DBServer
             }
         }
         
-        /// <summary>
-        /// 查询角色列表
-        /// </summary>
         public SERVER_ERROR GetCharList(string account, string serverName, out string charListData)
         {
             return _database.GetCharList(account, serverName, out charListData);
         }
         
-        /// <summary>
-        /// 创建角色（向后兼容版本，使用默认等级1）
-        /// </summary>
         public SERVER_ERROR CreateCharacter(string account, string serverName, string name, byte job, byte hair, byte sex)
         {
             if (_errorHandler == null)
@@ -164,9 +122,6 @@ namespace DBServer
             return (SERVER_ERROR)result;
         }
         
-        /// <summary>
-        /// 创建角色（完整版本，包含等级参数）
-        /// </summary>
         public SERVER_ERROR CreateCharacter(string account, string serverName, string name, byte job, byte hair, byte sex, byte level)
         {
             if (_errorHandler == null)
@@ -180,9 +135,6 @@ namespace DBServer
             return (SERVER_ERROR)result;
         }
         
-        /// <summary>
-        /// 创建角色（使用CREATECHARDESC结构）
-        /// </summary>
         public SERVER_ERROR CreateCharacter(CREATECHARDESC desc)
         {
             if (_errorHandler == null)
@@ -196,25 +148,16 @@ namespace DBServer
             return (SERVER_ERROR)result;
         }
         
-        /// <summary>
-        /// 删除角色（标记为已删除）
-        /// </summary>
         public SERVER_ERROR DelCharacter(string account, string serverName, string name)
         {
             return _database.DelCharacter(account, serverName, name);
         }
         
-        /// <summary>
-        /// 恢复角色
-        /// </summary>
         public SERVER_ERROR RestoreCharacter(string account, string serverName, string name)
         {
             return _database.RestoreCharacter(account, serverName, name);
         }
         
-        /// <summary>
-        /// 获取角色数据库信息
-        /// </summary>
         public SERVER_ERROR GetCharDBInfo(string account, string serverName, string name, out byte[] charData)
         {
             if (_errorHandler == null)
@@ -231,9 +174,6 @@ namespace DBServer
             return (SERVER_ERROR)result;
         }
         
-        /// <summary>
-        /// 保存角色数据库信息
-        /// </summary>
         public SERVER_ERROR PutCharDBInfo(string account, string serverName, string name, byte[] charData)
         {
             if (_errorHandler == null)
@@ -247,55 +187,36 @@ namespace DBServer
             return (SERVER_ERROR)result;
         }
         
-        /// <summary>
-        /// 查询物品
-        /// </summary>
         public SERVER_ERROR QueryItems(uint ownerId, byte flag, out byte[] itemsData)
         {
             return _database.QueryItems(ownerId, flag, out itemsData);
         }
         
-        /// <summary>
-        /// 更新物品
-        /// </summary>
         public SERVER_ERROR UpdateItems(uint ownerId, byte flag, byte[] itemsData)
         {
             return _database.UpdateItems(ownerId, flag, itemsData);
         }
         
-        /// <summary>
-        /// 查询技能
-        /// </summary>
         public SERVER_ERROR QueryMagic(uint ownerId, out byte[] magicData)
         {
             return _database.QueryMagic(ownerId, out magicData);
         }
         
-        /// <summary>
-        /// 更新技能
-        /// </summary>
         public SERVER_ERROR UpdateMagic(uint ownerId, byte[] magicData)
         {
             return _database.UpdateMagic(ownerId, magicData);
         }
         
-        /// <summary>
-        /// 执行SQL命令
-        /// </summary>
         public SERVER_ERROR ExecSqlCommand(string sql, out DataTable result)
         {
             return _database.ExecSqlCommand(sql, out result);
         }
         
-        /// <summary>
-        /// 关闭数据库连接
-        /// </summary>
         public void Close()
         {
             _database.Close();
         }
         
-        // 以下是新增接口方法的实现
         
         public SERVER_ERROR GetDelCharList(string account, string serverName, out string delCharListData)
         {

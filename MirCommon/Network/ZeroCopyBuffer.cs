@@ -5,15 +5,15 @@ using System.Runtime.InteropServices;
 
 namespace MirCommon.Network
 {
-    /// <summary>
-    /// 零拷贝缓冲区
-    /// </summary>
+    
+    
+    
     public unsafe sealed class ZeroCopyBuffer : IDisposable
     {
         #region 内部结构
-        /// <summary>
-        /// 缓冲区块
-        /// </summary>
+        
+        
+        
         public sealed class BufferBlock : IDisposable
         {
             public IntPtr RawPointer { get; private set; }
@@ -32,14 +32,14 @@ namespace MirCommon.Network
 
                 if (useUnmanagedMemory)
                 {
-                    // 使用非托管内存（零GC压力）
+                    
                     RawPointer = Marshal.AllocHGlobal(size);
                     ManagedArray = null;
                     IsPinned = false;
                 }
                 else
                 {
-                    // 使用托管数组并固定内存
+                    
                     ManagedArray = new byte[size];
                     MemoryHandle = ManagedArray.AsMemory().Pin();
                     RawPointer = (nint)MemoryHandle.Pointer;
@@ -76,7 +76,7 @@ namespace MirCommon.Network
                 }
                 else
                 {
-                    // 对于非托管内存，创建包装器
+                    
                     unsafe
                     {
                         void* pointer = (void*)RawPointer;
@@ -100,9 +100,9 @@ namespace MirCommon.Network
             }
         }
 
-        /// <summary>
-        /// 非托管内存管理器
-        /// </summary>
+        
+        
+        
         private sealed class UnmanagedMemoryManager<T> : MemoryManager<T> where T : unmanaged
         {
             private readonly unsafe T* _pointer;
@@ -126,12 +126,12 @@ namespace MirCommon.Network
 
             public override void Unpin()
             {
-                // 非托管内存不需要unpin操作
+                
             }
 
             protected override void Dispose(bool disposing)
             {
-                // 内存由外部管理，这里不释放
+                
             }
         }
         #endregion
@@ -141,7 +141,7 @@ namespace MirCommon.Network
         private const int MAX_BLOCK_SIZE = 65536;
         private const int MIN_BLOCK_SIZE = 1024;
         private const int MAX_POOL_SIZE = 1000;
-        private const int CLEANUP_INTERVAL_MS = 60000; // 1分钟清理一次
+        private const int CLEANUP_INTERVAL_MS = 60000; 
         #endregion
 
         #region 字段
@@ -153,32 +153,32 @@ namespace MirCommon.Network
         #endregion
 
         #region 属性
-        /// <summary>
-        /// 总分配块数
-        /// </summary>
+        
+        
+        
         public int TotalBlocks { get; private set; }
 
-        /// <summary>
-        /// 当前池中块数
-        /// </summary>
+        
+        
+        
         public int PooledBlocks { get; private set; }
 
-        /// <summary>
-        /// 总分配字节数
-        /// </summary>
+        
+        
+        
         public long TotalBytes { get; private set; }
 
-        /// <summary>
-        /// 是否使用非托管内存
-        /// </summary>
+        
+        
+        
         public bool UseUnmanagedMemory => _useUnmanagedMemory;
         #endregion
 
         #region 构造函数
-        /// <summary>
-        /// 创建零拷贝缓冲区池
-        /// </summary>
-        /// <param name="useUnmanagedMemory">是否使用非托管内存（零GC压力）</param>
+        
+        
+        
+        
         public ZeroCopyBuffer(bool useUnmanagedMemory = false)
         {
             _useUnmanagedMemory = useUnmanagedMemory;
@@ -189,11 +189,11 @@ namespace MirCommon.Network
         #endregion
 
         #region 公共方法
-        /// <summary>
-        /// 获取缓冲区（零拷贝）
-        /// </summary>
-        /// <param name="size">缓冲区大小</param>
-        /// <returns>缓冲区块</returns>
+        
+        
+        
+        
+        
         public BufferBlock Rent(int size = DEFAULT_BLOCK_SIZE)
         {
             if (_isDisposed)
@@ -204,10 +204,10 @@ namespace MirCommon.Network
             else if (size > MAX_BLOCK_SIZE)
                 size = MAX_BLOCK_SIZE;
 
-            // 对齐到最近的2的幂次方（优化内存分配）
+            
             size = AlignToPowerOfTwo(size);
 
-            // 尝试从池中获取
+            
             if (_pool.TryGetValue(size, out var stack) && stack.TryPop(out var block))
             {
                 var pooledBlocks = PooledBlocks;
@@ -217,7 +217,7 @@ namespace MirCommon.Network
                 return block;
             }
 
-            // 创建新块
+            
             block = new BufferBlock(size, _useUnmanagedMemory);
             var totalBlocks = TotalBlocks;
             Interlocked.Increment(ref totalBlocks);
@@ -227,16 +227,16 @@ namespace MirCommon.Network
             Interlocked.Add(ref totalBytes, size);
             TotalBytes = totalBytes;
 
-            // 定期清理
+            
             TryCleanup();
 
             return block;
         }
 
-        /// <summary>
-        /// 返回缓冲区到池中
-        /// </summary>
-        /// <param name="block">缓冲区块</param>
+        
+        
+        
+        
         public void Return(BufferBlock block)
         {
             if (_isDisposed || block == null)
@@ -244,12 +244,12 @@ namespace MirCommon.Network
 
             if (block.Size <= 0 || block.Size > MAX_BLOCK_SIZE)
             {
-                // 无效大小的块直接释放
+                
                 block.Dispose();
                 return;
             }
 
-            // 检查池是否已满
+            
             if (PooledBlocks >= MAX_POOL_SIZE)
             {
                 block.Dispose();
@@ -264,13 +264,13 @@ namespace MirCommon.Network
             block.UpdateUseTime();
         }
 
-        /// <summary>
-        /// 创建内存段（避免拷贝）
-        /// </summary>
-        /// <param name="data">原始数据</param>
-        /// <param name="offset">偏移量</param>
-        /// <param name="count">数据长度</param>
-        /// <returns>内存段</returns>
+        
+        
+        
+        
+        
+        
+        
         public (BufferBlock? block, Memory<byte> memory) CreateSegment(byte[] data, int offset, int count)
         {
             if (data == null || count <= 0)
@@ -279,11 +279,11 @@ namespace MirCommon.Network
             var block = Rent(count);
             var span = block.AsSpan();
 
-            // 只有需要时才拷贝数据
+            
             if (offset == 0 && data.Length == count)
             {
-                // 如果数据完全匹配，可以直接使用原始数组（避免拷贝）
-                // 这里为了安全还是拷贝，实际可以根据情况优化
+                
+                
                 data.AsSpan(0, count).CopyTo(span);
             }
             else
@@ -294,9 +294,9 @@ namespace MirCommon.Network
             return (block, block.AsMemory().Slice(0, count));
         }
 
-        /// <summary>
-        /// 创建内存段（从Span）
-        /// </summary>
+        
+        
+        
         public (BufferBlock? block, Memory<byte> memory) CreateSegment(ReadOnlySpan<byte> data)
         {
             if (data.IsEmpty)
@@ -307,10 +307,10 @@ namespace MirCommon.Network
             return (block, block.AsMemory().Slice(0, data.Length));
         }
 
-        /// <summary>
-        /// 清理过期缓冲区
-        /// </summary>
-        /// <param name="maxAgeMinutes">最大年龄（分钟）</param>
+        
+        
+        
+        
         public void Cleanup(int maxAgeMinutes = 10)
         {
             if (_isDisposed)
@@ -327,7 +327,7 @@ namespace MirCommon.Network
                     var stack = kvp.Value;
                     var tempList = new System.Collections.Generic.List<BufferBlock>();
 
-                    // 收集过期块
+                    
                     while (stack.TryPop(out var block))
                     {
                         if (now - block.LastUseTime > maxAge)
@@ -341,7 +341,7 @@ namespace MirCommon.Network
                         }
                     }
 
-                    // 将未过期的块放回
+                    
                     foreach (var block in tempList)
                     {
                         stack.Push(block);
@@ -355,9 +355,9 @@ namespace MirCommon.Network
             }
         }
 
-        /// <summary>
-        /// 获取统计信息
-        /// </summary>
+        
+        
+        
         public (int totalBlocks, int pooledBlocks, long totalBytes, bool useUnmanagedMemory) GetStatistics()
         {
             return (TotalBlocks, PooledBlocks, TotalBytes, _useUnmanagedMemory);
@@ -365,9 +365,9 @@ namespace MirCommon.Network
         #endregion
 
         #region 私有方法
-        /// <summary>
-        /// 对齐到2的幂次方
-        /// </summary>
+        
+        
+        
         private static int AlignToPowerOfTwo(int size)
         {
             if (size <= MIN_BLOCK_SIZE)
@@ -384,9 +384,9 @@ namespace MirCommon.Network
             return Math.Min(size, MAX_BLOCK_SIZE);
         }
 
-        /// <summary>
-        /// 尝试清理过期缓冲区
-        /// </summary>
+        
+        
+        
         private void TryCleanup()
         {
             var now = DateTime.UtcNow;
@@ -405,7 +405,7 @@ namespace MirCommon.Network
 
             _isDisposed = true;
 
-            // 释放所有缓冲区
+            
             foreach (var kvp in _pool)
             {
                 while (kvp.Value.TryPop(out var block))

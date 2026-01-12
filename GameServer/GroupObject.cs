@@ -6,9 +6,9 @@ using MirCommon.Network;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 组队对象
-    /// </summary>
+    
+    
+    
     public class GroupObject
     {
         private static uint _nextGroupId = 1;
@@ -23,9 +23,9 @@ namespace GameServer
             GroupId = _nextGroupId++;
         }
 
-        /// <summary>
-        /// 创建组队
-        /// </summary>
+        
+        
+        
         public bool Create(HumanPlayer leader, HumanPlayer firstMember)
         {
             lock (_lock)
@@ -47,9 +47,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 添加成员
-        /// </summary>
+        
+        
+        
         public bool AddMember(HumanPlayer member)
         {
             lock (_lock)
@@ -71,9 +71,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 是否是成员
-        /// </summary>
+        
+        
+        
         public bool IsMember(HumanPlayer player)
         {
             lock (_lock)
@@ -82,9 +82,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 是否是队长
-        /// </summary>
+        
+        
+        
         public bool IsLeader(HumanPlayer player)
         {
             lock (_lock)
@@ -93,9 +93,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 删除成员
-        /// </summary>
+        
+        
+        
         public void DelMember(HumanPlayer member)
         {
             lock (_lock)
@@ -124,9 +124,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 离开成员
-        /// </summary>
+        
+        
+        
         public void LeaveMember(HumanPlayer member)
         {
             lock (_lock)
@@ -156,9 +156,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解散组队
-        /// </summary>
+        
+        
+        
         public void DestroyGroup()
         {
             lock (_lock)
@@ -171,14 +171,14 @@ namespace GameServer
                 }
                 _members.Clear();
                 
-                // 从组队管理器中移除
+                
                 GroupObjectManager.Instance?.DestroyGroup(this);
             }
         }
 
-        /// <summary>
-        /// 发送消息给所有成员
-        /// </summary>
+        
+        
+        
         public void SendMessage(HumanPlayer sender, ushort cmd, ushort param1 = 0, ushort param2 = 0, ushort param3 = 0, byte[] data = null)
         {
             lock (_lock)
@@ -203,19 +203,19 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 发送聊天消息给所有成员（用于组队频道）
-        /// </summary>
+        
+        
+        
         public void SendChatMessage(HumanPlayer sender, string message)
         {
             lock (_lock)
             {
                 var chatMessage = new ChatMessage(sender.ObjectId, sender.Name, ChatChannel.TEAM, message);
                 
-                // 构建聊天消息包
+                
                 var builder = new PacketBuilder();
                 builder.WriteUInt32(0);
-                builder.WriteUInt16(0x290); // SM_CHATMESSAGE
+                builder.WriteUInt16(0x290); 
                 builder.WriteUInt16(0);
                 builder.WriteUInt16(0);
                 builder.WriteUInt16(0);
@@ -232,7 +232,7 @@ namespace GameServer
                 {
                     if (member != sender)
                     {
-                        // 设置接收者ID
+                        
                         var memberPacket = new byte[packet.Length];
                         Array.Copy(packet, memberPacket, packet.Length);
                         BitConverter.GetBytes(member.ObjectId).CopyTo(memberPacket, 0);
@@ -240,7 +240,7 @@ namespace GameServer
                     }
                 }
                 
-                // 也发送给发送者自己
+                
                 var senderPacket = new byte[packet.Length];
                 Array.Copy(packet, senderPacket, packet.Length);
                 BitConverter.GetBytes(sender.ObjectId).CopyTo(senderPacket, 0);
@@ -248,9 +248,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 更新成员列表
-        /// </summary>
+        
+        
+        
         private void UpdateNameList()
         {
             lock (_lock)
@@ -262,39 +262,39 @@ namespace GameServer
                 }
                 
                 var data = System.Text.Encoding.GetEncoding("GBK").GetBytes(nameList);
-                SendMessage(null, 0x28E, 0, 0, 0, data); // SM_GROUPMEMBERLIST
+                SendMessage(null, 0x28E, 0, 0, 0, data); 
             }
         }
 
-        /// <summary>
-        /// 发送系统消息
-        /// </summary>
+        
+        
+        
         private void SaySystemAttrib(uint attrib, string message)
         {
             lock (_lock)
             {
                 var data = System.Text.Encoding.GetEncoding("GBK").GetBytes(message);
-                SendMessage(null, 0x64, (ushort)(attrib & 0xFFFF), (ushort)(attrib >> 16), 0, data); // SM_SYSCHAT
+                SendMessage(null, 0x64, (ushort)(attrib & 0xFFFF), (ushort)(attrib >> 16), 0, data); 
             }
         }
 
-        /// <summary>
-        /// 发送组队解散消息
-        /// </summary>
+        
+        
+        
         private void SendGroupDestroyed()
         {
             lock (_lock)
             {
-                SendMessage(null, 0x28F, 0, 0, 0); // SM_GROUPDESTROYED
+                SendMessage(null, 0x28F, 0, 0, 0); 
             }
         }
 
-        /// <summary>
-        /// 获取最大组队人数
-        /// </summary>
+        
+        
+        
         private int GetMaxGroupMemberCount()
         {
-            // 从游戏变量中获取最大组队人数，默认10人
+            
             var gameVar = GameWorld.Instance?.GetGameVar(GameVarConstants.MaxGroupMember);
             if (gameVar.HasValue)
             {
@@ -303,9 +303,9 @@ namespace GameServer
             return 10;
         }
 
-        /// <summary>
-        /// 获取成员数量
-        /// </summary>
+        
+        
+        
         public int GetMemberCount()
         {
             lock (_lock)
@@ -314,9 +314,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取所有成员
-        /// </summary>
+        
+        
+        
         public List<HumanPlayer> GetAllMembers()
         {
             lock (_lock)
@@ -325,13 +325,14 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 调整组队经验
-        /// </summary>
+        
+        
+        
         public void AdjustGroupExp(HumanPlayer killer, uint exp, uint monsterId)
         {
             lock (_lock)
             {
+                
                 int aroundCount = 0;
                 var aroundList = new List<HumanPlayer>();
                 
@@ -364,9 +365,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 组队对象管理器
-    /// </summary>
+    
+    
+    
     public class GroupObjectManager
     {
         private static GroupObjectManager _instance;
@@ -377,9 +378,9 @@ namespace GameServer
 
         private GroupObjectManager() { }
 
-        /// <summary>
-        /// 创建组队
-        /// </summary>
+        
+        
+        
         public GroupObject CreateGroup(HumanPlayer leader, HumanPlayer firstMember)
         {
             lock (_lock)
@@ -394,9 +395,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取组队
-        /// </summary>
+        
+        
+        
         public GroupObject GetGroup(uint groupId)
         {
             lock (_lock)
@@ -405,9 +406,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解散组队
-        /// </summary>
+        
+        
+        
         public void DestroyGroup(GroupObject group)
         {
             lock (_lock)
@@ -416,9 +417,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取玩家的组队
-        /// </summary>
+        
+        
+        
         public GroupObject GetPlayerGroup(HumanPlayer player)
         {
             lock (_lock)
@@ -430,9 +431,9 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取所有组队
-        /// </summary>
+        
+        
+        
         public List<GroupObject> GetAllGroups()
         {
             lock (_lock)

@@ -8,35 +8,55 @@ using MirCommon.Utils;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 怪物生成管理器
-    /// </summary>
+    
+    
+    
+    
     public class MonsterGenManager
     {
         private static MonsterGenManager? _instance;
         public static MonsterGenManager Instance => _instance ??= new MonsterGenManager();
 
-        // 怪物生成点数组（最大100000个）
+        
+        
+        
+        private static readonly IReadOnlyDictionary<int, int> MissingMonGensFallbackMapId = new Dictionary<int, int>
+        {
+            
+            [47] = 43, 
+            [48] = 44, 
+            [49] = 45, 
+            [50] = 45, 
+            [51] = 45, 
+            [52] = 46, 
+        };
+
+        
         private readonly MonsterGen?[] _monsterGens = new MonsterGen?[100000];
         private int _monsterGenCount = 0;
         private int _refreshMonGenIndex = 0;
 
-        // 对象池
+        
+        private readonly Dictionary<int, List<MonsterGen>> _monsterGensByMapId = new();
+        private readonly HashSet<int> _initialSpawnEnsuredMaps = new();
+        private readonly object _genIndexLock = new();
+
+        
         private readonly Queue<MonsterGen> _monsterGenPool = new();
         private readonly object _poolLock = new();
-        private int _poolCacheSize = 1000; // 缓存大小
+        private int _poolCacheSize = 1000; 
         private int _poolUsedCount = 0;
         private int _poolFreeCount = 0;
 
         private MonsterGenManager()
         {
-            // 初始化对象池缓存
+            
             CacheObjects(_poolCacheSize);
         }
         
-        /// <summary>
-        /// 缓存对象
-        /// </summary>
+        
+        
+        
         private void CacheObjects(int count)
         {
             lock (_poolLock)
@@ -50,16 +70,16 @@ namespace GameServer
             }
         }
         
-        /// <summary>
-        /// 从对象池分配新对象
-        /// </summary>
+        
+        
+        
         private MonsterGen AllocFromPool()
         {
             lock (_poolLock)
             {
                 if (_monsterGenPool.Count == 0)
                 {
-                    // 池为空，自动扩容
+                    
                     int expandSize = Math.Max(100, _poolCacheSize / 2);
                     CacheObjects(expandSize);
                     _poolCacheSize += expandSize;
@@ -69,16 +89,16 @@ namespace GameServer
                 _poolFreeCount--;
                 _poolUsedCount++;
                 
-                // 重置对象状态
+                
                 ResetMonsterGen(obj);
                 
                 return obj;
             }
         }
         
-        /// <summary>
-        /// 将对象返回到对象池
-        /// </summary>
+        
+        
+        
         private void ReturnToPool(MonsterGen gen)
         {
             if (gen == null)
@@ -86,19 +106,19 @@ namespace GameServer
 
             lock (_poolLock)
             {
-                // 重置对象
+                
                 ResetMonsterGen(gen);
                 
-                // 放回对象池
+                
                 _monsterGenPool.Enqueue(gen);
                 _poolUsedCount--;
                 _poolFreeCount++;
             }
         }
         
-        /// <summary>
-        /// 重置MonsterGen对象状态
-        /// </summary>
+        
+        
+        
         private void ResetMonsterGen(MonsterGen gen)
         {
             gen.MonsterName = string.Empty;
@@ -114,10 +134,73 @@ namespace GameServer
             gen.ScriptPage = null;
             gen.StartWhenAllDead = false;
         }
+
+        private void IndexMonsterGen(MonsterGen gen)
+        {
+            if (gen == null)
+                return;
+
+            lock (_genIndexLock)
+            {
+                if (!_monsterGensByMapId.TryGetValue(gen.MapId, out var list))
+                {
+                    list = new List<MonsterGen>();
+                    _monsterGensByMapId[gen.MapId] = list;
+                }
+                list.Add(gen);
+            }
+        }
+
         
-        /// <summary>
-        /// 获取对象池统计信息
-        /// </summary>
+        
+        
+        
+        public void EnsureInitialSpawnForMap(int mapId)
+        {
+            if (mapId <= 0)
+                return;
+
+            MonsterGen[] gens;
+            lock (_genIndexLock)
+            {
+                if (!_initialSpawnEnsuredMaps.Add(mapId))
+                    return;
+
+                if (!_monsterGensByMapId.TryGetValue(mapId, out var list) || list.Count == 0)
+                    return;
+
+                gens = list.ToArray();
+            }
+
+            int spawned = 0;
+            int total = gens.Length;
+            for (int i = 0; i < gens.Length; i++)
+            {
+                var gen = gens[i];
+                if (gen == null)
+                    continue;
+
+                
+                if (gen.MapId != mapId || string.IsNullOrEmpty(gen.MonsterName))
+                    continue;
+
+                if (gen.CurrentCount >= gen.MaxCount)
+                    continue;
+
+                if (UpdateGenPtr(gen, gen.MaxCount + 1))
+                {
+                    gen.LastRefreshTime = DateTime.Now;
+                    spawned++;
+                }
+            }
+
+            if (spawned > 0)
+                LogManager.Default.Debug($"地图初始怪物补齐生成: mapId={mapId}, gens={total}, touched={spawned}");
+        }
+        
+        
+        
+        
         public (int total, int used, int free) GetPoolStats()
         {
             lock (_poolLock)
@@ -126,9 +209,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载怪物生成配置文件
-        /// </summary>
+        
+        
+        
+        
         public bool LoadMonGen(string path)
         {
             LogManager.Default.Info($"加载怪物生成配置文件: {path}");
@@ -141,7 +225,7 @@ namespace GameServer
 
             try
             {
-                // 查找所有.txt文件
+                
                 var files = Directory.GetFiles(path, "*.txt", SearchOption.AllDirectories);
                 int loadedCount = 0;
 
@@ -153,6 +237,9 @@ namespace GameServer
                     }
                 }
 
+                
+                ApplyMissingMonGensFallbacks();
+
                 LogManager.Default.Info($"成功加载 {loadedCount} 个怪物生成配置文件");
                 return loadedCount > 0;
             }
@@ -163,9 +250,217 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 加载单个怪物生成文件
-        /// </summary>
+        private void ApplyMissingMonGensFallbacks()
+        {
+            foreach (var kv in MissingMonGensFallbackMapId)
+            {
+                int targetMapId = kv.Key;
+                int sourceMapId = kv.Value;
+
+                if (HasAnyValidGenForMap(targetMapId))
+                    continue;
+
+                int added = CloneGensWithScale(sourceMapId, targetMapId);
+                if (added <= 0)
+                    continue;
+
+                string targetName = GetMapNameForLog(targetMapId);
+                string sourceName = GetMapNameForLog(sourceMapId);
+                LogManager.Default.Warning(
+                    $"地图刷怪点缺失，已自动映射补齐: {targetName}(ID:{targetMapId}) <= {sourceName}(ID:{sourceMapId}), gens={added}"
+                );
+            }
+        }
+
+        private bool HasAnyValidGenForMap(int mapId)
+        {
+            lock (_genIndexLock)
+            {
+                if (!_monsterGensByMapId.TryGetValue(mapId, out var list) || list.Count == 0)
+                    return false;
+
+                for (int i = 0; i < list.Count; i++)
+                {
+                    var g = list[i];
+                    if (g != null && g.MapId == mapId && !string.IsNullOrEmpty(g.MonsterName))
+                        return true;
+                }
+
+                return false;
+            }
+        }
+
+        private int CloneGensWithScale(int sourceMapId, int targetMapId)
+        {
+            MonsterGen[] sourceGens;
+            lock (_genIndexLock)
+            {
+                if (!_monsterGensByMapId.TryGetValue(sourceMapId, out var list) || list.Count == 0)
+                    return 0;
+
+                
+                sourceGens = list.ToArray();
+            }
+
+            var srcMap = LogicMapMgr.Instance.GetLogicMapById((uint)sourceMapId);
+            var dstMap = LogicMapMgr.Instance.GetLogicMapById((uint)targetMapId);
+            if (srcMap == null || dstMap == null)
+                return 0;
+
+            if (srcMap.Width <= 0 || srcMap.Height <= 0 || dstMap.Width <= 0 || dstMap.Height <= 0)
+                return 0;
+
+            double scaleX = (dstMap.Width - 1) / (double)Math.Max(1, srcMap.Width - 1);
+            double scaleY = (dstMap.Height - 1) / (double)Math.Max(1, srcMap.Height - 1);
+            double scaleR = Math.Min(scaleX, scaleY);
+            double areaRatio = (dstMap.Width * (double)dstMap.Height) / (srcMap.Width * (double)srcMap.Height);
+
+            int added = 0;
+            for (int i = 0; i < sourceGens.Length; i++)
+            {
+                var src = sourceGens[i];
+                if (src == null)
+                    continue;
+
+                
+                if (src.MapId != sourceMapId || string.IsNullOrEmpty(src.MonsterName))
+                    continue;
+
+                if (_monsterGenCount >= _monsterGens.Length)
+                    break;
+
+                var gen = AllocFromPool();
+                gen.MonsterName = src.MonsterName;
+                gen.MapId = targetMapId;
+
+                int scaledX = ClampToMap((int)Math.Round(src.X * scaleX), dstMap.Width);
+                int scaledY = ClampToMap((int)Math.Round(src.Y * scaleY), dstMap.Height);
+
+                
+                if (!TrySnapToWalkable(dstMap, ref scaledX, ref scaledY))
+                {
+                    ReturnToPool(gen);
+                    continue;
+                }
+
+                gen.X = scaledX;
+                gen.Y = scaledY;
+
+                int scaledRange = (int)Math.Round(src.Range * scaleR);
+                if (src.Range > 0 && scaledRange < 1)
+                    scaledRange = 1;
+                gen.Range = scaledRange;
+
+                
+                int scaledMaxCount = (int)Math.Round(src.MaxCount * areaRatio);
+                if (scaledMaxCount < 1)
+                    scaledMaxCount = 1;
+                if (scaledMaxCount > src.MaxCount)
+                    scaledMaxCount = src.MaxCount;
+
+                gen.MaxCount = scaledMaxCount;
+                gen.RefreshDelay = src.RefreshDelay;
+                gen.CurrentCount = 0;
+                gen.ErrorTime = 0;
+                gen.LastRefreshTime = DateTime.MinValue;
+                gen.ScriptPage = src.ScriptPage;
+                gen.StartWhenAllDead = src.StartWhenAllDead;
+
+                _monsterGens[_monsterGenCount++] = gen;
+                IndexMonsterGen(gen);
+                added++;
+            }
+
+            return added;
+        }
+
+        private bool TrySnapToWalkable(LogicMap map, ref int x, ref int y)
+        {
+            if (map == null)
+                return false;
+
+            
+            if (!IsPhysicsBlocked(map, x, y))
+                return true;
+
+            
+            const int snapRange = 80; 
+            var pt = GetValidPoint(map, x, y, snapRange);
+            if (pt != null)
+            {
+                x = pt.Value.X;
+                y = pt.Value.Y;
+                return true;
+            }
+
+            
+            if (TryGetRandomWalkable(map, 5000, out int rx, out int ry))
+            {
+                x = rx;
+                y = ry;
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool TryGetRandomWalkable(LogicMap map, int maxAttempts, out int x, out int y)
+        {
+            x = 0;
+            y = 0;
+
+            if (map == null || map.Width <= 0 || map.Height <= 0)
+                return false;
+
+            if (maxAttempts < 1)
+                maxAttempts = 1;
+
+            var random = Random.Shared;
+            for (int i = 0; i < maxAttempts; i++)
+            {
+                int tx = random.Next(0, map.Width);
+                int ty = random.Next(0, map.Height);
+                if (!IsPhysicsBlocked(map, tx, ty))
+                {
+                    x = tx;
+                    y = ty;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static int ClampToMap(int value, int maxExclusive)
+        {
+            if (maxExclusive <= 0)
+                return 0;
+            if (value < 0)
+                return 0;
+            if (value >= maxExclusive)
+                return maxExclusive - 1;
+            return value;
+        }
+
+        private static string GetMapNameForLog(int mapId)
+        {
+            try
+            {
+                var map = LogicMapMgr.Instance.GetLogicMapById((uint)mapId);
+                if (map != null && !string.IsNullOrWhiteSpace(map.MapName))
+                    return map.MapName;
+            }
+            catch
+            {
+                
+            }
+
+            return $"map{mapId}";
+        }
+
+        
+        
+        
         private bool LoadMonGenFile(string fileName)
         {
             try
@@ -185,7 +480,7 @@ namespace GameServer
                     }
                 }
 
-                LogManager.Default.Info($"文件 {Path.GetFileName(fileName)} 加载了 {count} 个生成点");
+                
                 return count > 0;
             }
             catch (Exception ex)
@@ -195,10 +490,11 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 添加怪物生成点
-        /// 格式: name/mapid/x/y/range/count/refreshdelay(seconds)[/scriptpage]
-        /// </summary>
+        
+        
+        
+        
+        
         public bool AddMonsterGen(string genDesc)
         {
             if (_monsterGenCount >= 100000)
@@ -216,7 +512,7 @@ namespace GameServer
 
             string monsterName = parts[0].Trim();
             
-            // 检查怪物类是否存在
+            
             var monsterClass = MonsterManagerEx.Instance.GetClassByName(monsterName);
             if (monsterClass == null)
             {
@@ -224,7 +520,7 @@ namespace GameServer
                 return false;
             }
 
-            // 解析参数
+            
             if (!int.TryParse(parts[1], out int mapId) ||
                 !int.TryParse(parts[2], out int x) ||
                 !int.TryParse(parts[3], out int y) ||
@@ -236,7 +532,7 @@ namespace GameServer
                 return false;
             }
 
-            // 检查地图是否存在
+            
             var map = LogicMapMgr.Instance.GetLogicMapById((uint)mapId);
             if (map == null || x < 0 || y < 0 || x >= map.Width || y >= map.Height)
             {
@@ -244,23 +540,23 @@ namespace GameServer
                 return false;
             }
 
-            // 从对象池分配新的生成点
+            
             MonsterGen gen = AllocFromPool();
 
-            // 设置生成点属性
+            
             gen.MonsterName = monsterName;
             gen.MapId = mapId;
             gen.X = x;
             gen.Y = y;
             gen.Range = range;
             gen.MaxCount = count;
-            gen.RefreshDelay = refreshDelay * 1000; // 转换为毫秒
+            gen.RefreshDelay = refreshDelay * 1000; 
             gen.CurrentCount = 0;
             gen.ErrorTime = 0;
             gen.LastRefreshTime = DateTime.MinValue;
             gen.StartWhenAllDead = false;
 
-            // 检查是否全部死亡后开始
+            
             string refreshDelayStr = parts[6];
             if (refreshDelayStr.StartsWith("*"))
             {
@@ -272,28 +568,30 @@ namespace GameServer
                 }
             }
 
-            // 设置脚本页面（如果有）
+            
             if (parts.Length > 7)
             {
                 gen.ScriptPage = parts[7];
             }
 
-            // 添加到数组
+            
             _monsterGens[_monsterGenCount++] = gen;
+            IndexMonsterGen(gen);
 
-            LogManager.Default.Debug($"添加怪物生成点: {monsterName} 在 map({mapId})({x},{y}) 数量:{count} 间隔:{refreshDelay}s");
+            
             return true;
         }
 
-        /// <summary>
-        /// 更新怪物生成
-        /// </summary>
+        
+        
+        
+        
         public void UpdateGen()
         {
             if (_monsterGenCount == 0)
                 return;
 
-            // 循环更新生成点
+            
             if (_refreshMonGenIndex >= _monsterGenCount)
                 _refreshMonGenIndex = 0;
 
@@ -304,7 +602,7 @@ namespace GameServer
             if (gen == null)
                 return;
 
-            // 检查是否需要刷新
+            
             if (gen.StartWhenAllDead)
             {
                 if (gen.CurrentCount > 0)
@@ -318,15 +616,15 @@ namespace GameServer
             if (needRefreshCount <= 0)
                 return;
 
-            // 检查刷新延迟
+            
             if (gen.LastRefreshTime != DateTime.MinValue &&
                 (DateTime.Now - gen.LastRefreshTime).TotalMilliseconds < gen.RefreshDelay)
                 return;
 
-            // 更新生成点
+            
             if (!UpdateGenPtr(gen, needRefreshCount))
             {
-                // 生成点失效，从数组中移除
+                
                 _monsterGens[currentIndex] = null;
                 ReturnToPool(gen);
             }
@@ -334,9 +632,10 @@ namespace GameServer
             gen.LastRefreshTime = DateTime.Now;
         }
 
-        /// <summary>
-        /// 初始化所有生成点
-        /// </summary>
+        
+        
+        
+        
         public void InitAllGen()
         {
             if (_monsterGenCount == 0)
@@ -352,7 +651,7 @@ namespace GameServer
 
                 if (!UpdateGenPtr(gen, gen.MaxCount + 1))
                 {
-                    // 生成点失效
+                    
                     ReturnToPool(gen);
                     _monsterGens[i] = null;
                 }
@@ -365,9 +664,10 @@ namespace GameServer
             LogManager.Default.Info($"怪物生成点初始化完成");
         }
 
-        /// <summary>
-        /// 更新生成点指针（实际生成怪物）
-        /// </summary>
+        
+        
+        
+        
         private bool UpdateGenPtr(MonsterGen gen, int maxCount, bool setGenPtr = true, bool gotoTarget = false, ushort targetX = 0, ushort targetY = 0)
         {
             if (gen == null)
@@ -393,20 +693,20 @@ namespace GameServer
 
             for (int i = 0; i < maxCount && gen.CurrentCount < gen.MaxCount; i++)
             {
-                // 在范围内随机生成坐标
+                
                 int tx = random.Next(startX, endX + 1);
                 int ty = random.Next(startY, endY + 1);
 
-                // 确保坐标在地图范围内
+                
                 if (tx < 0) tx = 0;
                 if (tx >= mapWidth) tx = mapWidth - 1;
                 if (ty < 0) ty = 0;
                 if (ty >= mapHeight) ty = mapHeight - 1;
 
-                // 检查坐标是否可通行
+                
                 if (IsPhysicsBlocked(map, tx, ty))
                 {
-                    // 尝试在周围寻找可通行点
+                    
                     var validPoint = GetValidPoint(map, tx, ty, 1);
                     if (validPoint == null)
                         continue;
@@ -415,18 +715,12 @@ namespace GameServer
                     ty = validPoint.Value.Y;
                 }
 
-                // 创建怪物
+                
                 var monster = MonsterManagerEx.Instance.CreateMonster(gen.MonsterName, gen.MapId, tx, ty, gen);
                 if (monster == null)
                     continue;
 
-                // 添加到游戏世界
-                if (!AddMapObjectToWorld(monster))
-                {
-                    MonsterManagerEx.Instance.DeleteMonster(monster);
-                    continue;
-                }
-
+                
                 successCount++;
                 gen.CurrentCount++;
 
@@ -434,7 +728,7 @@ namespace GameServer
                     return true;
             }
 
-            // 检查错误次数
+            
             if (gen.CurrentCount == 0)
             {
                 gen.ErrorTime++;
@@ -452,17 +746,17 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 获取怪物生成点数量
-        /// </summary>
+        
+        
+        
         public int GetGenCount()
         {
             return _monsterGenCount;
         }
 
-        /// <summary>
-        /// 获取所有怪物生成点
-        /// </summary>
+        
+        
+        
         public List<MonsterGen> GetAllGens()
         {
             var list = new List<MonsterGen>();
@@ -476,9 +770,9 @@ namespace GameServer
             return list;
         }
 
-        /// <summary>
-        /// 清理所有怪物生成点
-        /// </summary>
+        
+        
+        
         public void ClearAllGens()
         {
             for (int i = 0; i < _monsterGenCount; i++)
@@ -491,57 +785,62 @@ namespace GameServer
             }
             _monsterGenCount = 0;
             _refreshMonGenIndex = 0;
+
+            lock (_genIndexLock)
+            {
+                _monsterGensByMapId.Clear();
+                _initialSpawnEnsuredMaps.Clear();
+            }
             
-            // 记录对象池统计信息
+            
             var stats = GetPoolStats();
             LogManager.Default.Info($"清理所有怪物生成点，对象池统计: 总数={stats.total}, 使用中={stats.used}, 空闲={stats.free}");
         }
 
-        /// <summary>
-        /// 检查位置是否被物理阻挡
-        /// </summary>
+        
+        
+        
         private bool IsPhysicsBlocked(LogicMap map, int x, int y)
         {
-            // 首先检查坐标是否在地图范围内
+            
             if (x < 0 || x >= map.Width || y < 0 || y >= map.Height)
                 return true;
 
-            // 获取地图名称
-            string mapName = map.MapName;
-            if (string.IsNullOrEmpty(mapName))
-                return false; // 如果没有地图名称，假设不被阻挡
+            
+            var physicsMap = map.GetPhysicsMap();
+            if (physicsMap == null)
+                return true;
 
-            // 通过物理地图管理器检查阻挡
-            return PhysicsMapMgr.Instance.IsBlocked(mapName, x, y);
+            return physicsMap.IsBlocked(x, y);
         }
 
-        /// <summary>
-        /// 获取有效点（在指定范围内寻找可通行点）
-        /// </summary>
+        
+        
+        
         private Point? GetValidPoint(LogicMap map, int centerX, int centerY, int range)
         {
             if (range <= 0)
                 return null;
 
-            // 从中心点开始向外搜索
+            
             for (int r = 0; r <= range; r++)
             {
                 for (int dx = -r; dx <= r; dx++)
                 {
                     for (int dy = -r; dy <= r; dy++)
                     {
-                        // 只检查边界点
+                        
                         if (Math.Abs(dx) != r && Math.Abs(dy) != r)
                             continue;
 
                         int x = centerX + dx;
                         int y = centerY + dy;
 
-                        // 检查坐标是否在地图范围内
+                        
                         if (x < 0 || x >= map.Width || y < 0 || y >= map.Height)
                             continue;
 
-                        // 检查是否被阻挡
+                        
                         if (!IsPhysicsBlocked(map, x, y))
                         {
                             return new Point(x, y);
@@ -553,26 +852,26 @@ namespace GameServer
             return null;
         }
 
-        /// <summary>
-        /// 添加地图对象到游戏世界
-        /// </summary>
+        
+        
+        
         private bool AddMapObjectToWorld(MonsterEx monster)
         {
             if (monster == null)
                 return false;
 
-            // 获取地图
+            
             var map = LogicMapMgr.Instance.GetLogicMapById((uint)monster.MapId);
             if (map == null)
                 return false;
 
-            // 将怪物添加到地图
+            
             return map.AddObject(monster, monster.X, monster.Y);
         }
 
-        /// <summary>
-        /// 简单点结构
-        /// </summary>
+        
+        
+        
         private struct Point
         {
             public int X { get; set; }

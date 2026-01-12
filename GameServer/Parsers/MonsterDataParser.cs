@@ -6,9 +6,9 @@ using MirCommon.Utils;
 
 namespace GameServer.Parsers
 {
-    /// <summary>
-    /// 怪物基础信息
-    /// </summary>
+    
+    
+    
     public class MonsterBase
     {
         public string ClassName { get; set; } = "";
@@ -20,9 +20,9 @@ namespace GameServer.Parsers
         public uint Feature { get; set; }
     }
 
-    /// <summary>
-    /// 怪物属性
-    /// </summary>
+    
+    
+    
     public class MonsterProp
     {
         public ushort HP { get; set; }
@@ -46,9 +46,9 @@ namespace GameServer.Parsers
         public ushort RecoverMPTime { get; set; }
     }
 
-    /// <summary>
-    /// 怪物特殊属性
-    /// </summary>
+    
+    
+    
     public class MonsterSProp
     {
         public uint PFlag { get; set; }
@@ -58,9 +58,9 @@ namespace GameServer.Parsers
         public byte AntHolyWord { get; set; }
     }
 
-    /// <summary>
-    /// 怪物AI设置
-    /// </summary>
+    
+    
+    
     public class MonsterAISet
     {
         public byte MoveStyle { get; set; }
@@ -73,18 +73,18 @@ namespace GameServer.Parsers
         public byte LockDir { get; set; }
     }
 
-    /// <summary>
-    /// 怪物宠物设置
-    /// </summary>
+    
+    
+    
     public class MonsterPetSet
     {
         public byte Type { get; set; }
         public byte StopAt { get; set; }
     }
 
-    /// <summary>
-    /// 怪物攻击描述
-    /// </summary>
+    
+    
+    
     public class MonsterAttackDesc
     {
         public int AttackStyle { get; set; }
@@ -101,18 +101,18 @@ namespace GameServer.Parsers
         public ushort AppendTime { get; set; }
     }
 
-    /// <summary>
-    /// 怪物变身条件
-    /// </summary>
+    
+    
+    
     public class MonsterChangeSituation
     {
         public int Situation { get; set; }
         public int Param { get; set; }
     }
 
-    /// <summary>
-    /// 怪物变身配置
-    /// </summary>
+    
+    
+    
     public class MonsterChangeInto
     {
         public bool Enabled { get; set; }
@@ -123,9 +123,9 @@ namespace GameServer.Parsers
         public bool Anim { get; set; }
     }
 
-    /// <summary>
-    /// 怪物类定义
-    /// </summary>
+    
+    
+    
     public class MonsterClass
     {
         public MonsterBase Base { get; set; } = new();
@@ -136,7 +136,7 @@ namespace GameServer.Parsers
         public MonsterAttackDesc AttackDesc { get; set; } = new();
         public MonsterChangeInto[] ChangeInto { get; set; } = new MonsterChangeInto[3];
 
-        // 脚本
+        
         public string BornScript { get; set; } = "";
         public string GotTargetScript { get; set; } = "";
         public string KillTargetScript { get; set; } = "";
@@ -152,28 +152,28 @@ namespace GameServer.Parsers
         }
     }
 
-    /// <summary>
-    /// 怪物数据解析器
-    /// BaseMonsterEx.txt格式：
-    /// @怪物名称
-    /// base:显示名/种族/图片/等级/名字颜色
-    /// prop:HP/MP/准确/速度/AC1/AC2/DC1/DC2/MAC1/MAC2/MC1/MC2/经验/AI延迟/行走延迟/回血/回血时间/回魔/回魔时间
-    /// sprop:标志/召唤率/反魂墙/反困魔/反神圣
-    /// aiset:移动方式/死亡方式/目标选择/目标标志/视距/冷眼/逃跑距离/锁定方向
-    /// petset:类型/停止位置
-    /// attack:攻击方式/攻击距离/延迟/伤害方式/伤害范围/伤害类型/附加效果/附加几率/消耗HP/消耗MP
-    /// chg1-3:条件1/参数1/条件2/参数2/变身目标/附加效果/动画
-    /// append:特性/动作/附加时间
-    /// </summary>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     public class MonsterDataParser
     {
         private readonly Dictionary<string, MonsterClass> _monsters = new();
 
         public int MonsterCount => _monsters.Count;
 
-        /// <summary>
-        /// 加载怪物数据文件
-        /// </summary>
+        
+        
+        
         public bool Load(string filePath)
         {
             if (!File.Exists(filePath))
@@ -195,10 +195,10 @@ namespace GameServer.Parsers
                     if (string.IsNullOrWhiteSpace(trimmedLine) || trimmedLine.StartsWith("#"))
                         continue;
 
-                    // 新怪物定义
+                    
                     if (trimmedLine.StartsWith("@"))
                     {
-                        // 保存上一个怪物
+                        
                         if (currentMonster != null && !string.IsNullOrEmpty(currentMonster.Base.ClassName))
                         {
                             if (AddMonster(currentMonster))
@@ -207,26 +207,26 @@ namespace GameServer.Parsers
                             }
                             else
                             {
-                                // 怪物已存在，更新数据
+                                
                                 _monsters[currentMonster.Base.ClassName] = currentMonster;
                                 LogManager.Default.Debug($"更新怪物数据: {currentMonster.Base.ClassName}");
                             }
                         }
 
-                        // 创建新怪物
+                        
                         currentMonster = new MonsterClass();
                         currentMonster.Base.ClassName = trimmedLine.Substring(1).Trim();
                         continue;
                     }
 
-                    // 解析怪物属性
+                    
                     if (currentMonster != null)
                     {
                         ParseMonsterProperty(currentMonster, trimmedLine);
                     }
                 }
 
-                // 保存最后一个怪物
+                
                 if (currentMonster != null && !string.IsNullOrEmpty(currentMonster.Base.ClassName))
                 {
                     if (AddMonster(currentMonster))
@@ -249,9 +249,9 @@ namespace GameServer.Parsers
             }
         }
 
-        /// <summary>
-        /// 解析怪物属性行
-        /// </summary>
+        
+        
+        
         private void ParseMonsterProperty(MonsterClass monster, string line)
         {
             int colonIndex = line.IndexOf(':');
@@ -383,9 +383,9 @@ namespace GameServer.Parsers
             }
         }
 
-        /// <summary>
-        /// 解析变身配置
-        /// </summary>
+        
+        
+        
         private void ParseChangeInto(MonsterChangeInto change, string[] parts)
         {
             if (parts.Length >= 7)
@@ -401,9 +401,9 @@ namespace GameServer.Parsers
             }
         }
 
-        /// <summary>
-        /// 添加怪物
-        /// </summary>
+        
+        
+        
         public bool AddMonster(MonsterClass monster)
         {
             if (_monsters.ContainsKey(monster.Base.ClassName))
@@ -415,26 +415,26 @@ namespace GameServer.Parsers
             return true;
         }
 
-        /// <summary>
-        /// 根据名称获取怪物
-        /// </summary>
+        
+        
+        
         public MonsterClass? GetMonster(string name)
         {
             return _monsters.TryGetValue(name, out var monster) ? monster : null;
         }
 
-        /// <summary>
-        /// 获取所有怪物
-        /// </summary>
+        
+        
+        
         public IEnumerable<MonsterClass> GetAllMonsters()
         {
             return _monsters.Values;
         }
 
-        /// <summary>
-        /// 加载怪物脚本配置 (monsterscript.txt)
-        /// 格式: 怪物名=出生脚本,获得目标脚本,击杀目标脚本,受伤脚本,死亡脚本
-        /// </summary>
+        
+        
+        
+        
         public bool LoadMonsterScript(string filePath)
         {
             if (!File.Exists(filePath))

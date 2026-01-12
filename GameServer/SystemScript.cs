@@ -3,9 +3,10 @@ using System.Collections.Generic;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 系统脚本
-    /// </summary>
+    
+    
+    
+    
     public class SystemScript : ScriptShell
     {
         private static SystemScript? _instance;
@@ -13,17 +14,18 @@ namespace GameServer
 
         private ScriptObject? _scriptObject;
 
-        /// <summary>
-        /// 私有构造函数
-        /// </summary>
+        
+        
+        
         private SystemScript()
         {
             _scriptObject = null;
         }
 
-        /// <summary>
-        /// 初始化系统脚本
-        /// </summary>
+        
+        
+        
+        
         public bool Init(ScriptObject? scriptObject)
         {
             _scriptObject = scriptObject;
@@ -40,22 +42,22 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 获取系统脚本对象
-        /// </summary>
+        
+        
+        
         public ScriptObject? GetScriptObject()
         {
             return _scriptObject;
         }
 
-        /// <summary>
-        /// 执行系统脚本
-        /// </summary>
+        
+        
+        
         public void ExecuteSystemScript(string scriptName, ScriptTarget? target = null)
         {
             if (_scriptObject == null)
             {
-                // 尝试从ScriptObjectMgr获取系统脚本
+                
                 var scriptObj = ScriptObjectMgr.Instance.GetScriptObject(scriptName);
                 if (scriptObj != null)
                 {
@@ -70,45 +72,48 @@ namespace GameServer
 
             Console.WriteLine($"执行系统脚本: {scriptName}");
             
-            // 执行脚本逻辑
+            
             if (target != null)
             {
                 Execute(target, _scriptObject);
             }
             else
             {
-                // 如果没有指定目标，只执行脚本内容
+                
                 _scriptObject.Execute();
             }
         }
 
-        /// <summary>
-        /// 执行登录脚本
-        /// </summary>
+        
+        
+        
+        
         public void ExecuteLoginScript(ScriptTarget target)
         {
             ExecuteSystemScript("system.login", target);
         }
 
-        /// <summary>
-        /// 执行升级脚本
-        /// </summary>
+        
+        
+        
+        
         public void ExecuteLevelUpScript(ScriptTarget target)
         {
             ExecuteSystemScript("system.levelup", target);
         }
 
-        /// <summary>
-        /// 执行登出脚本
-        /// </summary>
+        
+        
+        
+        
         public void ExecuteLogoutScript(ScriptTarget target)
         {
             ExecuteSystemScript("system.logout", target);
         }
 
-        /// <summary>
-        /// 重新加载系统脚本
-        /// </summary>
+        
+        
+        
         public void Reload()
         {
             if (_scriptObject != null)
@@ -119,9 +124,9 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 脚本执行引擎基类 
-    /// </summary>
+    
+    
+    
     public class ScriptShell
     {
         protected readonly Dictionary<string, string> _variables = new(StringComparer.OrdinalIgnoreCase);
@@ -129,9 +134,10 @@ namespace GameServer
         protected ExecuteResult _executeResult = ExecuteResult.Ok;
         protected string _resultValue = string.Empty;
 
-        /// <summary>
-        /// 执行结果枚举
-        /// </summary>
+        
+        
+        
+        
         public enum ExecuteResult
         {
             Ok,
@@ -140,21 +146,21 @@ namespace GameServer
             Break
         }
 
-        /// <summary>
-        /// 构造函数
-        /// </summary>
+        
+        
+        
         public ScriptShell()
         {
             _currentScriptObject = null;
             InitializeDefaultVariables();
         }
 
-        /// <summary>
-        /// 初始化默认变量
-        /// </summary>
+        
+        
+        
         private void InitializeDefaultVariables()
         {
-            // 添加默认系统变量
+            
             _variables["_return"] = "0";
             _variables["_p1"] = "0";
             _variables["_p2"] = "0";
@@ -163,9 +169,10 @@ namespace GameServer
             _variables["returnvalue"] = "0";
         }
 
-        /// <summary>
-        /// 执行脚本
-        /// </summary>
+        
+        
+        
+        
         public bool Execute(ScriptTarget target, ScriptObject scriptObject)
         {
             if (scriptObject == null)
@@ -178,10 +185,11 @@ namespace GameServer
 
             try
             {
-                // 这里应该实现完整的脚本执行逻辑
+                
+                
                 scriptObject.Execute();
                 
-                // 设置执行结果
+                
                 SetExecuteResult(ExecuteResult.Ok, "0");
                 
                 Console.WriteLine($"脚本执行完成: {scriptObject.Name}");
@@ -195,15 +203,16 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 执行指定页面
-        /// </summary>
+        
+        
+        
         public bool Execute(ScriptTarget target, string pageName)
         {
             if (_currentScriptObject == null)
                 return false;
 
             Console.WriteLine($"执行脚本页面: {pageName}, 目标: {target.GetTargetName()}");
+            
             
             var lines = _currentScriptObject.Lines;
             bool inTargetPage = false;
@@ -219,7 +228,7 @@ namespace GameServer
                 }
                 else if (inTargetPage && !string.IsNullOrEmpty(line))
                 {
-                    // 执行页面中的命令
+                    
                     ExecuteCommand(line, target);
                 }
             }
@@ -227,20 +236,21 @@ namespace GameServer
             return true;
         }
 
-        /// <summary>
-        /// 执行单条命令
-        /// </summary>
+        
+        
+        
+        
         private void ExecuteCommand(string command, ScriptTarget target)
         {
             if (string.IsNullOrEmpty(command))
                 return;
 
-            // 解析命令
+            
             var parsedCommand = ParseCommand(command);
             if (parsedCommand == null)
                 return;
 
-            // 获取命令处理器
+            
             var proc = CommandManager.Instance.GetCommandProc(parsedCommand.CommandName);
             if (proc == null)
             {
@@ -248,7 +258,7 @@ namespace GameServer
                 return;
             }
 
-            // 准备参数
+            
             var scriptParams = new ScriptParam[parsedCommand.Parameters.Count];
             for (int i = 0; i < parsedCommand.Parameters.Count; i++)
             {
@@ -259,14 +269,14 @@ namespace GameServer
                 };
             }
 
-            // 执行命令
+            
             bool continueExecution = true;
             try
             {
                 uint result = proc(this, target, null, scriptParams, (uint)parsedCommand.Parameters.Count, ref continueExecution);
                 Console.WriteLine($"命令执行结果: {parsedCommand.CommandName} = {result}");
                 
-                // 设置返回值
+                
                 SetVariable("_return", result.ToString());
             }
             catch (Exception ex)
@@ -275,9 +285,10 @@ namespace GameServer
             }
         }
 
-        /// <summary>
-        /// 解析命令字符串
-        /// </summary>
+        
+        
+        
+        
         private ParsedCommand? ParseCommand(string command)
         {
             if (string.IsNullOrEmpty(command))
@@ -287,7 +298,7 @@ namespace GameServer
             if (string.IsNullOrEmpty(command))
                 return null;
 
-            // 分割命令和参数
+            
             var parts = new List<string>();
             bool inQuotes = false;
             string currentPart = string.Empty;
@@ -341,9 +352,9 @@ namespace GameServer
             return parsedCommand;
         }
 
-        /// <summary>
-        /// 尝试解析整数
-        /// </summary>
+        
+        
+        
         private int TryParseInt(string value)
         {
             if (int.TryParse(value, out int result))
@@ -351,18 +362,19 @@ namespace GameServer
             return 0;
         }
 
-        /// <summary>
-        /// 解析的命令结构
-        /// </summary>
+        
+        
+        
         private class ParsedCommand
         {
             public string CommandName { get; set; } = string.Empty;
             public List<string> Parameters { get; set; } = new List<string>();
         }
 
-        /// <summary>
-        /// 获取变量值
-        /// </summary>
+        
+        
+        
+        
         public string? GetVariableValue(string variableName)
         {
             if (string.IsNullOrEmpty(variableName))
@@ -371,9 +383,9 @@ namespace GameServer
             return _variables.TryGetValue(variableName, out var value) ? value : null;
         }
 
-        /// <summary>
-        /// 设置变量值
-        /// </summary>
+        
+        
+        
         public void SetVariable(string variableName, string value)
         {
             if (string.IsNullOrEmpty(variableName))
@@ -382,9 +394,10 @@ namespace GameServer
             _variables[variableName] = value;
         }
 
-        /// <summary>
-        /// 设置执行结果
-        /// </summary>
+        
+        
+        
+        
         public void SetExecuteResult(ExecuteResult result, string value = "0")
         {
             _executeResult = result;
@@ -392,41 +405,41 @@ namespace GameServer
             SetVariable("returnvalue", value);
         }
 
-        /// <summary>
-        /// 获取执行结果
-        /// </summary>
+        
+        
+        
         public ExecuteResult GetExecuteResult()
         {
             return _executeResult;
         }
 
-        /// <summary>
-        /// 获取执行结果值
-        /// </summary>
+        
+        
+        
         public string GetExecuteResultValue()
         {
             return _resultValue;
         }
 
-        /// <summary>
-        /// 获取当前脚本对象
-        /// </summary>
+        
+        
+        
         public ScriptObject? GetCurrentScriptObject()
         {
             return _currentScriptObject;
         }
 
-        /// <summary>
-        /// 获取所有变量
-        /// </summary>
+        
+        
+        
         public Dictionary<string, string> GetAllVariables()
         {
             return new Dictionary<string, string>(_variables);
         }
 
-        /// <summary>
-        /// 清空变量
-        /// </summary>
+        
+        
+        
         public void ClearVariables()
         {
             _variables.Clear();
@@ -434,30 +447,30 @@ namespace GameServer
         }
     }
 
-    /// <summary>
-    /// 脚本目标接口
-    /// </summary>
+    
+    
+    
     public interface ScriptTarget
     {
-        /// <summary>
-        /// 获取目标名称
-        /// </summary>
+        
+        
+        
         string GetTargetName();
         
-        /// <summary>
-        /// 获取目标ID
-        /// </summary>
+        
+        
+        
         uint GetTargetId();
         
-        /// <summary>
-        /// 执行脚本动作
-        /// </summary>
+        
+        
+        
         void ExecuteScriptAction(string action, params string[] parameters);
     }
 
-    /// <summary>
-    /// 基础脚本目标实现
-    /// </summary>
+    
+    
+    
     public class BaseScriptTarget : ScriptTarget
     {
         private readonly string _name;
@@ -482,7 +495,7 @@ namespace GameServer
         public void ExecuteScriptAction(string action, params string[] parameters)
         {
             Console.WriteLine($"脚本动作: {action}, 参数: {string.Join(", ", parameters)}");
-            // 这里应该实现具体的动作执行逻辑
+            
         }
     }
 }

@@ -3,9 +3,9 @@ using System.Text;
 
 namespace GameServer
 {
-    /// <summary>
-    /// 简单的数据包构建器
-    /// </summary>
+    
+    
+    
     public class PacketBuilder
     {
         private readonly System.IO.MemoryStream _stream;
@@ -33,7 +33,7 @@ namespace GameServer
         {
             var bytes = Encoding.GetEncoding("GBK").GetBytes(value);
             _writer.Write(bytes);
-            WriteByte(0); // null terminator
+            WriteByte(0); 
         }
         
         public void WriteBytes(byte[] bytes) => _writer.Write(bytes);

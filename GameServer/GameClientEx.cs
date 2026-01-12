@@ -10,108 +10,53 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-// 类型别名
+
 using Player = GameServer.HumanPlayer;
 
 namespace GameServer
 {
     public partial class GameClient
     {
-
-        private async Task HandleWalk(byte[] data)
-        {
-            if (_player == null) return;
-
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 走路1");
-            try
-            {
-                // 解析移动数据
-                var reader = new PacketReader(data);
-                int x = reader.ReadInt32();
-                int y = reader.ReadInt32();
-                byte dir = reader.ReadByte();
-
-                _player.X = (ushort)x;
-                _player.Y = (ushort)y;
-
-                // 通知周围玩家
-                var map = _world.GetMap(_player.MapId);
-                if (map != null)
-                {
-                    var nearbyPlayers = map.GetPlayersInRange(_player.X, _player.Y, 15);
-                    // 发送移动消息给周围玩家
-                    // 构建移动消息包并发送给视野范围内的玩家
-                    foreach (var nearbyPlayer in nearbyPlayers)
-                    {
-                        if (nearbyPlayer != _player && nearbyPlayer != null)
-                        {
-                            // 这里需要发送SM_WALK消息给其他玩家
-                            // 让他们看到当前玩家的移动
-                        }
-                    }
-                }
-            }
-            catch { }
-
-            await Task.CompletedTask;
-        }
-
-        private async Task HandleRun(byte[] data)
-        {
-            // 类似Walk处理
-            await HandleWalk(data);
-        }
-
-        private async Task HandleSay(byte[] data)
-        {
-            if (_player == null) return;
-
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 说话");
-            try
-            {
-                string message = System.Text.Encoding.GetEncoding("GBK").GetString(data).TrimEnd('\0');
-                LogManager.Default.Info($"[{_player.Name}]: {message}");
-
-                // 广播聊天消息给周围玩家
-                var map = _world.GetMap(_player.MapId);
-                if (map != null)
-                {
-                    var nearbyPlayers = map.GetPlayersInRange(_player.X, _player.Y, 15);
-                    foreach (var nearbyPlayer in nearbyPlayers)
-                    {
-                        if (nearbyPlayer != null)
-                        {
-                            // 发送SM_CHAT消息给附近玩家
-                            // 让他们看到当前玩家的聊天内容
-                        }
-                    }
-                }
-            }
-            catch { }
-
-            await Task.CompletedTask;
-        }
-
-        // 新的消息处理方法
         private async Task HandleWalkMessage(MirMsgOrign msg, byte[] payload)
         {
             if (_player == null) return;
 
             LogManager.Default.Info($"处理客户端[{_player.Name}] 走路2");
-            // 从msg.dwFlag中提取坐标：低16位是x，高16位是y
             int x = (int)(msg.dwFlag & 0xFFFF);
             int y = (int)((msg.dwFlag >> 16) & 0xFFFF);
             byte dir = (byte)(msg.wParam[1] & 0xFF);
 
-            bool success = _player.WalkXY(x, y);
+            bool success = _player.WalkXY((ushort)x, (ushort)y);
             if (!success)
             {
-                // 如果WalkXY失败，尝试Walk
-                success = _player.Walk(dir);
+                success = _player.Walk((Direction)dir);
             }
 
-            // 发送移动确认
-            SendActionResult(_player.X, _player.Y, success);
+            if (success)
+            {
+                byte[] viewPayload = new byte[8];
+                Buffer.BlockCopy(BitConverter.GetBytes(_player.GetFeather()), 0, viewPayload, 0, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(_player.GetStatus()), 0, viewPayload, 4, 4);
+
+                var walkMsg = new MirCommon.MirMsgOrign
+                {
+                    dwFlag = _player.ObjectId,
+                    wCmd = MirCommon.ProtocolCmd.SM_WALK,
+                    wParam = new ushort[3] { (ushort)_player.X, (ushort)_player.Y, (ushort)_player.Direction },
+                };
+                byte[] encodedWalk = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(walkMsg, viewPayload);
+                _player.CurrentMap?.SendToNearbyPlayers(_player.X, _player.Y, 18, encodedWalk, _player.ObjectId);
+            }
+
+            
+            int ackX = success ? _player.ActionX : _player.X;
+            int ackY = success ? _player.ActionY : _player.Y;
+            if (ackX == 0 && ackY == 0)
+            {
+                ackX = _player.X;
+                ackY = _player.Y;
+            }
+            SendActionResult(ackX, ackY, success);
 
             await Task.CompletedTask;
         }
@@ -121,20 +66,45 @@ namespace GameServer
             if (_player == null) return;
 
             LogManager.Default.Info($"处理客户端[{_player.Name}] 跑步");
-            // 从msg.dwFlag中提取坐标：低16位是x，高16位是y
             int x = (int)(msg.dwFlag & 0xFFFF);
             int y = (int)((msg.dwFlag >> 16) & 0xFFFF);
             byte dir = (byte)(msg.wParam[1] & 0xFF);
 
-            bool success = _player.RunXY(x, y);
+            
+            bool success = _player.Run((Direction)dir);
             if (!success)
             {
-                // 如果RunXY失败，尝试Run
-                success = _player.Run(dir);
+                success = _player.RunXY((ushort)x, (ushort)y);
+            }
+            if (!success)
+            {
+                success = _player.Walk((Direction)dir);
             }
 
-            // 发送移动确认
-            SendActionResult(_player.X, _player.Y, success);
+            if (success)
+            {
+                byte[] viewPayload = new byte[8];
+                Buffer.BlockCopy(BitConverter.GetBytes(_player.GetFeather()), 0, viewPayload, 0, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(_player.GetStatus()), 0, viewPayload, 4, 4);
+
+                var runMsg = new MirCommon.MirMsgOrign
+                {
+                    dwFlag = _player.ObjectId,
+                    wCmd = MirCommon.ProtocolCmd.SM_RUN,
+                    wParam = new ushort[3] { (ushort)_player.X, (ushort)_player.Y, (ushort)_player.Direction },
+                };
+                byte[] encodedRun = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(runMsg, viewPayload);
+                _player.CurrentMap?.SendToNearbyPlayers(_player.X, _player.Y, 18, encodedRun, _player.ObjectId);
+            }
+
+            int ackX = success ? _player.ActionX : _player.X;
+            int ackY = success ? _player.ActionY : _player.Y;
+            if (ackX == 0 && ackY == 0)
+            {
+                ackX = _player.X;
+                ackY = _player.Y;
+            }
+            SendActionResult(ackX, ackY, success);
 
             await Task.CompletedTask;
         }
@@ -148,7 +118,17 @@ namespace GameServer
                 string message = System.Text.Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
                 LogManager.Default.Info($"处理客户端[{_player.Name}] 说话: {message}");
 
-                // 广播聊天消息给周围玩家
+                if (!string.IsNullOrWhiteSpace(message) && message[0] == '@')
+                {
+                    string cmdLine = message.Length > 1 ? message.Substring(1).Trim() : string.Empty;
+                    if (cmdLine.Length == 0)
+                        return;
+
+                    GmManager.Instance.ExecGameCmd(cmdLine, _player);
+                    return;
+                }
+
+                
                 var map = _world.GetMap(_player.MapId);
                 if (map != null)
                 {
@@ -157,7 +137,7 @@ namespace GameServer
                     {
                         if (nearbyPlayer != null)
                         {
-                            // 发送SM_CHAT消息给附近玩家
+                            
                             SendChatMessage(nearbyPlayer, _player.Name, message);
                         }
                     }
@@ -175,10 +155,38 @@ namespace GameServer
             LogManager.Default.Info($"处理客户端[{_player.Name}] 转向");
             byte dir = (byte)(msg.wParam[1] & 0xFF);
 
-            bool success = _player.Turn(dir);
+            
+            bool success = _player.Turn((Direction)dir);
 
-            // 发送转向确认
-            SendActionResult(_player.X, _player.Y, success);
+            if (success)
+            {
+                
+                
+                byte[] appearPayload = new byte[12];
+                Buffer.BlockCopy(BitConverter.GetBytes(_player.GetFeather()), 0, appearPayload, 0, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(_player.GetStatus()), 0, appearPayload, 4, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(_player.GetHealth()), 0, appearPayload, 8, 4);
+
+                var turnMsg = new MirCommon.MirMsgOrign
+                {
+                    dwFlag = _player.ObjectId,
+                    wCmd = MirCommon.ProtocolCmd.SM_APPEAR,
+                    wParam = new ushort[3] { (ushort)_player.X, (ushort)_player.Y, (ushort)_player.Direction },
+                };
+                byte[] encodedTurn = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(turnMsg, appearPayload);
+                _player.CurrentMap?.SendToNearbyPlayers(_player.X, _player.Y, 18, encodedTurn, _player.ObjectId);
+
+            }
+
+            
+            int ackX = success ? _player.ActionX : _player.X;
+            int ackY = success ? _player.ActionY : _player.Y;
+            if (ackX == 0 && ackY == 0)
+            {
+                ackX = _player.X;
+                ackY = _player.Y;
+            }
+            SendActionResult(ackX, ackY, success);
 
             await Task.CompletedTask;
         }
@@ -190,13 +198,34 @@ namespace GameServer
             LogManager.Default.Info($"处理客户端[{_player.Name}] 攻击");
             byte dir = (byte)(msg.wParam[1] & 0xFF);
 
+            
             bool success = _player.Attack(dir);
 
-            // 发送攻击确认
+            if (success)
+            {
+                
+                
+                byte[] attackPayload = new byte[8];
+                Buffer.BlockCopy(BitConverter.GetBytes(_player.GetFeather()), 0, attackPayload, 0, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(_player.GetStatus()), 0, attackPayload, 4, 4);
+
+                var attackMsg = new MirCommon.MirMsgOrign
+                {
+                    dwFlag = _player.ObjectId,
+                    wCmd = MirCommon.ProtocolCmd.SM_ATTACK,
+                    wParam = new ushort[3] { (ushort)_player.X, (ushort)_player.Y, (ushort)_player.Direction },
+                };
+                byte[] encodedAttack = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(attackMsg, attackPayload);
+                _player.CurrentMap?.SendToNearbyPlayers(_player.X, _player.Y, 18, encodedAttack, _player.ObjectId);
+
+            }
+
+            
             SendActionResult(_player.X, _player.Y, success);
 
             await Task.CompletedTask;
         }
+
 
         private async Task HandleGetMealMessage(MirMsgOrign msg, byte[] payload)
         {
@@ -205,9 +234,10 @@ namespace GameServer
             LogManager.Default.Info($"处理客户端[{_player.Name}] 挖肉");
             byte dir = (byte)(msg.wParam[1] & 0xFF);
 
+            
             bool success = _player.GetMeal(dir);
 
-            // 发送挖肉确认
+            
             SendActionResult(_player.X, _player.Y, success);
 
             await Task.CompletedTask;
@@ -219,11 +249,21 @@ namespace GameServer
 
             LogManager.Default.Info($"处理客户端[{_player.Name}] 停止移动");
 
-            // 发送停止确认
-            SendStopMessage();
+            
+            var stopMsg = new MirCommon.MirMsgOrign
+            {
+                dwFlag = _player.ObjectId,
+                wCmd = MirCommon.ProtocolCmd.SM_STOP,
+                wParam = new ushort[3] { (ushort)_player.X, (ushort)_player.Y, (ushort)_player.Direction },
+            };
+            byte[] encodedStop = MirCommon.Network.GameMessageHandler.EncodeGameMessageOrign(stopMsg);
+            _player.CurrentMap?.SendToNearbyPlayers(_player.X, _player.Y, 18, encodedStop, _player.ObjectId);
+
+            
 
             await Task.CompletedTask;
         }
+
 
         private async Task HandleConfirmFirstDialog(MirMsgOrign msg, byte[] payload)
         {
@@ -231,75 +271,75 @@ namespace GameServer
 
             LogManager.Default.Info($"处理客户端[{_player.Name}] 确认第一个对话框");
 
+            
             _state = ClientState.GSUM_VERIFIED;
             LogManager.Default.Info($"已设置状态为GSUM_VERIFIED");
 
-            // 将玩家添加到地图
+            
             if (!GameWorld.Instance.AddMapObject(_player))
             {
-                //Disconnect();
+                
                 return;
             }
 
-            // 查询数据库信息
-            using var dbClient = new MirCommon.Database.DBServerClient(_dbServerAddress, _dbServerPort);
-            if (!await dbClient.ConnectAsync())
+            
+            var dbClient = _server.GetDbServerClient();
+            if (dbClient == null)
             {
-                SendMsg(0, ProtocolCmd.SM_ERRORDIALOG, 0, 0, 0, "数据库错误！");
-                //Disconnect(1000);
+                SendMsg(0, ProtocolCmd.SM_ERRORDIALOG, 0, 0, 0, "数据库连接未初始化！");
                 return;
             }
 
-            //lyo：以下切回去
-            ////使用长连接
-            //var dbClient = _server.GetDbServerClient();
-
-            // 服务器ID，默认为1
+            
             uint serverId = 1;
 
-            // 查询技能数据
+            
             LogManager.Default.Info($"向DBServer发送 DM_QUERYMAGIC 查询技能数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
             await dbClient.SendQueryMagic(serverId, _clientKey, _player.GetDBId());
 
-            // 查询装备数据
+            
             LogManager.Default.Info($"向DBServer发送 DM_QUERYITEMS 查询装备数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
             await dbClient.SendQueryItem(serverId, _clientKey, _player.GetDBId(), (byte)ItemDataFlag.IDF_EQUIPMENT, 20);
 
-            // 查询升级物品数据
+            
             LogManager.Default.Info($"向DBServer发送 DM_QUERYUPGRADEITEM 查询升级物品数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
             await dbClient.SendQueryUpgradeItem(serverId, _clientKey, _player.GetDBId());
 
-            // 查询背包数据
-            // 注意：Inventory类可能没有GetCountLimit方法，使用MaxSlots代替
-            int bagLimit = 40; // 默认背包大小
+            
+            
+            int bagLimit = 40; 
             if (_player.GetBag() != null)
             {
-                // 尝试获取背包限制，如果Inventory类有MaxSlots属性则使用它
-                // 否则使用默认值
-                bagLimit = 40; // 默认值
+                
+                
+                bagLimit = 40; 
             }
             LogManager.Default.Info($"向DBServer发送 DM_QUERYITEMS 查询背包数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
             await dbClient.SendQueryItem(serverId, _clientKey, _player.GetDBId(), (byte)ItemDataFlag.IDF_BAG, bagLimit);
 
-            // 查询仓库数据
+            
             LogManager.Default.Info($"向DBServer发送 DM_QUERYITEMS 查询仓库数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
             await dbClient.SendQueryItem(serverId, _clientKey, _player.GetDBId(), (byte)ItemDataFlag.IDF_BANK, 100);
 
-            // 查询宠物仓库数据
+            
             LogManager.Default.Info($"向DBServer发送 DM_QUERYITEMS 查询宠物仓库数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
             await dbClient.SendQueryItem(serverId, _clientKey, _player.GetDBId(), (byte)ItemDataFlag.IDF_PETBANK, 10);
 
-            // 查询任务信息
+            
             LogManager.Default.Info($"向DBServer发送 DM_QUERYTASKINFO 查询任务数据：{serverId}-{_clientKey}-{_player.GetDBId()}");
             await dbClient.QueryTaskInfo(serverId, _clientKey, _player.GetDBId());
 
-            // 如果是第一次登录，添加首次登录处理
+            
             if (_player.IsFirstLogin)
             {
                 LogManager.Default.Info($"向客户端发送 EP_FIRSTLOGINPROCESS");
                 _player.AddProcess(EP_FIRSTLOGINPROCESS, 0, 0, 0, 0, 20, 1, null);
             }
 
+            
+            
+            
+            
             LogManager.Default.Info($"已处理确认第一个对话框，等待数据库响应: {_player.Name}");
 
             await Task.CompletedTask;
@@ -312,8 +352,12 @@ namespace GameServer
             string link = System.Text.Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
             LogManager.Default.Info($"处理客户端[{_player.Name}] 选择链接: {link}");
 
-            // 处理NPC链接选择
-            NPCMessageHandler.HandleSelectLink(_player, (uint)msg.dwFlag, link);
+            
+            if (!NpcScriptEngine.TryHandleSelectLink(_player, (uint)msg.dwFlag, link))
+            {
+                
+                NPCMessageHandler.HandleSelectLink(_player, (uint)msg.dwFlag, link);
+            }
 
             await Task.CompletedTask;
         }
@@ -323,12 +367,65 @@ namespace GameServer
             if (_player == null) return;
 
             int pos = msg.wParam[0];
-            uint itemId = msg.dwFlag;
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 穿戴物品 位置:{pos} 物品ID:{itemId}");
+            uint makeIndex = msg.dwFlag;
+            LogManager.Default.Info($"处理客户端[{_player.Name}] 穿戴物品 位置:{pos} 物品ID:{makeIndex}");
 
-            // 发送穿戴结果
-            SendEquipItemResult(true, pos, itemId);
+            bool ok = false;
+            try
+            {
+                if (pos < 0 || pos >= (int)EquipSlot.Max)
+                {
+                    ok = false;
+                }
+                else
+                {
+                    var oldEquipped = _player.Equipment.GetItem((EquipSlot)pos);
+                    var item = _player.Inventory.GetItemByMakeIndex(makeIndex);
+                    if (item == null)
+                    {
+                        ok = false;
+                    }
+                    else
+                    {
+                        ok = _player.Equipment.Equip((EquipSlot)pos, item);
+                        if (ok)
+                        {
+                            
+                            _player.Inventory.RemoveItemByMakeIndex(makeIndex, 1);
 
+                            
+                            
+                            if (oldEquipped != null && oldEquipped.GetMakeIndex() != makeIndex)
+                            {
+                                _player.SendAddBagItem(oldEquipped);
+                            }
+                            SendWeightChangedMessage();
+
+                            
+                            var dbClient = _server.GetDbServerClient();
+                            if (dbClient != null)
+                            {
+                                await dbClient.SendUpdateItemPos(makeIndex, (byte)ItemDataFlag.IDF_EQUIPMENT, (ushort)pos);
+
+                                if (oldEquipped != null && oldEquipped.GetMakeIndex() != makeIndex)
+                                {
+                                    
+                                    int oldSlot = _player.Inventory.FindSlotByMakeIndex(oldEquipped.GetMakeIndex());
+                                    ushort bagPos = (ushort)(oldSlot >= 0 ? oldSlot : 0);
+                                    await dbClient.SendUpdateItemPos(oldEquipped.GetMakeIndex(), (byte)ItemDataFlag.IDF_BAG, bagPos);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"处理穿戴物品失败: player={_player.Name}, pos={pos}, item={makeIndex} - {ex.Message}");
+                ok = false;
+            }
+
+            SendEquipItemResult(ok, pos, makeIndex);
             await Task.CompletedTask;
         }
 
@@ -337,12 +434,61 @@ namespace GameServer
             if (_player == null) return;
 
             int pos = msg.wParam[0];
-            uint itemId = msg.dwFlag;
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 脱下物品 位置:{pos} 物品ID:{itemId}");
+            uint makeIndex = msg.dwFlag;
+            LogManager.Default.Info($"处理客户端[{_player.Name}] 脱下物品 位置:{pos} 物品ID:{makeIndex}");
 
-            // 发送脱下结果
-            SendUnEquipItemResult(true, pos, itemId);
+            bool ok = false;
+            try
+            {
+                if (pos < 0 || pos >= (int)EquipSlot.Max)
+                {
+                    ok = false;
+                }
+                else
+                {
+                    var equipped = _player.Equipment.GetItem((EquipSlot)pos);
+                    if (equipped == null)
+                    {
+                        ok = false;
+                    }
+                    else
+                    {
+                        
+                        if (makeIndex != 0 && equipped.GetMakeIndex() != makeIndex)
+                        {
+                            ok = false;
+                        }
+                        else
+                        {
+                            var unEquipped = _player.Equipment.Unequip((EquipSlot)pos);
+                            ok = unEquipped != null;
+                            if (ok)
+                            {
+                                
+                                _player.SendAddBagItem(unEquipped!);
+                                SendWeightChangedMessage();
 
+                                
+                                uint realMakeIndex = unEquipped!.GetMakeIndex();
+                                var dbClient = _server.GetDbServerClient();
+                                if (dbClient != null && realMakeIndex != 0)
+                                {
+                                    int bagSlot = _player.Inventory.FindSlotByMakeIndex(realMakeIndex);
+                                    ushort bagPos = (ushort)(bagSlot >= 0 ? bagSlot : 0);
+                                    await dbClient.SendUpdateItemPos(realMakeIndex, (byte)ItemDataFlag.IDF_BAG, bagPos);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"处理脱下物品失败: player={_player.Name}, pos={pos}, item={makeIndex} - {ex.Message}");
+                ok = false;
+            }
+
+            SendUnEquipItemResult(ok, pos, makeIndex);
             await Task.CompletedTask;
         }
 
@@ -350,12 +496,53 @@ namespace GameServer
         {
             if (_player == null) return;
 
-            uint itemId = msg.dwFlag;
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 丢弃物品 物品ID:{itemId}");
+            uint makeIndex = msg.dwFlag;
+            LogManager.Default.Info($"处理客户端[{_player.Name}] 丢弃物品 物品ID:{makeIndex}");
 
-            // 发送丢弃结果
-            SendDropItemResult(true, itemId);
+            bool ok = false;
+            try
+            {
+                var map = _player.CurrentMap;
+                if (map == null)
+                {
+                    ok = false;
+                }
+                else
+                {
+                    var item = _player.Inventory.GetItemByMakeIndex(makeIndex);
+                    if (item == null)
+                    {
+                        ok = false;
+                    }
+                    else
+                    {
+                        
+                        if (!_player.Inventory.RemoveItemByMakeIndex(makeIndex, 1))
+                        {
+                            ok = false;
+                        }
+                        else
+                        {
+                            ok = DownItemMgr.Instance.HumanDropItem(map, item, (ushort)_player.X, (ushort)_player.Y, _player);
+                            if (!ok)
+                            {
+                                _player.Inventory.AddItem(item);
+                            }
+                            else
+                            {
+                                SendWeightChangedMessage();
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"处理丢弃物品失败: player={_player.Name}, item={makeIndex} - {ex.Message}");
+                ok = false;
+            }
 
+            SendDropItemResult(ok, makeIndex);
             await Task.CompletedTask;
         }
 
@@ -363,30 +550,87 @@ namespace GameServer
         {
             if (_player == null) return;
 
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 拾取物品");
+            uint makeIndex = msg.dwFlag;
+            LogManager.Default.Info($"处理客户端[{_player.Name}] 拾取物品 makeIndex:{makeIndex}");
 
-            // 发送拾取结果
-            SendPickupItemResult(true);
+            bool ok = false;
+            try
+            {
+                var map = _player.CurrentMap;
+                if (map != null)
+                {
+                    DownItemObject? target = null;
 
+                    
+                    var objects = map.GetObjectsInRange(_player.X, _player.Y, 2);
+                    foreach (var obj in objects)
+                    {
+                        if (obj is not DownItemObject down)
+                            continue;
+
+                        if (makeIndex != 0)
+                        {
+                            if (down.GetItem()?.GetMakeIndex() == makeIndex)
+                            {
+                                target = down;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            if (down.X == _player.X && down.Y == _player.Y)
+                            {
+                                target = down;
+                                break;
+                            }
+                            target ??= down;
+                        }
+                    }
+
+                    if (target != null)
+                    {
+                        bool isGold = target.IsGold();
+                        var pickedItem = target.GetItem();
+
+                        ok = DownItemMgr.Instance.PickupItem(map, target, _player);
+                        if (ok)
+                        {
+                            
+                            if (!isGold && pickedItem != null)
+                            {
+                                _player.SendAddBagItem(pickedItem);
+                            }
+                            SendWeightChangedMessage();
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"处理拾取物品失败: player={_player.Name}, item={makeIndex} - {ex.Message}");
+                ok = false;
+            }
+
+            SendPickupItemResult(ok);
             await Task.CompletedTask;
         }
 
-        // 新增消息处理方法
+        
         private async Task HandleSpellSkill(MirMsgOrign msg, byte[] payload)
         {
             if (_player == null) return;
 
             LogManager.Default.Info($"处理客户端[{_player.Name}] 技能施放");
-            // 解析技能数据
+            
             int x = (int)(msg.dwFlag & 0xFFFF);
             int y = (int)((msg.dwFlag >> 16) & 0xFFFF);
             uint magicId = (uint)msg.wParam[0];
             ushort targetId = (ushort)msg.wParam[1];
 
-            // 调用HumanPlayer的SpellCast方法
+            
             bool success = _player.SpellCast(x, y, magicId, targetId);
 
-            // 发送技能施放确认
+            
             SendActionResult(_player.X, _player.Y, success);
             await Task.CompletedTask;
         }
@@ -395,7 +639,29 @@ namespace GameServer
         {
             if (_player == null) return;
 
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 请求交易");
+            
+            uint targetId = msg.dwFlag;
+            var target = HumanPlayerMgr.Instance.FindById(targetId);
+            if (target == null)
+            {
+                _player.SaySystem("对方不在线，无法交易！");
+                return;
+            }
+
+            
+            int dx = Math.Abs(_player.X - target.X);
+            int dy = Math.Abs(_player.Y - target.Y);
+            if (dx > 1 || dy > 1)
+            {
+                _player.SaySystem("对方距离太远，无法交易！");
+                return;
+            }
+
+            if (!TradeManager.Instance.StartTrade(_player, target))
+            {
+                _player.SaySystem("无法开始交易（可能已在交易中）。");
+            }
+
             await Task.CompletedTask;
         }
 
@@ -403,7 +669,37 @@ namespace GameServer
         {
             if (_player == null) return;
 
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 放入交易物品");
+            
+            ulong instanceId = msg.dwFlag;
+            var trade = TradeManager.Instance.GetPlayerTrade(_player);
+            if (trade == null)
+            {
+                _player.SaySystem("您现在不在交易状态！");
+                return;
+            }
+
+            
+            var item = _player.Inventory?.GetAllItems()?.Values?.FirstOrDefault(i => (ulong)i.InstanceId == instanceId);
+            if (item == null)
+            {
+                
+                
+                _player.SaySystem("物品不存在，无法放入交易。");
+                _player.SendTradePutItemFail();
+
+                
+                SendMsg(0, GameMessageHandler.ServerCommands.SM_PUTTRADEITEMOK, 0, 0, 0);
+                return;
+            }
+
+            if (!trade.PutItem(_player, item))
+            {
+                _player.SaySystem(trade.ErrorMessage);
+                
+            }
+
+            
+            SendMsg(0, GameMessageHandler.ServerCommands.SM_PUTTRADEITEMOK, 0, 0, 0);
             await Task.CompletedTask;
         }
 
@@ -411,7 +707,36 @@ namespace GameServer
         {
             if (_player == null) return;
 
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 放入交易金币");
+            
+            uint amount = msg.dwFlag;
+            var type = (MoneyType)msg.wParam[0];
+
+            var trade = TradeManager.Instance.GetPlayerTrade(_player);
+            if (trade == null)
+            {
+                _player.SaySystem("您现在不在交易状态！");
+                return;
+            }
+
+            bool ok = trade.PutMoney(_player, type, amount);
+            if (!ok)
+            {
+                _player.SaySystem(trade.ErrorMessage);
+                SendMsg(0, GameMessageHandler.ServerCommands.SM_PUTTRADEGOLDFAIL, 0, 0, (ushort)type);
+                return;
+            }
+
+            
+            
+            
+            
+            uint curMoney = type == MoneyType.Gold ? _player.Gold : _player.Yuanbao;
+            SendMsg(amount,
+                GameMessageHandler.ServerCommands.SM_PUTTRADEGOLDOK,
+                (ushort)(curMoney & 0xffff),
+                (ushort)(curMoney >> 16),
+                (ushort)type);
+
             await Task.CompletedTask;
         }
 
@@ -419,7 +744,14 @@ namespace GameServer
         {
             if (_player == null) return;
 
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 确认交易结束");
+            var trade = TradeManager.Instance.GetPlayerTrade(_player);
+            if (trade == null)
+            {
+                _player.SaySystem("您现在不在交易状态！");
+                return;
+            }
+
+            trade.End(_player, TradeEndType.Confirm);
             await Task.CompletedTask;
         }
 
@@ -427,66 +759,30 @@ namespace GameServer
         {
             if (_player == null) return;
 
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 取消交易");
-            await Task.CompletedTask;
-        }
+            var trade = TradeManager.Instance.GetPlayerTrade(_player);
+            if (trade == null)
+            {
+                _player.SaySystem("您现在不在交易状态！");
+                return;
+            }
 
-        private async Task HandleChangeGroupMode(MirMsgOrign msg, byte[] payload)
-        {
-            if (_player == null) return;
-
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 更改组队模式");
-            await Task.CompletedTask;
-        }
-
-        private async Task HandleQueryAddGroupMember(MirMsgOrign msg, byte[] payload)
-        {
-            if (_player == null) return;
-
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 请求添加组队成员");
-            await Task.CompletedTask;
-        }
-
-        private async Task HandleDeleteGroupMember(MirMsgOrign msg, byte[] payload)
-        {
-            if (_player == null) return;
-
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 删除组队成员");
-            await Task.CompletedTask;
-        }
-
-        private async Task HandleQueryStartPrivateShop(MirMsgOrign msg, byte[] payload)
-        {
-            if (_player == null) return;
-
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 请求开启个人商店");
-            await Task.CompletedTask;
-        }
-
-        private async Task HandleZuoyi(MirMsgOrign msg, byte[] payload)
-        {
-            if (_player == null) return;
-
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 作揖/切换聊天频道");
+            trade.End(_player, TradeEndType.Cancel);
             await Task.CompletedTask;
         }
 
         private async Task HandlePing(MirMsgOrign msg, byte[] payload)
         {
-            // 发送ping响应
-            LogManager.Default.Info($"处理客户端Ping响应：{msg.dwFlag}");
-            GameMessageHandler.SendSimpleMessage2(_stream, msg.dwFlag,
-                GameMessageHandler.ServerCommands.SM_PINGRESPONSE, 0, 0, 0);
+            
+            LogManager.Default.Info($"处理客户端Ping: {msg.dwFlag}");
+            GameMessageHandler.SendSimpleMessage2(_stream, msg.dwFlag, 0x3d4, 0, 0, 0);
             await Task.CompletedTask;
         }
 
-        private async Task HandleQueryTime(MirMsgOrign msg, byte[] payload)
+        private async Task HandlePingResponse(MirMsgOrign msg, byte[] payload)
         {
-            // 发送时间响应
-            uint currentTime = (uint)(DateTime.Now - new DateTime(1970, 1, 1)).TotalSeconds;
-            LogManager.Default.Info($"处理客户端时间响应：{currentTime}");
-            GameMessageHandler.SendSimpleMessage2(_stream, currentTime,
-                GameMessageHandler.ServerCommands.SM_TIMERESPONSE, 0, 0, 0);
+            
+            if (_player != null)
+                LogManager.Default.Debug($"收到PingResponse/keepalive: player={_player.Name}, flag={msg.dwFlag}");
             await Task.CompletedTask;
         }
 
@@ -495,7 +791,7 @@ namespace GameServer
             if (_player == null) return;
 
             LogManager.Default.Info($"处理客户端[{_player.Name}] 骑马");
-            // 发送骑马响应
+            
             GameMessageHandler.SendSimpleMessage2(_stream, 1,
                 GameMessageHandler.ServerCommands.SM_RIDEHORSERESPONSE, 0, 0, 0);
             await Task.CompletedTask;
@@ -508,11 +804,8 @@ namespace GameServer
             LogManager.Default.Info($"处理客户端[{_player.Name}] 使用物品");
             uint makeIndex = msg.dwFlag;
 
-            // 调用HumanPlayer的UseItem方法
-            bool success = _player.UseItem(makeIndex);
-
-            // 发送使用物品结果
-            SendActionResult(_player.X, _player.Y, success);
+            
+            _player.UseItem(makeIndex);
             await Task.CompletedTask;
         }
 
@@ -523,10 +816,10 @@ namespace GameServer
             LogManager.Default.Info($"处理客户端[{_player.Name}] 丢弃金币");
             uint amount = msg.dwFlag;
 
-            // 调用HumanPlayer的DropGold方法
+            
             bool success = _player.DropGold(amount);
 
-            // 发送丢弃金币结果
+            
             SendActionResult(_player.X, _player.Y, success);
             await Task.CompletedTask;
         }
@@ -543,15 +836,116 @@ namespace GameServer
         {
             if (_player == null) return;
 
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 购买");
-            uint npcInstanceId = msg.dwFlag;
-            int itemIndex = msg.wParam[0];
+            
+            uint npcId = msg.dwFlag;
+            uint reqMakeIndex = (uint)(msg.wParam[0] | ((uint)msg.wParam[1] << 16));
+            string templateName = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0').Trim();
 
-            // 调用HumanPlayer的BuyItem方法
-            bool success = _player.BuyItem(npcInstanceId, itemIndex);
+            uint error = 0;
+            try
+            {
+                var target = GameWorld.Instance.GetAliveObjectById(npcId);
+                if (target is not Npc npc)
+                {
+                    error = 0;
+                    _player.SendMsg(error, GameMessageHandler.ServerCommands.SM_BUYITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
 
-            // 发送购买结果
-            SendActionResult(_player.X, _player.Y, success);
+                var scriptObject = NpcScriptEngine.TryGetScriptObject(npc);
+                if (scriptObject == null)
+                {
+                    error = 0;
+                    _player.SendMsg(error, GameMessageHandler.ServerCommands.SM_BUYITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                float buyPercent = 1.0f;
+                if (npc is NpcInstanceEx ex)
+                    buyPercent = ex.Definition.BuyPercent;
+
+                var goods = ScriptNpcShopHelper.ExtractGoods(scriptObject);
+                if (!goods.Any(g => string.Equals(g.TemplateName, templateName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    error = 0;
+                    _player.SendMsg(error, GameMessageHandler.ServerCommands.SM_BUYITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                var def = ItemManager.Instance.GetDefinitionByName(templateName);
+                if (def == null)
+                {
+                    error = 0;
+                    _player.SendMsg(error, GameMessageHandler.ServerCommands.SM_BUYITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                
+                if (_player.Inventory.GetUsedSlots() >= _player.Inventory.MaxSlots)
+                {
+                    error = 2;
+                    _player.SendMsg(error, GameMessageHandler.ServerCommands.SM_BUYITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                uint price = ScriptNpcShopHelper.CalcBuyPrice(def, buyPercent);
+                if (_player.Gold < price)
+                {
+                    
+                    error = 3;
+                    _player.SendMsg(error, GameMessageHandler.ServerCommands.SM_BUYITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                var item = ItemManager.Instance.CreateItem(def.ItemId, 1);
+                if (item == null)
+                {
+                    error = 0;
+                    _player.SendMsg(error, GameMessageHandler.ServerCommands.SM_BUYITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                if (!_player.Inventory.TryAddItemNoStack(item, out _))
+                {
+                    error = 2;
+                    _player.SendMsg(error, GameMessageHandler.ServerCommands.SM_BUYITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                if (!_player.TakeGold(price))
+                {
+                    error = 3;
+                    _player.SendMsg(error, GameMessageHandler.ServerCommands.SM_BUYITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                
+                _player.SendAddBagItem(item);
+                _player.SendWeightChanged();
+
+                _player.SendMsg(_player.Gold, GameMessageHandler.ServerCommands.SM_BUYITEMOK,
+                    (ushort)(reqMakeIndex & 0xFFFF),
+                    (ushort)((reqMakeIndex >> 16) & 0xFFFF),
+                    0,
+                    null);
+
+                LogManager.Default.Info($"购买成功: player={_player.Name}, npc={npc.Name}({npcId:X8}), item={templateName}, price={price}, reqMakeIndex={reqMakeIndex}");
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"处理购买物品失败: player={_player.Name}, npc={npcId:X8}, item={templateName}, err={ex.Message}");
+                _player.SendMsg(error, GameMessageHandler.ServerCommands.SM_BUYITEMFAIL, 0, 0, 0, null);
+            }
+
             await Task.CompletedTask;
         }
 
@@ -559,15 +953,177 @@ namespace GameServer
         {
             if (_player == null) return;
 
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 出售");
-            uint npcInstanceId = msg.dwFlag;
-            int bagSlot = msg.wParam[0];
+            
+            uint npcId = msg.dwFlag;
+            uint makeIndex = (uint)(msg.wParam[0] | ((uint)msg.wParam[1] << 16));
 
-            // 调用HumanPlayer的SellItem方法
-            bool success = _player.SellItem(npcInstanceId, bagSlot);
+            try
+            {
+                var target = GameWorld.Instance.GetAliveObjectById(npcId);
+                if (target is not Npc npc)
+                {
+                    _player.SendMsg(unchecked((uint)-1), GameMessageHandler.ServerCommands.SM_SELLITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
 
-            // 发送出售结果
-            SendActionResult(_player.X, _player.Y, success);
+                float sellPercent = 0.5f;
+                if (npc is NpcInstanceEx ex)
+                    sellPercent = ex.Definition.SellPercent;
+
+                var item = _player.Inventory.GetItemByMakeIndex(makeIndex);
+                if (item == null)
+                {
+                    _player.SendMsg(unchecked((uint)-1), GameMessageHandler.ServerCommands.SM_SELLITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                if (item.IsBound || item.Definition == null || !item.Definition.CanTrade)
+                {
+                    _player.SendMsg(unchecked((uint)-1), GameMessageHandler.ServerCommands.SM_SELLITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                uint price = ScriptNpcShopHelper.CalcSellPrice(item, sellPercent);
+                if (!_player.CanAddGold(price))
+                {
+                    _player.SendMsg(unchecked((uint)-1), GameMessageHandler.ServerCommands.SM_SELLITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                int sellCount = item.Count > 0 ? item.Count : 1;
+                if (!_player.Inventory.RemoveItemByMakeIndex(makeIndex, sellCount))
+                {
+                    _player.SendMsg(unchecked((uint)-1), GameMessageHandler.ServerCommands.SM_SELLITEMFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                _player.AddGold(price);
+                _player.SendWeightChanged();
+
+                _player.SendMsg(_player.Gold, GameMessageHandler.ServerCommands.SM_SELLITEMOK, 0, 0, 0, null);
+                LogManager.Default.Info($"出售成功: player={_player.Name}, npc={npc.Name}({npcId:X8}), makeIndex={makeIndex}, price={price}");
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"处理出售物品失败: player={_player.Name}, npc={npcId:X8}, makeIndex={makeIndex}, err={ex.Message}");
+                _player.SendMsg(unchecked((uint)-1), GameMessageHandler.ServerCommands.SM_SELLITEMFAIL, 0, 0, 0, null);
+            }
+
+            await Task.CompletedTask;
+        }
+
+        private async Task HandleQueryItemSellPrice(MirMsgOrign msg, byte[] payload)
+        {
+            if (_player == null) return;
+
+            uint npcId = msg.dwFlag;
+            uint makeIndex = (uint)(msg.wParam[0] | ((uint)msg.wParam[1] << 16));
+
+            try
+            {
+                var target = GameWorld.Instance.GetAliveObjectById(npcId);
+                if (target is not Npc npc)
+                {
+                    _player.SendMsg(0, GameMessageHandler.ServerCommands.SM_QUERYITEMSELLPRICE, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                float sellPercent = 0.5f;
+                if (npc is NpcInstanceEx ex)
+                    sellPercent = ex.Definition.SellPercent;
+
+                var item = _player.Inventory.GetItemByMakeIndex(makeIndex);
+                uint price = item != null ? ScriptNpcShopHelper.CalcSellPrice(item, sellPercent) : 0u;
+
+                _player.SendMsg(price, GameMessageHandler.ServerCommands.SM_QUERYITEMSELLPRICE, 0, 0, 0, null);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"查询出售价格失败: player={_player.Name}, npc={npcId:X8}, makeIndex={makeIndex}, err={ex.Message}");
+                _player.SendMsg(0, GameMessageHandler.ServerCommands.SM_QUERYITEMSELLPRICE, 0, 0, 0, null);
+            }
+
+            await Task.CompletedTask;
+        }
+
+        private async Task HandleQueryItemList(MirMsgOrign msg, byte[] payload)
+        {
+            if (_player == null) return;
+
+            
+            uint npcId = msg.dwFlag;
+            int ptr = msg.wParam[0];
+            string templateName = Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0').Trim();
+
+            try
+            {
+                var target = GameWorld.Instance.GetAliveObjectById(npcId);
+                if (target is not Npc npc)
+                {
+                    _player.SendMsg(unchecked((uint)-1), GameMessageHandler.ServerCommands.SM_QUERYITEMLISTFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                var scriptObject = NpcScriptEngine.TryGetScriptObject(npc);
+                if (scriptObject == null)
+                {
+                    _player.SendMsg(unchecked((uint)-1), GameMessageHandler.ServerCommands.SM_QUERYITEMLISTFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                float buyPercent = 1.0f;
+                if (npc is NpcInstanceEx ex)
+                    buyPercent = ex.Definition.BuyPercent;
+
+                var goods = ScriptNpcShopHelper.ExtractGoods(scriptObject);
+                if (!goods.Any(g => string.Equals(g.TemplateName, templateName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _player.SendMsg(unchecked((uint)-1), GameMessageHandler.ServerCommands.SM_QUERYITEMLISTFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                var def = ItemManager.Instance.GetDefinitionByName(templateName);
+                if (def == null)
+                {
+                    _player.SendMsg(unchecked((uint)-1), GameMessageHandler.ServerCommands.SM_QUERYITEMLISTFAIL, 0, 0, 0, null);
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                uint price = ScriptNpcShopHelper.CalcBuyPrice(def, buyPercent);
+
+                
+                var temp = new ItemInstance(def, 0)
+                {
+                    MaxDurability = def.MaxDura > 0 ? def.MaxDura : 100,
+                    Durability = def.MaxDura > 0 ? def.MaxDura : 100,
+                    Count = 1
+                };
+
+                var ic = ItemPacketBuilder.BuildITEMCLIENT(temp);
+                ic.dwMakeIndex = 0;
+                ic.baseitem.nPrice = (int)Math.Clamp((long)price, int.MinValue, int.MaxValue);
+
+                var arr = new MirCommon.ITEMCLIENT[] { ic };
+                byte[] data = StructArrayToBytes(arr);
+
+                _player.SendMsg(npcId, 0x28c, 1, (ushort)Math.Clamp(ptr, 0, ushort.MaxValue), 0, data);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"查询商品列表失败: player={_player.Name}, npc={npcId:X8}, item={templateName}, err={ex.Message}");
+                _player.SendMsg(unchecked((uint)-1), GameMessageHandler.ServerCommands.SM_QUERYITEMLISTFAIL, 0, 0, 0, null);
+            }
+
             await Task.CompletedTask;
         }
 
@@ -579,10 +1135,10 @@ namespace GameServer
             uint npcInstanceId = msg.dwFlag;
             int bagSlot = msg.wParam[0];
 
-            // 调用HumanPlayer的RepairItem方法
+            
             bool success = _player.RepairItem(npcInstanceId, bagSlot);
 
-            // 发送修理结果
+            
             SendActionResult(_player.X, _player.Y, success);
             await Task.CompletedTask;
         }
@@ -595,10 +1151,10 @@ namespace GameServer
             uint npcInstanceId = msg.dwFlag;
             int bagSlot = msg.wParam[0];
 
-            // 调用HumanPlayer的QueryRepairPrice方法
+            
             bool success = _player.QueryRepairPrice(npcInstanceId, bagSlot);
 
-            // 发送查询结果
+            
             SendActionResult(_player.X, _player.Y, success);
             await Task.CompletedTask;
         }
@@ -607,10 +1163,85 @@ namespace GameServer
         {
             if (_player == null) return;
 
-            LogManager.Default.Info($"处理客户端[{_player.Name}] 查询小地图");
-            // 发送小地图信息
-            GameMessageHandler.SendSimpleMessage2(_stream, _player.ObjectId,
-                GameMessageHandler.ServerCommands.SM_MINIMAP, 0, 0, 0);
+            
+            LogManager.Default.Info($"处理客户端[{_player.Name}] 地图加载完成/查询小地图(0x409)");
+
+            int miniMapId = 0;
+            var map = LogicMapMgr.Instance?.GetLogicMapById((uint)_player.MapId);
+            if (map != null)
+            {
+                miniMapId = map.GetMiniMapId();
+            }
+
+            GameMessageHandler.SendSimpleMessage2(
+                _stream,
+                _player.ObjectId,
+                GameMessageHandler.ServerCommands.SM_MINIMAP,
+                (ushort)(miniMapId & 0xffff),
+                0,
+                0);
+
+            
+                if (map != null)
+                {
+                    
+                    _player.SendMsg(_player.ObjectId, MirCommon.ProtocolCmd.SM_CLEAROBJECTS, 0, 0, 0);
+
+                    
+                    _player.IsMapLoaded = true;
+
+                    
+                    try
+                    {
+                        MonsterGenManager.Instance.EnsureInitialSpawnForMap(_player.MapId);
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Default.Warning($"地图初始刷怪补齐失败: mapId={_player.MapId}, err={ex.Message}");
+                    }
+
+                    
+                    try
+                    {
+                        _player.UpdateProp();
+                        _player.UpdateSubProp();
+                        _player.SendStatusChanged();
+                        _player.SendTimeWeatherChanged();
+
+                        ushort curHp = (ushort)Math.Clamp(_player.CurrentHP, 0, ushort.MaxValue);
+                        ushort curMp = (ushort)Math.Clamp(_player.CurrentMP, 0, ushort.MaxValue);
+                        ushort maxHp = (ushort)Math.Clamp(_player.MaxHP, 0, ushort.MaxValue);
+                        _player.SendMsg(_player.ObjectId, MirCommon.ProtocolCmd.SM_HPMPCHANGED, curHp, curMp, maxHp);
+
+                        LogManager.Default.Info($"0x409补发属性完成：hp={curHp}/{maxHp}, mp={curMp}/{_player.MaxMP}");
+                    }
+                    catch (Exception ex)
+                    {
+                        LogManager.Default.Error($"0x409补发属性/状态失败: {ex.Message}");
+                    }
+
+                    
+                    _player.CleanVisibleList();
+                    _player.SearchViewRange();
+
+                var objects = map.GetObjectsInRange(_player.X, _player.Y, 18);
+                int playerCount = 0, npcCount = 0, monsterCount = 0, itemCount = 0, eventCount = 0, visibleEventCount = 0;
+                foreach (var o in objects)
+                {
+                    switch (o.GetObjectType())
+                    {
+                        case ObjectType.Player: playerCount++; break;
+                        case ObjectType.NPC: npcCount++; break;
+                        case ObjectType.Monster: monsterCount++; break;
+                        case ObjectType.Item:
+                        case ObjectType.DownItem: itemCount++; break;
+                        case ObjectType.VisibleEvent: visibleEventCount++; break;
+                        case ObjectType.Event: eventCount++; break;
+                    }
+                }
+                LogManager.Default.Info($"0x409入场景对象刷新完成：mapId={_player.MapId}, count={objects.Count}, player={playerCount}, npc={npcCount}, monster={monsterCount}, item={itemCount}, vevent={visibleEventCount}, event={eventCount}");
+            }
+
             await Task.CompletedTask;
         }
 
@@ -621,10 +1252,10 @@ namespace GameServer
             LogManager.Default.Info($"处理客户端[{_player.Name}] 查看装备");
             uint targetPlayerId = msg.dwFlag;
 
-            // 调用HumanPlayer的ViewEquipment方法
+            
             bool success = _player.ViewEquipment(targetPlayerId);
 
-            // 发送查看装备结果
+            
             SendActionResult(_player.X, _player.Y, success);
             await Task.CompletedTask;
         }
@@ -636,10 +1267,10 @@ namespace GameServer
             LogManager.Default.Info($"处理客户端[{_player.Name}] 挖矿");
             byte dir = (byte)(msg.wParam[1] & 0xFF);
 
-            // 调用HumanPlayer的DoMine方法
+            
             bool success = _player.DoMine(dir);
 
-            // 发送挖矿确认
+            
             SendActionResult(_player.X, _player.Y, success);
             await Task.CompletedTask;
         }
@@ -651,10 +1282,10 @@ namespace GameServer
             LogManager.Default.Info($"处理客户端[{_player.Name}] 训练马匹");
             byte dir = (byte)(msg.wParam[1] & 0xFF);
 
-            // 调用HumanPlayer的DoTrainHorse方法
+            
             bool success = _player.DoTrainHorse(dir);
 
-            // 发送训练马匹确认
+            
             SendActionResult(_player.X, _player.Y, success);
             await Task.CompletedTask;
         }
@@ -667,18 +1298,18 @@ namespace GameServer
             byte dir = (byte)(msg.wParam[1] & 0xFF);
             int skillType = msg.wCmd switch
             {
-                GameMessageHandler.ClientCommands.CM_SPECIALHIT_KILL => 7,      // 攻杀
-                GameMessageHandler.ClientCommands.CM_SPECIALHIT_ASSASSINATE => 12, // 刺杀
-                GameMessageHandler.ClientCommands.CM_SPECIALHIT_HALFMOON => 25,   // 半月
-                GameMessageHandler.ClientCommands.CM_SPECIALHIT_FIRE => 26,       // 烈火
-                GameMessageHandler.ClientCommands.CM_SPECIALHIT_POJISHIELD => 0,  // 破击/破盾
+                GameMessageHandler.ClientCommands.CM_SPECIALHIT_KILL => 7,      
+                GameMessageHandler.ClientCommands.CM_SPECIALHIT_ASSASSINATE => 12, 
+                GameMessageHandler.ClientCommands.CM_SPECIALHIT_HALFMOON => 25,   
+                GameMessageHandler.ClientCommands.CM_SPECIALHIT_FIRE => 26,       
+                GameMessageHandler.ClientCommands.CM_SPECIALHIT_POJISHIELD => 0,  
                 _ => 0
             };
 
-            // 调用HumanPlayer的SpecialHit方法
+            
             bool success = _player.SpecialHit(dir, skillType);
 
-            // 发送特殊攻击确认
+            
             SendActionResult(_player.X, _player.Y, success);
             await Task.CompletedTask;
         }
@@ -689,7 +1320,7 @@ namespace GameServer
 
             LogManager.Default.Info($"处理客户端[{_player.Name}] 离开服务器");
 
-            // 断开客户端连接
+            
             Disconnect();
 
             await Task.CompletedTask;
@@ -701,17 +1332,19 @@ namespace GameServer
 
             LogManager.Default.Info($"处理客户端[{_player.Name}] 处理未知命令 0x45");
 
-            // 发送确认响应
+            
             GameMessageHandler.SendSimpleMessage2(_stream, 0,
                 GameMessageHandler.ServerCommands.SM_PINGRESPONSE, 0, 0, 0);
 
             await Task.CompletedTask;
         }
 
+        
         private async Task HandlePutItemToPetBag(MirMsgOrign msg, byte[] payload)
         {
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 放入宠物仓库 物品ID:{msg.dwFlag}");
+            
             
             _player.PutItemToPetBag(msg.dwFlag);
             
@@ -723,6 +1356,7 @@ namespace GameServer
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 从宠物仓库取出 物品ID:{msg.dwFlag}");
             
+            
             _player.GetItemFromPetBag(msg.dwFlag);
             
             await Task.CompletedTask;
@@ -732,6 +1366,7 @@ namespace GameServer
         {
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 删除任务 任务ID:{msg.dwFlag}");
+            
             
             _player.DeleteTask(msg.dwFlag);
             
@@ -743,6 +1378,8 @@ namespace GameServer
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] GM命令测试");
             
+            
+            
             LogManager.Default.Info($"GM测试命令: Flag={msg.dwFlag}, wParam0={msg.wParam[0]}, wParam1={msg.wParam[1]}");
             
             await Task.CompletedTask;
@@ -753,9 +1390,10 @@ namespace GameServer
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 完全退出");
             
+            
             _competlyQuit = true;
             
-            // 断开连接
+            
             Disconnect();
             
             await Task.CompletedTask;
@@ -766,10 +1404,14 @@ namespace GameServer
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 切割尸体 Flag:{msg.dwFlag}, wParam0:{msg.wParam[0]}, wParam1:{msg.wParam[1]}, wParam2:{msg.wParam[2]}");
             
+            
             bool success = _player.CutBody(msg.dwFlag, msg.wParam[0], msg.wParam[1], msg.wParam[2]);
             
             if (success)
             {
+                
+                
+                
                 LogManager.Default.Info($"切割尸体成功，发送周围消息");
             }
             
@@ -780,6 +1422,7 @@ namespace GameServer
         {
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 放入物品 Flag:{msg.dwFlag}, wParam0:{msg.wParam[0]}");
+            
             
             uint param = (uint)((msg.wParam[1] << 16) | msg.wParam[0]);
             _player.OnPutItem(msg.dwFlag, param);
@@ -792,6 +1435,7 @@ namespace GameServer
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 显示宠物信息");
             
+            
             _player.ShowPetInfo();
             
             await Task.CompletedTask;
@@ -802,7 +1446,8 @@ namespace GameServer
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 市场消息 wParam0:{msg.wParam[0]}, wParam1:{msg.wParam[1]}, wParam2:{msg.wParam[2]}");
             
-            LogManager.Default.Info($"市场消息处理: 参数={msg.wParam[0]},{msg.wParam[1]},{msg.wParam[2]}, 数据长度={payload.Length}");
+            
+            MarketManager.Instance.OnClientMsg(_player, msg.wParam[0], msg.wParam[1], msg.wParam[2], payload, payload?.Length ?? 0);
             
             await Task.CompletedTask;
         }
@@ -812,6 +1457,7 @@ namespace GameServer
             if (_player == null) return;
             string friendName = System.Text.Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
             LogManager.Default.Info($"处理客户端[{_player.Name}] 删除好友: {friendName}");
+            
             
             _player.DeleteFriend(friendName);
             
@@ -824,6 +1470,7 @@ namespace GameServer
             string replyData = System.Text.Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
             LogManager.Default.Info($"处理客户端[{_player.Name}] 回复添加好友请求 Flag:{msg.dwFlag}, 数据:{replyData}");
             
+            
             _player.ReplyAddFriendRequest(msg.dwFlag, replyData);
             
             await Task.CompletedTask;
@@ -835,17 +1482,18 @@ namespace GameServer
             string friendName = System.Text.Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
             LogManager.Default.Info($"处理客户端[{_player.Name}] 添加好友: {friendName}");
             
+            
             var targetPlayer = HumanPlayerMgr.Instance.FindByName(friendName);
             if (targetPlayer != null)
             {
-                // 发送添加好友请求
+                
                 targetPlayer.PostAddFriendRequest(_player);
                 LogManager.Default.Info($"已向 {friendName} 发送添加好友请求");
             }
             else
             {
-                // 玩家不在线
-                _player.SendFriendSystemError(1, friendName); // FE_ADD_OFFONLINE = 1
+                
+                _player.SendFriendSystemError(1, friendName); 
                 LogManager.Default.Info($"玩家 {friendName} 不在线");
             }
             
@@ -858,6 +1506,9 @@ namespace GameServer
             string inputData = System.Text.Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
             LogManager.Default.Info($"处理客户端[{_player.Name}] 创建行会/输入确认: {inputData}");
             
+            
+            
+            
             LogManager.Default.Info($"输入确认处理: {inputData}");
             
             await Task.CompletedTask;
@@ -869,6 +1520,7 @@ namespace GameServer
             bool accept = msg.wParam[0] != 0;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 回复加入行会请求: {(accept ? "接受" : "拒绝")}");
             
+            
             _player.ReplyAddToGuildRequest(accept);
             
             await Task.CompletedTask;
@@ -879,6 +1531,7 @@ namespace GameServer
             if (_player == null) return;
             string memberName = System.Text.Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
             LogManager.Default.Info($"处理客户端[{_player.Name}] 邀请加入行会: {memberName}");
+            
             
             var guild = _player.Guild;
             if (guild != null && guild.IsMaster(_player))
@@ -892,7 +1545,7 @@ namespace GameServer
                     }
                     else
                     {
-                        // 发送加入行会请求
+                        
                         targetPlayer.PostAddToGuildRequest(_player);
                         LogManager.Default.Info($"已向 {memberName} 发送加入行会请求");
                     }
@@ -917,16 +1570,17 @@ namespace GameServer
             uint itemId = (uint)((msg.wParam[1] << 16) | msg.wParam[0]);
             LogManager.Default.Info($"处理客户端[{_player.Name}] 从仓库取出 NPC:{npcId}, 物品ID:{itemId}");
             
-            // 这里需要检查NPC是否存在并调用取出方法
+            
+            
             bool success = _player.TakeBankItem(itemId);
             
             if (success)
             {
-                SendMsg(itemId, GameMessageHandler.ServerCommands.SM_BANKTAKEOK, 0, 0, 0); // 取出成功
+                SendMsg(itemId, GameMessageHandler.ServerCommands.SM_BANKTAKEOK, 0, 0, 0); 
             }
             else
             {
-                SendMsg(itemId, GameMessageHandler.ServerCommands.SM_BANKTAKEFAIL, 0, 0, 0); // 取出失败
+                SendMsg(itemId, GameMessageHandler.ServerCommands.SM_BANKTAKEFAIL, 0, 0, 0); 
             }
             
             await Task.CompletedTask;
@@ -939,16 +1593,17 @@ namespace GameServer
             uint itemId = (uint)((msg.wParam[1] << 16) | msg.wParam[0]);
             LogManager.Default.Info($"处理客户端[{_player.Name}] 放入仓库 NPC:{npcId}, 物品ID:{itemId}");
             
-            // 这里需要检查NPC是否存在并调用放入方法
+            
+            
             bool success = _player.PutBankItem(itemId);
             
             if (success)
             {
-                SendMsg(itemId, GameMessageHandler.ServerCommands.SM_BANKPUTOK, 0, 0, 0); // 放入成功
+                SendMsg(itemId, GameMessageHandler.ServerCommands.SM_BANKPUTOK, 0, 0, 0); 
             }
             else
             {
-                SendMsg(itemId, GameMessageHandler.ServerCommands.SM_BANKPUTFAIL, 0, 0, 0); // 放入失败
+                SendMsg(itemId, GameMessageHandler.ServerCommands.SM_BANKPUTFAIL, 0, 0, 0); 
             }
             
             await Task.CompletedTask;
@@ -959,20 +1614,23 @@ namespace GameServer
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 查询社区信息");
 
-            // 这里需要调用数据库查询社区信息
-            //using var dbClient = new MirCommon.Database.DBServerClient(_dbServerAddress, _dbServerPort);
+            
+            
+            
 
 
-            //使用长连接
+            
             var dbClient = _server.GetDbServerClient();
             if (dbClient != null)
             {
+                
                 LogManager.Default.Info($"查询社区信息: 玩家ID={_player.GetDBId()}");
+                
             }
             else
             {
                 SendMsg(0, ProtocolCmd.SM_ERRORDIALOG, 0, 0, 0, "数据库错误！");
-                //Disconnect(1000);
+                
             }
 
             await Task.CompletedTask;
@@ -983,6 +1641,7 @@ namespace GameServer
             if (_player == null) return;
             string memberName = System.Text.Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
             LogManager.Default.Info($"处理客户端[{_player.Name}] 删除行会成员: {memberName}");
+            
             
             var guild = _player.Guild;
             if (guild != null && guild.IsMaster(_player))
@@ -1004,20 +1663,22 @@ namespace GameServer
             string notice = System.Text.Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
             LogManager.Default.Info($"处理客户端[{_player.Name}] 编辑行会公告: {notice}");
             
+            
             var guild = _player.Guild;
             if (guild != null && guild.IsMaster(_player))
             {
+                
                 notice += "\r";
                 guild.SetNotice(notice);
                 
-                // 发送行会首页
+                
                 string frontPage = guild.GetFrontPage();
                 SendMsg(0, GameMessageHandler.ServerCommands.SM_GUILDFRONTPAGE, 0, 0, 0, frontPage);
                 LogManager.Default.Info($"已更新行会公告");
             }
             else
             {
-                SendMsg(0, GameMessageHandler.ServerCommands.SM_GUILDFRONTPAGEFAIL, 0, 0, 0); // 尚未加入门派
+                SendMsg(0, GameMessageHandler.ServerCommands.SM_GUILDFRONTPAGEFAIL, 0, 0, 0); 
             }
             
             await Task.CompletedTask;
@@ -1028,6 +1689,7 @@ namespace GameServer
             if (_player == null) return;
             string memberList = System.Text.Encoding.GetEncoding("GBK").GetString(payload).TrimEnd('\0');
             LogManager.Default.Info($"处理客户端[{_player.Name}] 编辑行会封号: {memberList}");
+            
             
             var guild = _player.Guild;
             if (guild != null && guild.IsMaster(_player))
@@ -1047,6 +1709,7 @@ namespace GameServer
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 查询行会经验");
             
+            
             var guild = _player.Guild;
             if (guild != null)
             {
@@ -1054,7 +1717,7 @@ namespace GameServer
             }
             else
             {
-                SendMsg(0, GameMessageHandler.ServerCommands.SM_GUILDFRONTPAGEFAIL, 0, 0, 0); // 尚未加入门派
+                SendMsg(0, GameMessageHandler.ServerCommands.SM_GUILDFRONTPAGEFAIL, 0, 0, 0); 
             }
             
             await Task.CompletedTask;
@@ -1065,6 +1728,7 @@ namespace GameServer
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 请求行会信息");
             
+            
             var guild = _player.Guild;
             if (guild != null)
             {
@@ -1072,7 +1736,7 @@ namespace GameServer
             }
             else
             {
-                SendMsg(0, GameMessageHandler.ServerCommands.SM_GUILDFRONTPAGEFAIL, 0, 0, 0); // 尚未加入门派
+                SendMsg(0, GameMessageHandler.ServerCommands.SM_GUILDFRONTPAGEFAIL, 0, 0, 0); 
             }
             
             await Task.CompletedTask;
@@ -1083,6 +1747,7 @@ namespace GameServer
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 请求行会成员列表");
             
+            
             var guild = _player.Guild;
             if (guild != null)
             {
@@ -1090,7 +1755,7 @@ namespace GameServer
             }
             else
             {
-                SendMsg(0, GameMessageHandler.ServerCommands.SM_GUILDFRONTPAGEFAIL, 0, 0, 0); // 尚未加入门派
+                SendMsg(0, GameMessageHandler.ServerCommands.SM_GUILDFRONTPAGEFAIL, 0, 0, 0); 
             }
             
             await Task.CompletedTask;
@@ -1101,19 +1766,22 @@ namespace GameServer
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 查询历史地址");
             
-            // 这里需要调用数据库查询历史地址
-            //using var dbClient = new MirCommon.Database.DBServerClient(_dbServerAddress, _dbServerPort);
+            
+            
+            
 
-            //使用长连接
+            
             var dbClient = _server.GetDbServerClient();
             if (dbClient != null)
             {
+                
                 LogManager.Default.Info($"查询历史地址: 玩家ID={_player.GetDBId()}");
+                
             }
             else
             {
                 SendMsg(0, ProtocolCmd.SM_ERRORDIALOG, 0, 0, 0, "数据库错误！");
-                //Disconnect(1000);
+                
             }
             
             await Task.CompletedTask;
@@ -1123,6 +1791,7 @@ namespace GameServer
         {
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 设置技能快捷键 Flag:{msg.dwFlag}, wParam0:{msg.wParam[0]}, wParam1:{msg.wParam[1]}");
+            
             
             _player.SetMagicKey(msg.dwFlag, msg.wParam[0], msg.wParam[1]);
             
@@ -1134,7 +1803,9 @@ namespace GameServer
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 设置背包物品位置");
             
-            // 这里需要解析payload中的BAGITEMPOS数组
+            
+            
+            
             LogManager.Default.Info($"设置背包物品位置: 数据长度={payload.Length}");
             
             await Task.CompletedTask;
@@ -1143,19 +1814,45 @@ namespace GameServer
         private async Task HandleNPCTalkOrViewPrivateShop(MirMsgOrign msg, byte[] payload)
         {
             if (_player == null) return;
-            LogManager.Default.Info($"处理客户端[{_player.Name}] NPC对话/查看个人商店 Flag:{msg.dwFlag}");
             
-            if (msg.dwFlag == 0)
-            {
-                // NPC对话
-                LogManager.Default.Info($"NPC对话处理");
-            }
-            else
-            {
-                // 查看个人商店
-                LogManager.Default.Info($"查看个人商店: 商店ID={msg.dwFlag}");
-            }
             
+            
+            uint targetId = msg.dwFlag;
+            LogManager.Default.Info($"处理客户端[{_player.Name}] NPC对话/查看个人商店 TargetId:{targetId}");
+
+            var target = GameWorld.Instance.GetAliveObjectById(targetId);
+            if (target == null)
+            {
+                LogManager.Default.Warning($"NPC对话/查看商店失败：找不到目标对象 TargetId={targetId}");
+                await Task.CompletedTask;
+                return;
+            }
+
+            if (target is Npc npc)
+            {
+                
+                if (NpcScriptEngine.TryHandleTalk(_player, npc))
+                {
+                    await Task.CompletedTask;
+                    return;
+                }
+
+                
+                if (target is NPCInstance npcSystem)
+                {
+                    npcSystem.OnInteract(_player);
+                }
+                else
+                {
+                    npc.OnTalk(_player);
+                }
+            }
+            else if (target is HumanPlayer otherPlayer)
+            {
+                
+                LogManager.Default.Info($"查看个人商店：目标玩家={otherPlayer.Name}({otherPlayer.ObjectId})");
+            }
+
             await Task.CompletedTask;
         }
 
@@ -1163,21 +1860,62 @@ namespace GameServer
         {
             if (_player == null) return;
             LogManager.Default.Info($"处理客户端[{_player.Name}] 重启游戏");
+             
             
-            // 这里需要保存玩家数据并重新加载
-            _player.UpdateToDB(); // 保存数据到数据库
-                        
-            await Task.CompletedTask;
-        }
+            
+            try
+            {
+                var dbClient = _server.GetDbServerClient();
+                _player.UpdateToDB(dbClient);
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Warning($"重启游戏保存数据失败: {_player.Name} - {ex.Message}");
+            }
 
-        private async Task HandlePingResponse(MirMsgOrign msg, byte[] payload)
-        {
-            if (_player == null) return;
-            LogManager.Default.Info($"处理客户端[{_player.Name}] Ping响应: {msg.dwFlag}");
             
-            GameMessageHandler.SendSimpleMessage2(_stream, msg.dwFlag,
-                GameMessageHandler.ServerCommands.SM_PINGRESPONSE, 0, 0, 0);
+            try
+            {
+                var sc = _server.GetServerCenterClient();
+                if (sc != null)
+                {
+                    byte[] enterBytes = StructToBytes(_enterInfo);
+                    ushort targetIndex = (ushort)_enterInfo.dwSelectCharServerId;
+                    byte sendType = (byte)MirCommon.ProtocolCmd.MST_SINGLE;
+
+                    bool sent = await sc.SendMsgAcrossServerAsync(
+                        clientId: 0,
+                        cmd: MirCommon.ProtocolCmd.MAS_RESTARTGAME,
+                        sendType: sendType,
+                        targetIndex: targetIndex,
+                        binaryData: enterBytes
+                    );
+
+                    if (sent)
+                    {
+                        _competlyQuit = true;
+                        LogManager.Default.Info($"已发送MAS_RESTARTGAME: targetIndex={targetIndex}");
+                    }
+                    else
+                    {
+                        LogManager.Default.Warning($"发送MAS_RESTARTGAME失败: targetIndex={targetIndex}");
+                    }
+                }
+                else
+                {
+                    LogManager.Default.Warning("ServerCenterClient为空，无法发送MAS_RESTARTGAME");
+                }
+            }
+            catch (Exception ex)
+            {
+                LogManager.Default.Error($"处理重启游戏(MAS_RESTARTGAME)失败: {ex.Message}");
+            }
+             
             
+            
+            
+
+            Disconnect();
             await Task.CompletedTask;
         }
     }
